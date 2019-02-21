@@ -131,6 +131,13 @@ EbBool is a 32 bit quantity and is aligned on a 32 bit word boundary.
 
     } EbSvtEncInput;
 
+typedef enum EB_COLOR_FORMAT {
+    EB_YUV400,
+    EB_YUV420,
+    EB_YUV422,
+    EB_YUV444
+} EB_COLOR_FORMAT;
+
 // Will contain the EbEncApi which will live in the EncHandle class
 // Only modifiable during config-time.
 typedef struct EbSvtAv1EncConfiguration
@@ -228,7 +235,15 @@ typedef struct EbSvtAv1EncConfiguration
      *
      * Default is 8. */
     uint32_t                 encoder_bit_depth;
-
+    /* Specifies the chroma subsampleing format of input video.
+     *
+     * 0 = mono.
+     * 1 = 420.
+     * 2 = 422.
+     * 3 = 444.
+     *
+     * Default is 1. */
+    EB_COLOR_FORMAT          encoder_color_format;
     /* Offline packing of the 2bits: requires two bits packed input.
      *
      * Default is 0. */

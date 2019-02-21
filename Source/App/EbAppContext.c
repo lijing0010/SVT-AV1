@@ -213,6 +213,7 @@ EbErrorType CopyConfigurationParameters(
     callbackData->ebEncParameters.recovery_point_sei_flag = config->recovery_point_sei_flag;
     callbackData->ebEncParameters.enable_temporal_id = config->enable_temporal_id;
     callbackData->ebEncParameters.encoder_bit_depth = config->encoderBitDepth;
+    callbackData->ebEncParameters.encoder_color_format = config->encoderColorFormat;
     callbackData->ebEncParameters.compressed_ten_bit_format = config->compressedTenBitFormat;
     callbackData->ebEncParameters.profile = config->profile;
     callbackData->ebEncParameters.tier = config->tier;

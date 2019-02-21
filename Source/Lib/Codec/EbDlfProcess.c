@@ -35,6 +35,7 @@ EbErrorType dlf_context_ctor(
     EbFifo_t                *dlf_input_fifo_ptr,
     EbFifo_t                *dlf_output_fifo_ptr ,
     EbBool                  is16bit,
+    EB_COLOR_FORMAT         color_format,
     uint32_t                max_input_luma_width,
     uint32_t                max_input_luma_height
    )
@@ -63,6 +64,7 @@ EbErrorType dlf_context_ctor(
     temp_lf_recon_desc_init_data.bot_padding = PAD_VALUE;
 
     temp_lf_recon_desc_init_data.splitMode = EB_FALSE;
+    temp_lf_recon_desc_init_data.color_format = color_format;
 
     if (is16bit) {
         temp_lf_recon_desc_init_data.bit_depth = EB_16BIT;
