@@ -38,7 +38,7 @@ extern EbErrorType dlf_context_ctor(
     EbFifo_t                       *dlf_input_fifo_ptr,
     EbFifo_t                       *dlf_output_fifo_ptr,
     EbBool                  is16bit,
-    EB_COLOR_FORMAT         color_format,
+    EbColorFormat           color_format,
     uint32_t                max_input_luma_width,
     uint32_t                max_input_luma_height
    );

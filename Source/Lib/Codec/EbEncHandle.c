@@ -775,7 +775,7 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
     uint32_t maxLookAheadDistance = 0;
 
     EbBool is16bit = (EbBool)(encHandlePtr->sequenceControlSetInstanceArray[0]->sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
-    EB_COLOR_FORMAT color_format = encHandlePtr->sequenceControlSetInstanceArray[0]->sequence_control_set_ptr->static_config.encoder_color_format;
+    EbColorFormat color_format = encHandlePtr->sequenceControlSetInstanceArray[0]->sequence_control_set_ptr->static_config.encoder_color_format;
 
     /************************************
     * Plateform detection
@@ -3327,7 +3327,7 @@ static EbErrorType allocate_frame_buffer(
     inputPictureBufferDescInitData.maxWidth = (uint16_t)sequence_control_set_ptr->max_input_luma_width;
     inputPictureBufferDescInitData.maxHeight = (uint16_t)sequence_control_set_ptr->max_input_luma_height;
     inputPictureBufferDescInitData.bit_depth = (EB_BITDEPTH)config->encoder_bit_depth;
-    inputPictureBufferDescInitData.color_format = (EB_COLOR_FORMAT)config->encoder_color_format;
+    inputPictureBufferDescInitData.color_format = (EbColorFormat)config->encoder_color_format;
 
     if (config->compressed_ten_bit_format == 1) {
         inputPictureBufferDescInitData.bufferEnableMask = 0;

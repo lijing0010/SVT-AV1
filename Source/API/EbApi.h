@@ -131,12 +131,12 @@ EbBool is a 32 bit quantity and is aligned on a 32 bit word boundary.
 
     } EbSvtEncInput;
 
-typedef enum EB_COLOR_FORMAT {
+typedef enum EbColorFormat {
     EB_YUV400,
     EB_YUV420,
     EB_YUV422,
     EB_YUV444
-} EB_COLOR_FORMAT;
+} EbColorFormat;
 
 // Will contain the EbEncApi which will live in the EncHandle class
 // Only modifiable during config-time.
@@ -243,7 +243,7 @@ typedef struct EbSvtAv1EncConfiguration
      * 3 = 444.
      *
      * Default is 1. */
-    EB_COLOR_FORMAT          encoder_color_format;
+    EbColorFormat            encoder_color_format;
     /* Offline packing of the 2bits: requires two bits packed input.
      *
      * Default is 0. */

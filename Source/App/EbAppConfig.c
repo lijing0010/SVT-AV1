@@ -825,18 +825,17 @@ static EbErrorType VerifySettings(EbConfig_t *config, uint32_t channelNumber)
     }
 
     //if (config->encoderColorFormat < 1 || config->encoderColorFormat > 3)
-    if (config->encoderColorFormat != 1)
-    {
+    if (config->encoderColorFormat != 1) {
         fprintf(config->errorLogFile, "Error instance %u: Only support 420 now \n", channelNumber + 1);
         return_error = EB_ErrorBadParameter;
     }
 
-    if (config->injector > 1 ){
+    if (config->injector > 1 ) {
         fprintf(config->errorLogFile, "Error Instance %u: Invalid injector [0 - 1]\n",channelNumber+1);
         return_error = EB_ErrorBadParameter;
     }
 
-    if(config->injector_frame_rate > (240<<16) && config->injector){
+    if(config->injector_frame_rate > (240<<16) && config->injector) {
         fprintf(config->errorLogFile, "Error Instance %u: The maximum allowed injector_frame_rate is 240 fps\n",channelNumber+1);
         return_error = EB_ErrorBadParameter;
     }

@@ -13696,7 +13696,7 @@ extern "C" {
         uint64_t                              picture_number;
         uint8_t                               temporal_layer_index;
         
-        EB_COLOR_FORMAT                       color_format;
+        EbColorFormat                         color_format;
         
         EncDecSegments_t                     *enc_dec_segment_ctrl;
 
@@ -14313,7 +14313,7 @@ extern "C" {
         uint16_t                           top_padding;
         uint16_t                           bot_padding;
         EB_BITDEPTH                        bit_depth;
-        EB_COLOR_FORMAT                    color_format;
+        EbColorFormat                      color_format;
         uint32_t                           sb_sz;
         uint32_t                           sb_size_pix;   //since we still have lot of code assuming 64x64 LCU, we add a new paramter supporting both128x128 and 64x64, 
                                                           //ultimately the fixed code supporting 64x64 should be upgraded to use 128x128 and the above could be removed.
