@@ -18,7 +18,6 @@
 #define INPUT_SIZE_1080p_TH                0x1AB3F0    // 1.75 Million
 #define INPUT_SIZE_4K_TH                0x29F630    // 2.75 Million
 
-#define SIZE_OF_ONE_FRAME_IN_BYTES(width, height,is16bit) ( ( ((width)*(height)*3)>>1 )<<is16bit)
 #define IS_16_BIT(bit_depth) (bit_depth==10?1:0)
 #define EB_OUTPUTSTREAMBUFFERSIZE_MACRO(ResolutionSize)                ((ResolutionSize) < (INPUT_SIZE_1080i_TH) ? 0x1E8480 : (ResolutionSize) < (INPUT_SIZE_1080p_TH) ? 0x2DC6C0 : (ResolutionSize) < (INPUT_SIZE_4K_TH) ? 0x2DC6C0 : 0x2DC6C0  )
 
@@ -245,6 +244,8 @@ static EbErrorType AllocateFrameBuffer(
 
     EbErrorType   return_error = EB_ErrorNone;
     const int32_t tenBitPackedMode = (config->encoderBitDepth > 8) && (config->compressedTenBitFormat == 0) ? 1 : 0;
+    const EbColorFormat color_format = config->encoderColorFormat;    // Chroma subsampling
+    const uint8_t subsampling_x = (color_format == EB_YUV444 ? 1 : 2) - 1;
 
     // Determine size of each plane
     const size_t luma8bitSize =
@@ -254,15 +255,15 @@ static EbErrorType AllocateFrameBuffer(
 
         (1 << tenBitPackedMode);
 
-    const size_t chroma8bitSize = luma8bitSize >> 2;
+    const size_t chroma8bitSize = luma8bitSize >> (3 - color_format);
     const size_t luma10bitSize = (config->encoderBitDepth > 8 && tenBitPackedMode == 0) ? luma8bitSize : 0;
     const size_t chroma10bitSize = (config->encoderBitDepth > 8 && tenBitPackedMode == 0) ? chroma8bitSize : 0;
 
     // Determine
     EbSvtEncInput* inputPtr = (EbSvtEncInput*)p_buffer;
     inputPtr->yStride = config->inputPaddedWidth;
-    inputPtr->crStride = config->inputPaddedWidth >> 1;
-    inputPtr->cbStride = config->inputPaddedWidth >> 1;
+    inputPtr->crStride = config->inputPaddedWidth >> subsampling_x;
+    inputPtr->cbStride = config->inputPaddedWidth >> subsampling_x;
     if (luma8bitSize) {
         EB_APP_MALLOC(uint8_t*, inputPtr->luma, luma8bitSize, EB_N_PTR, EB_ErrorInsufficientResources);
     }
@@ -347,9 +348,9 @@ EbErrorType AllocateOutputReconBuffers(
         config->inputPaddedWidth    *
         config->inputPaddedHeight;
     // both u and v
-    const size_t chromaSize = lumaSize >> 1;
+    const size_t chromaSize = lumaSize >> (3 - config->encoderColorFormat);
     const size_t tenBit = (config->encoderBitDepth > 8);
-    const size_t frameSize = (lumaSize + chromaSize) << tenBit;
+    const size_t frameSize = (lumaSize + 2 * chromaSize) << tenBit;
 
 // ... Recon Port
     EB_APP_MALLOC(EbBufferHeaderType*, callbackData->reconBuffer, sizeof(EbBufferHeaderType), EB_N_PTR, EB_ErrorInsufficientResources);
@@ -395,21 +396,21 @@ EbErrorType PreloadFramesIntoRam(
     int32_t             inputPaddedWidth = config->inputPaddedWidth;
     int32_t             inputPaddedHeight = config->inputPaddedHeight;
     int32_t             readSize;
+    const EbColorFormat color_format = config->encoderColorFormat;    // Chroma subsampling
+    const uint8_t       subsampling_x = (color_format == EB_YUV444 ? 1 : 2) - 1;
     uint8_t  *ebInputPtr;
 
     FILE *inputFile = config->inputFile;
 
+    readSize = inputPaddedWidth * inputPaddedHeight; //Luma
+    readSize += 2 * (readSize >> (3 - color_format)); // Add Chroma
     if (config->encoderBitDepth == 10 && config->compressedTenBitFormat == 1)
     {
-
-        readSize = (inputPaddedWidth*inputPaddedHeight * 3) / 2 + (inputPaddedWidth / 4 * inputPaddedHeight * 3) / 2;
-
+        readSize += readSize / 4;
     }
     else
     {
-
-        readSize = inputPaddedWidth * inputPaddedHeight * 3 * (config->encoderBitDepth > 8 ? 2 : 1) / 2;
-
+        readSize *= (config->encoderBitDepth > 8 ? 2 : 1); //10 bit
     }
     EB_APP_MALLOC(uint8_t **, config->sequenceBuffer, sizeof(uint8_t*) * config->bufferedInput, EB_N_PTR, EB_ErrorInsufficientResources);
 
@@ -542,13 +543,10 @@ EbErrorType PreloadFramesIntoRam(
                     fseek(inputFile, -(long)(readSize << 1), SEEK_CUR);
                 }
             }
-        }
-        else {
-
+        } else {
             // Fill the buffer with a complete frame
             filledLen = 0;
-            ebInputPtr = config->sequenceBuffer[processedFrameCount];
-            filledLen += (uint32_t)fread(ebInputPtr, 1, readSize, inputFile);
+            filledLen += (uint32_t)fread(config->sequenceBuffer[processedFrameCount], 1, readSize, inputFile);
 
             if (readSize != filledLen) {
 
@@ -556,8 +554,7 @@ EbErrorType PreloadFramesIntoRam(
 
                 // Fill the buffer with a complete frame
                 filledLen = 0;
-                ebInputPtr = config->sequenceBuffer[processedFrameCount];
-                filledLen += (uint32_t)fread(ebInputPtr, 1, readSize, inputFile);
+                filledLen += (uint32_t)fread(config->sequenceBuffer[processedFrameCount], 1, readSize, inputFile);
             }
         }
     }
