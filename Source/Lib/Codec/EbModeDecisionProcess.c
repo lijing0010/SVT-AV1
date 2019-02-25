@@ -15,6 +15,7 @@
  ******************************************************/
 EbErrorType mode_decision_context_ctor(
     ModeDecisionContext_t  **context_dbl_ptr,
+    EbColorFormat           color_format,
     EbFifo_t                *mode_decision_configuration_input_fifo_ptr,
     EbFifo_t                *mode_decision_output_fifo_ptr){
 
@@ -86,6 +87,7 @@ EbErrorType mode_decision_context_ctor(
     // Inter Prediction Context
     return_error = inter_prediction_context_ctor(
         &context_ptr->inter_prediction_context,
+        color_format,
         SB_STRIDE_Y,
         SB_STRIDE_Y);
     if (return_error == EB_ErrorInsufficientResources) {

@@ -251,6 +251,7 @@ extern "C" {
      **************************************/
     extern EbErrorType mode_decision_context_ctor(
         ModeDecisionContext_t      **context_dbl_ptr,
+        EbColorFormat                color_format,
         EbFifo_t                    *mode_decision_configuration_input_fifo_ptr,
         EbFifo_t                    *mode_decision_output_fifo_ptr);
 

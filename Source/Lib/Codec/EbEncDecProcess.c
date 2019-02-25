@@ -206,7 +206,7 @@ EbErrorType enc_dec_context_ctor(
         }
     }
     // Mode Decision Context
-    return_error = mode_decision_context_ctor(&context_ptr->md_context, 0, 0);
+    return_error = mode_decision_context_ctor(&context_ptr->md_context, color_format, 0, 0);
 
     if (return_error == EB_ErrorInsufficientResources) {
         return EB_ErrorInsufficientResources;
