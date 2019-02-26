@@ -243,6 +243,7 @@ void* rest_kernel(void *input_ptr)
 
         if (sequence_control_set_ptr->enable_restoration)
         {
+            assert(0);
             get_own_recon(sequence_control_set_ptr, picture_control_set_ptr, context_ptr, is16bit);
 
             Yv12BufferConfig cpi_source;
@@ -306,6 +307,7 @@ void* rest_kernel(void *input_ptr)
 #endif
 
 
+                assert(0);
 #if REST_M
                 rest_finish_search(
                     picture_control_set_ptr->parent_pcs_ptr->av1x,

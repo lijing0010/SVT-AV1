@@ -1102,10 +1102,6 @@ extern "C" {
         return (alpha_sign == CFL_SIGN_POS) ? abs_alpha_q3 + 1 : -abs_alpha_q3 - 1;
     }
 
-
-
-
-
 #ifdef __cplusplus
 }
 #endif

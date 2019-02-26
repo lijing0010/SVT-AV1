@@ -93,6 +93,8 @@ extern "C" {
         const CodedUnitStats_t                *cu_stats;
         uint16_t                               cu_origin_x; // within the picture
         uint16_t                               cu_origin_y; // within the picture
+        EB_MODETYPE                            cu_left_mode_type; //Jing: Save the neighbor mode type(intra/inter)
+        EB_MODETYPE                            cu_top_mode_type;
         uint8_t                                sb_sz;
         uint32_t                               sb_index;
         MvUnit_t                               mv_unit;

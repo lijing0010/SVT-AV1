@@ -1651,6 +1651,7 @@ void* EncDecKernel(void *input_ptr)
                         sb_origin_y,
                         sb_ptr->qp,
                         context_ptr);
+                    printf("---Finish coding SB (%d, %d), size %d\n", sb_origin_x, sb_origin_y, sequence_control_set_ptr->sb_size_pix);
 #endif
 
                     if (picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr != NULL) {
@@ -1671,6 +1672,7 @@ void* EncDecKernel(void *input_ptr)
             // Copy film grain data from parent picture set to the reference object for further reference
             if (sequence_control_set_ptr->film_grain_params_present)
             {
+                assert(0);
 
                 if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE && picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr) {
 
@@ -1686,6 +1688,7 @@ void* EncDecKernel(void *input_ptr)
                     sequence_control_set_ptr->static_config.stat_report));
 
             if (dlfEnableFlag && picture_control_set_ptr->parent_pcs_ptr->loop_filter_mode == 2) {
+                assert(0);
                 EbPictureBufferDesc_t  *reconBuffer = is16bit ? picture_control_set_ptr->recon_picture16bit_ptr : picture_control_set_ptr->recon_picture_ptr;
                 if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE && picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr) {
 
@@ -1759,6 +1762,7 @@ void* EncDecKernel(void *input_ptr)
 #else
             if (sequence_control_set_ptr->enable_cdef) {
 #endif
+                assert(0);
                 if (is16bit) {
                     av1_cdef_search16bit(
                         context_ptr,
@@ -1819,6 +1823,7 @@ void* EncDecKernel(void *input_ptr)
 #else
             if (sequence_control_set_ptr->enable_restoration) {
 #endif
+                assert(0);
                 av1_loop_restoration_save_boundary_lines(
                     cm->frame_to_show,
                     cm,
@@ -1862,6 +1867,7 @@ void* EncDecKernel(void *input_ptr)
             }
 #endif
 #if !FILT_PROC
+            asdf
 #if FAST_SG
             uint8_t best_ep_cnt = 0;
             uint8_t best_ep = 0;
@@ -1896,6 +1902,7 @@ void* EncDecKernel(void *input_ptr)
 
             if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE && picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr)
             {
+                //Jing: TODO
                 EbPictureBufferDesc_t *inputPicturePtr = (EbPictureBufferDesc_t*)picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr;
                 const uint32_t  SrclumaOffSet = inputPicturePtr->origin_x + inputPicturePtr->origin_y    *inputPicturePtr->strideY;
                 const uint32_t  SrccbOffset = (inputPicturePtr->origin_x >> 1) + (inputPicturePtr->origin_y >> 1)*inputPicturePtr->strideCb;
@@ -1958,6 +1965,7 @@ void* EncDecKernel(void *input_ptr)
             }
 #endif
 #if !FILT_PROC
+            asdf
             if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag) {
 
                 // Get Empty EntropyCoding Results
@@ -1993,11 +2001,13 @@ void* EncDecKernel(void *input_ptr)
             //CHKN these are not needed for DLF
             encDecResultsPtr->completedLcuRowIndexStart = 0;
             encDecResultsPtr->completedLcuRowCount = ((sequence_control_set_ptr->luma_height + sequence_control_set_ptr->sb_size_pix - 1) >> lcuSizeLog2);
+            printf("---post enc dec result---, poc %d\n", picture_control_set_ptr->picture_number);
             // Post EncDec Results
             EbPostFullObject(encDecResultsWrapperPtr);
 
         }
 #else
+        asdf
         // Send the Entropy Coder incremental updates as each SB row becomes available
         if (enableEcRows)
         {

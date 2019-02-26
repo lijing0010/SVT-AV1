@@ -1069,6 +1069,7 @@ typedef enum ATTRIBUTE_PACKED {
 
 //*********************************************************************************************************************//
 // assert.h
+#if 0
 #undef assert
 
 #ifdef NDEBUG
@@ -1078,6 +1079,9 @@ typedef enum ATTRIBUTE_PACKED {
 #else
 #define assert(expression) ((void)0)
 
+#endif
+#else
+#include <assert.h>
 #endif
 //**********************************************************************************************************************//
 // onyxc_int.h

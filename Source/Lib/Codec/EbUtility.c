@@ -600,10 +600,10 @@ BlockSize hvsize_to_bsize[/*H*/6][/*V*/6] =
 
 };
 
-uint32_t  max_sb = 64;
-uint32_t  max_depth = 5;
-uint32_t  max_part = 9;
-uint32_t  max_num_active_blocks;
+static uint32_t  max_sb = 64;
+static uint32_t  max_depth = 5;
+static uint32_t  max_part = 9;
+static uint32_t  max_num_active_blocks;
 
 //data could be  organized in 2 forms: depth scan (dps) or MD scan (mds):
 //dps: all depth0 - all depth1 - all depth2 - all depth3.
@@ -613,7 +613,7 @@ uint32_t  max_num_active_blocks;
 BlockGeom blk_geom_dps[MAX_NUM_BLOCKS_ALLOC];  //to access geom info of a particular block : use this table if you have the block index in depth scan
 BlockGeom blk_geom_mds[MAX_NUM_BLOCKS_ALLOC];  //to access geom info of a particular block : use this table if you have the block index in md    scan
 
-uint32_t search_matching_from_dps(
+static uint32_t search_matching_from_dps(
     uint32_t depth,
     uint32_t part,
     uint32_t x,
@@ -645,7 +645,8 @@ uint32_t search_matching_from_dps(
     return matched;
 
 }
-uint32_t search_matching_from_mds(
+
+static uint32_t search_matching_from_mds(
     uint32_t depth,
     uint32_t part,
     uint32_t x,
@@ -681,25 +682,25 @@ static INLINE TxSize av1_get_max_uv_txsize(BlockSize bsize, int32_t subsampling_
     int32_t subsampling_y) {
     const BlockSize plane_bsize =
         get_plane_block_size(bsize, subsampling_x, subsampling_y);
-    assert(plane_bsize < BlockSizeS_ALL);
+    //assert(plane_bsize < BlockSizeS_ALL);
     const TxSize uv_tx = max_txsize_rect_lookup[plane_bsize];
     return av1_get_adjusted_tx_size(uv_tx);
 }
 static INLINE TxSize av1_get_tx_size(
     BlockSize  sb_type,
-    int32_t plane/*, const MacroBlockD *xd*/) {
+    int32_t plane, /*, const MacroBlockD *xd*/
+    uint16_t subsampling_x,
+    uint16_t subsampling_y) {
     //const MbModeInfo *mbmi = xd->mi[0];
     // if (xd->lossless[mbmi->segment_id]) return TX_4X4;
     if (plane == 0) return blocksize_to_txsize[sb_type];
     // const MacroblockdPlane *pd = &xd->plane[plane];
 
-    uint32_t subsampling_x = plane > 0 ? 1 : 0;
-    uint32_t subsampling_y = plane > 0 ? 1 : 0;
     return av1_get_max_uv_txsize(/*mbmi->*/sb_type, subsampling_x, subsampling_y);
     UNUSED(plane);
 }
 
-void md_scan_all_blks(uint32_t *idx_mds, uint32_t sq_size, uint32_t x, uint32_t y, int32_t is_last_quadrant)
+static void md_scan_all_blks(uint32_t *idx_mds, uint32_t sq_size, uint32_t x, uint32_t y, int32_t is_last_quadrant, uint16_t subsampling_x, uint16_t subsampling_y)
 {
     //the input block is the parent square block of size sq_size located at pos (x,y)
 
@@ -758,10 +759,12 @@ void md_scan_all_blks(uint32_t *idx_mds, uint32_t sq_size, uint32_t x, uint32_t 
             blk_geom_mds[*idx_mds].bsize = hvsize_to_bsize[blk_geom_mds[*idx_mds].bwidth_log2 - 2][blk_geom_mds[*idx_mds].bheight_log2 - 2];
             blk_geom_mds[*idx_mds].bwidth_uv = MAX(4, blk_geom_mds[*idx_mds].bwidth >> 1); // AMIR to clean to check for 4x4
             blk_geom_mds[*idx_mds].bheight_uv = MAX(4, blk_geom_mds[*idx_mds].bheight >> 1);
+            blk_geom_mds[*idx_mds].bwidth_uv_ex = MAX(4, blk_geom_mds[*idx_mds].bwidth >> subsampling_x); // AMIR to clean to check for 4x4
+            blk_geom_mds[*idx_mds].bheight_uv_ex = MAX(4, blk_geom_mds[*idx_mds].bheight >> subsampling_y);
             blk_geom_mds[*idx_mds].has_uv = 1;
 
             if (blk_geom_mds[*idx_mds].bwidth == 4 && blk_geom_mds[*idx_mds].bheight == 4)
-                blk_geom_mds[*idx_mds].has_uv = is_last_quadrant ? 1 : 0;
+                blk_geom_mds[*idx_mds].has_uv = is_last_quadrant ? 1 : 0;  //Jing to check for 422 case
 
             else
                 if ((blk_geom_mds[*idx_mds].bwidth >> 1) < blk_geom_mds[*idx_mds].bwidth_uv || (blk_geom_mds[*idx_mds].bheight >> 1) < blk_geom_mds[*idx_mds].bheight_uv) {
@@ -777,14 +780,16 @@ void md_scan_all_blks(uint32_t *idx_mds, uint32_t sq_size, uint32_t x, uint32_t 
                 }
 
             blk_geom_mds[*idx_mds].bsize_uv = get_plane_block_size(blk_geom_mds[*idx_mds].bsize, 1, 1);
+            blk_geom_mds[*idx_mds].bsize_uv_ex = get_plane_block_size(blk_geom_mds[*idx_mds].bsize, subsampling_x, subsampling_y);
             uint16_t   txb_itr = 0;
             blk_geom_mds[*idx_mds].txb_count = blk_geom_mds[*idx_mds].bsize == BLOCK_128X128 ? 4 :
                 blk_geom_mds[*idx_mds].bsize == BLOCK_128X64 || blk_geom_mds[*idx_mds].bsize == BLOCK_64X128 ? 2 : 1;
 
             for (txb_itr = 0; txb_itr < blk_geom_mds[*idx_mds].txb_count; txb_itr++) {
 
-                blk_geom_mds[*idx_mds].txsize[txb_itr] = av1_get_tx_size(blk_geom_mds[*idx_mds].bsize, 0);
-                blk_geom_mds[*idx_mds].txsize_uv[txb_itr] = av1_get_tx_size(blk_geom_mds[*idx_mds].bsize, 1);
+                blk_geom_mds[*idx_mds].txsize[txb_itr] = av1_get_tx_size(blk_geom_mds[*idx_mds].bsize, 0, subsampling_x, subsampling_y);
+                blk_geom_mds[*idx_mds].txsize_uv[txb_itr] = av1_get_tx_size(blk_geom_mds[*idx_mds].bsize, 1, 1, 1);
+                blk_geom_mds[*idx_mds].txsize_uv_ex[txb_itr] = av1_get_tx_size(blk_geom_mds[*idx_mds].bsize, 1, subsampling_x, subsampling_y);
 
 
                 if (blk_geom_mds[*idx_mds].bsize == BLOCK_128X128)
@@ -815,6 +820,9 @@ void md_scan_all_blks(uint32_t *idx_mds, uint32_t sq_size, uint32_t x, uint32_t 
                 blk_geom_mds[*idx_mds].tx_height[txb_itr] = tx_size_high[blk_geom_mds[*idx_mds].txsize[txb_itr]];
                 blk_geom_mds[*idx_mds].tx_width_uv[txb_itr] = tx_size_wide[blk_geom_mds[*idx_mds].txsize_uv[txb_itr]];
                 blk_geom_mds[*idx_mds].tx_height_uv[txb_itr] = tx_size_high[blk_geom_mds[*idx_mds].txsize_uv[txb_itr]];
+
+                blk_geom_mds[*idx_mds].tx_width_uv_ex[txb_itr] = tx_size_wide[blk_geom_mds[*idx_mds].txsize_uv_ex[txb_itr]];
+                blk_geom_mds[*idx_mds].tx_height_uv_ex[txb_itr] = tx_size_high[blk_geom_mds[*idx_mds].txsize_uv_ex[txb_itr]];
             }
 
 
@@ -828,16 +836,16 @@ void md_scan_all_blks(uint32_t *idx_mds, uint32_t sq_size, uint32_t x, uint32_t 
     uint32_t min_size = max_sb >> (max_depth - 1);
     if (halfsize >= min_size)
     {
-        md_scan_all_blks(idx_mds, halfsize, x, y, 0);
-        md_scan_all_blks(idx_mds, halfsize, x + halfsize, y, 0);
-        md_scan_all_blks(idx_mds, halfsize, x, y + halfsize, 0);
-        md_scan_all_blks(idx_mds, halfsize, x + halfsize, y + halfsize, 1);
+        md_scan_all_blks(idx_mds, halfsize, x, y, 0, subsampling_x, subsampling_y);
+        md_scan_all_blks(idx_mds, halfsize, x + halfsize, y, 0, subsampling_x, subsampling_y);
+        md_scan_all_blks(idx_mds, halfsize, x, y + halfsize, 0, subsampling_x, subsampling_y);
+        md_scan_all_blks(idx_mds, halfsize, x + halfsize, y + halfsize, 1, subsampling_x, subsampling_y);
     }
 
 }
 
 
-void depth_scan_all_blks()
+static void depth_scan_all_blks()
 {
     uint32_t depth_it, sq_it_y, sq_it_x, part_it, nsq_it;
     uint32_t sq_orgx, sq_orgy;
@@ -886,7 +894,7 @@ void depth_scan_all_blks()
     }
 }
 
-void finish_depth_scan_all_blks()
+static void finish_depth_scan_all_blks()
 {
     uint32_t do_print = 0;
     uint32_t min_size = max_sb >> (max_depth - 1);
@@ -968,7 +976,7 @@ void finish_depth_scan_all_blks()
         fclose(fp);
 }
 
-uint32_t count_total_num_of_active_blks()
+static uint32_t count_total_num_of_active_blks()
 {
     uint32_t depth_it, sq_it_y, sq_it_x, part_it, nsq_it;
 
@@ -1009,8 +1017,12 @@ uint32_t count_total_num_of_active_blks()
     return depth_scan_idx;
 
 }
-void build_blk_geom(int32_t use_128x128)
+
+void build_blk_geom(int32_t use_128x128, EbColorFormat color_format)
 {
+    const uint16_t subsampling_x = (color_format == EB_YUV444 ? 1 : 2) - 1;
+    const uint16_t subsampling_y = (color_format >= EB_YUV422 ? 1 : 2) - 1;
+
     max_sb = use_128x128 ? 128 : 64;
     max_depth = use_128x128 ? 6 : 5;
 
@@ -1024,7 +1036,7 @@ void build_blk_geom(int32_t use_128x128)
 
     //(2) Construct md scan blk_geom_mds:  use info from dps
     uint32_t idx_mds = 0;
-    md_scan_all_blks(&idx_mds, max_sb, 0, 0, 0);
+    md_scan_all_blks(&idx_mds, max_sb, 0, 0, 0, subsampling_x, subsampling_y);
 
 
     //(3) Fill more info from mds to dps - print using dps

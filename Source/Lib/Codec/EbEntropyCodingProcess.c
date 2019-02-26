@@ -390,6 +390,7 @@ static void EntropyCodingLcu(
     (void)pictureOriginX;
     (void)pictureOriginY;
 
+    printf("write sb (%d, %d)...\n", sb_origin_x, sb_origin_y);
     write_sb(
         context_ptr,
         sb_ptr,
@@ -570,6 +571,7 @@ void* EntropyCodingKernel(void *input_ptr)
                     picture_control_set_ptr->entropy_coding_pic_done = EB_FALSE;
                 }
 
+                printf("Processing SB row %d\n", yLcuIndex);
                 for (xLcuIndex = 0; xLcuIndex < picture_width_in_sb; ++xLcuIndex)
                 {
 
@@ -579,6 +581,7 @@ void* EntropyCodingKernel(void *input_ptr)
 
                     sb_origin_x = xLcuIndex << lcuSizeLog2;
                     sb_origin_y = yLcuIndex << lcuSizeLog2;
+                    printf("In Entropy, processing sb (%d, %d),  index %d\n", sb_origin_x, sb_origin_y, sb_index);
                     context_ptr->sb_origin_x = sb_origin_x;
                     context_ptr->sb_origin_y = sb_origin_y;
                     lastLcuFlag = (sb_index == sequence_control_set_ptr->sb_tot_cnt - 1) ? EB_TRUE : EB_FALSE;
@@ -587,6 +590,7 @@ void* EntropyCodingKernel(void *input_ptr)
                     if (sb_index == 0)
                         av1_reset_loop_restoration(picture_control_set_ptr);
 #endif
+                    printf("configure the LCU\n");
                     // Configure the LCU
                     EntropyCodingConfigureLcu(
                         context_ptr,

@@ -724,6 +724,9 @@ EbErrorType signal_derivation_multi_processes_oq(
     else {
         picture_control_set_ptr->loop_filter_mode = 0;
     }
+    //Jing:
+    //TODO: debug purpose
+        picture_control_set_ptr->loop_filter_mode = 0;
 #if FAST_CDEF
     // CDEF Level                                   Settings
     // 0                                            OFF

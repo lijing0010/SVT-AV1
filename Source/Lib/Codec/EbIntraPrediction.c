@@ -9282,6 +9282,167 @@ extern void av1_predict_intra_block_md(
         have_bottom_left ? AOMMIN(txhpx, yd) : 0, plane);
 }
 
+extern void av1_predict_intra_block_new(
+    TileInfo * tile,
+    ModeDecisionContext_t                  *md_context_ptr,
+    STAGE       stage,
+    uint8_t    intra_luma_left_mode,
+    uint8_t    intra_luma_top_mode,
+    uint8_t    intra_chroma_left_mode,
+    uint8_t    intra_chroma_top_mode,
+    const BlockGeom            * blk_geom,
+    const Av1Common *cm,
+    int32_t wpx,
+    int32_t hpx,
+    TxSize tx_size,
+    PredictionMode mode,
+    int32_t angle_delta,
+    int32_t use_palette,
+    FILTER_INTRA_MODE filter_intra_mode,
+    uint8_t* topNeighArray,
+    uint8_t* leftNeighArray,
+    EbPictureBufferDesc_t  *reconBuffer,
+    int32_t plane,
+    BlockSize bsize,
+    uint32_t bl_org_x_pict,
+    uint32_t bl_org_y_pict,
+    uint32_t bl_org_x_mb,
+    uint32_t bl_org_y_mb)
+{
+    uint32_t  pred_buf_x_offest;
+    uint32_t  pred_buf_y_offest;
+    uint32_t  recon_origin_x;
+    uint32_t  recon_origin_y;
+
+    pred_buf_x_offest = bl_org_x_pict;
+    pred_buf_y_offest = bl_org_y_pict;
+    recon_origin_x = plane ? (reconBuffer->origin_x >> cm->subsampling_x) : reconBuffer->origin_x;
+    recon_origin_y = plane ? (reconBuffer->origin_y >> cm->subsampling_y) : reconBuffer->origin_y;
+
+    // Adjust mirow , micol ;
+    // All plane have the same values
+    int32_t mirow = bl_org_y_pict >> 2;
+    int32_t micol = bl_org_x_pict >> 2;
+    int32_t up_available = (mirow > tile->mi_row_start);
+    int32_t left_available = (micol > tile->mi_col_start);
+    const int32_t bw = mi_size_wide[bsize];
+    const int32_t bh = mi_size_high[bsize];
+
+    int32_t mb_to_top_edge = -((mirow * MI_SIZE) * 8);
+    int32_t mb_to_bottom_edge = ((cm->mi_rows - bh - mirow) * MI_SIZE) * 8;
+    int32_t mb_to_left_edge = -((micol * MI_SIZE) * 8);
+    int32_t mb_to_right_edge = ((cm->mi_cols - bw - micol) * MI_SIZE) * 8;
+
+    // OMK to be changed in case of tiles
+    int32_t  tile_mi_col_end = tile->mi_col_end;
+    int32_t  tile_mi_row_end = tile->mi_row_end;	
+
+    uint8_t  *dst;
+    int32_t dst_stride;
+    if (plane == 0) {
+        dst = reconBuffer->bufferY + pred_buf_x_offest + recon_origin_x + (pred_buf_y_offest + recon_origin_y) * reconBuffer->strideY;
+        dst_stride = reconBuffer->strideY;
+    } else if (plane == 1) {
+        dst = reconBuffer->bufferCb + (pred_buf_x_offest + recon_origin_x + (pred_buf_y_offest + recon_origin_y) * reconBuffer->strideCb);
+        dst_stride = reconBuffer->strideCb;
+    } else {
+        dst = reconBuffer->bufferCr + (pred_buf_x_offest + recon_origin_x + (pred_buf_y_offest + recon_origin_y) * reconBuffer->strideCr);
+        dst_stride = reconBuffer->strideCr;
+    }
+
+    int32_t chroma_up_available = up_available;
+    int32_t chroma_left_available = left_available;
+    const int32_t ss_x = plane == 0 ? 0 : cm->subsampling_x; //CHKN
+    const int32_t ss_y = plane == 0 ? 0 : cm->subsampling_y;
+
+    if (ss_x && bw < mi_size_wide[BLOCK_8X8])
+        chroma_left_available = (micol - 1) > tile->mi_col_start;
+    if (ss_y && bh < mi_size_high[BLOCK_8X8])
+        chroma_up_available = (mirow - 1) > tile->mi_row_start;
+
+
+    //CHKN  const MbModeInfo *const mbmi = xd->mi[0];
+    const int32_t txwpx = tx_size_wide[tx_size];
+    const int32_t txhpx = tx_size_high[tx_size];
+    const int32_t x = 0;//col_off << tx_size_wide_log2[0];
+    const int32_t y = 0;//row_off << tx_size_high_log2[0];
+
+    //CHKN BlockSize bsize = mbmi->sb_type;
+    int32_t subsampling_x = cm->subsampling_x;
+    int32_t subsampling_y = cm->subsampling_y;
+    if (plane == 0) {
+        subsampling_x = subsampling_y = 0;
+    }
+
+
+    const int32_t have_top = /*row_off ||*/ (subsampling_y ? /*xd->*/chroma_up_available
+        : up_available);
+    const int32_t have_left =
+        /*col_off ||*/
+        (subsampling_x ? /*xd->*/chroma_left_available : left_available);
+
+    const int32_t xr_chr_offset = 0;
+    const int32_t yd_chr_offset = 0;
+
+    // Distance between the right edge of this prediction block to
+    // the frame right edge
+    const int32_t xr = (mb_to_right_edge >> (3 + subsampling_x)) +
+        (wpx - x - txwpx) - xr_chr_offset;
+    // Distance between the bottom edge of this prediction block to
+    // the frame bottom edge
+    const int32_t yd = (mb_to_bottom_edge >> (3 + subsampling_y)) +
+        (hpx - y - txhpx) - yd_chr_offset;
+
+
+    const PartitionType partition = from_shape_to_part[blk_geom->shape]; //cu_ptr->part;// PARTITION_NONE;//CHKN this is good enough as the avail functions need to know if VERT part is used or not mbmi->partition;
+
+    int32_t have_top_right;
+    int32_t have_bottom_left;
+    { // EncDec
+
+        // force 4x4 chroma component block size.
+        bsize = scale_chroma_bsize(bsize, subsampling_x, subsampling_y);
+        const int32_t txw = tx_size_wide_unit[tx_size];
+        const int32_t txh = tx_size_high_unit[tx_size];
+
+        const int32_t mi_row = -mb_to_top_edge >> (3 + MI_SIZE_LOG2);
+        const int32_t mi_col = -mb_to_left_edge >> (3 + MI_SIZE_LOG2);
+
+        const int32_t right_available =
+            mi_col + ((/*col_off + */txw) << subsampling_x) < tile_mi_col_end;
+        const int32_t bottom_available =
+            (yd > 0) &&
+            (mi_row + ((/*row_off +*/ txh) << subsampling_y) < tile_mi_row_end);
+
+        have_top_right = has_top_right(
+            cm, bsize, mi_row, mi_col, have_top, right_available, partition, tx_size,
+            0, 0,/*row_off, col_off,*/ subsampling_x, subsampling_y);
+        have_bottom_left = has_bottom_left(
+            cm, bsize, mi_row, mi_col, bottom_available, have_left, partition,
+            tx_size, 0, 0,/*row_off, col_off,*/ subsampling_x, subsampling_y);
+    }
+
+
+    const int32_t disable_edge_filter = 1;
+
+    build_intra_predictors(
+        md_context_ptr,
+        ED_STAGE,
+        intra_luma_left_mode,
+        intra_luma_top_mode,
+        intra_chroma_left_mode,
+        intra_chroma_top_mode,
+        topNeighArray,
+        leftNeighArray,
+        dst, dst_stride, mode,
+        angle_delta, filter_intra_mode, tx_size,
+        disable_edge_filter,
+        have_top ? AOMMIN(txwpx, xr + txwpx) : 0,
+        have_top_right ? AOMMIN(txwpx, xr) : 0,
+        have_left ? AOMMIN(txhpx, yd + txhpx) : 0,
+        have_bottom_left ? AOMMIN(txhpx, yd) : 0, plane);
+}
+
 extern void av1_predict_intra_block(
 #if TILES  
     TileInfo * tile,
@@ -9325,16 +9486,23 @@ extern void av1_predict_intra_block(
 
     uint32_t  pred_buf_x_offest;
     uint32_t  pred_buf_y_offest;
+    uint32_t  recon_origin_x;
+    uint32_t  recon_origin_y;
 
     if (stage == ED_STAGE) { // EncDec
-        pred_buf_x_offest = plane ? ((bl_org_x_pict >> 3) << 3) >> 1 : bl_org_x_pict;
-        pred_buf_y_offest = plane ? ((bl_org_y_pict >> 3) << 3) >> 1 : bl_org_y_pict;
+//        pred_buf_x_offest = bl_org_x_pict;
+//        pred_buf_y_offest = bl_org_y_pict;
+        pred_buf_x_offest = plane ? ((bl_org_x_pict >> 3) << 3) >> cm->subsampling_x : bl_org_x_pict;
+        pred_buf_y_offest = plane ? ((bl_org_y_pict >> 3) << 3) >> cm->subsampling_y : bl_org_y_pict;
 
+        recon_origin_x = plane ? (reconBuffer->origin_x >> cm->subsampling_x) : reconBuffer->origin_x;
+        recon_origin_y = plane ? (reconBuffer->origin_y >> cm->subsampling_y) : reconBuffer->origin_y;
     }
     else { // MD
         pred_buf_x_offest = bl_org_x_mb;
         pred_buf_y_offest = bl_org_y_mb;
-
+        recon_origin_x = plane ? (reconBuffer->origin_x >> 1) : reconBuffer->origin_x; //420 for MD
+        recon_origin_y = plane ? (reconBuffer->origin_y >> 1) : reconBuffer->origin_y;
     }
 
     // Adjust mirow , micol ;
@@ -9347,6 +9515,7 @@ extern void av1_predict_intra_block(
     int32_t up_available = (mirow > tile->mi_row_start);
     int32_t left_available = (micol > tile->mi_col_start);
 #else
+    not use
     int32_t up_available = (mirow > 0);
     int32_t left_available = (micol > 0);
 #endif
@@ -9363,11 +9532,13 @@ extern void av1_predict_intra_block(
     int32_t  tile_mi_col_end = tile->mi_col_end;
     int32_t  tile_mi_row_end = tile->mi_row_end;	
 #else
+    not use
     int32_t  tile_mi_col_end = cm->mi_cols;       //  xd->tile.mi_col_end = cm->mi_cols;
     int32_t  tile_mi_row_end = cm->mi_rows;       //  xd->tile.mi_row_end = cm->mi_rows;
 #endif
 
 #else
+    not use
     xd->up_available = (mirow > 0);
     xd->left_available = (micol > 0);
     const int32_t bw = mi_size_wide[bsize];
@@ -9397,17 +9568,14 @@ extern void av1_predict_intra_block(
     uint8_t  *dst;
     int32_t dst_stride;
     if (plane == 0) {
-        dst = reconBuffer->bufferY + pred_buf_x_offest + reconBuffer->origin_x + (pred_buf_y_offest + reconBuffer->origin_y)*reconBuffer->strideY;
+        dst = reconBuffer->bufferY + pred_buf_x_offest + recon_origin_x + (pred_buf_y_offest + recon_origin_y) * reconBuffer->strideY;
         dst_stride = reconBuffer->strideY;
-    }
-    else if (plane == 1) {
-        dst = reconBuffer->bufferCb + (pred_buf_x_offest + reconBuffer->origin_x / 2 + (pred_buf_y_offest + reconBuffer->origin_y / 2)*reconBuffer->strideCb);
+    } else if (plane == 1) {
+        dst = reconBuffer->bufferCb + (pred_buf_x_offest + recon_origin_x + (pred_buf_y_offest + recon_origin_y) * reconBuffer->strideCb);
         dst_stride = reconBuffer->strideCb;
-    }
-    else {
-        dst = reconBuffer->bufferCr + (pred_buf_x_offest + reconBuffer->origin_x / 2 + (pred_buf_y_offest + reconBuffer->origin_y / 2)*reconBuffer->strideCr);
+    } else {
+        dst = reconBuffer->bufferCr + (pred_buf_x_offest + recon_origin_x + (pred_buf_y_offest + recon_origin_y) * reconBuffer->strideCr);
         dst_stride = reconBuffer->strideCr;
-
     }
 
 
@@ -9415,6 +9583,7 @@ extern void av1_predict_intra_block(
     int32_t chroma_up_available = up_available;
     int32_t chroma_left_available = left_available;
 #else
+    not use
     int32_t chroma_up_available = xd->up_available;
     int32_t chroma_left_available = xd->left_available;
 #endif
@@ -9427,6 +9596,7 @@ extern void av1_predict_intra_block(
     if (ss_y && bh < mi_size_high[BLOCK_8X8])
         chroma_up_available = (mirow - 1) > tile->mi_row_start;
 #else
+    not use
     if (ss_x && bw < mi_size_wide[BLOCK_8X8])
         chroma_left_available = (micol - 1) > 0;//tile->mi_col_start;
     if (ss_y && bh < mi_size_high[BLOCK_8X8])
@@ -9441,6 +9611,7 @@ extern void av1_predict_intra_block(
     const int32_t x = 0;//col_off << tx_size_wide_log2[0];
     const int32_t y = 0;//row_off << tx_size_high_log2[0];
 #else
+    not use
     const int32_t x = col_off << tx_size_wide_log2[0];
     const int32_t y = row_off << tx_size_high_log2[0];
 #endif
@@ -9470,14 +9641,18 @@ extern void av1_predict_intra_block(
 
     //CHKN BlockSize bsize = mbmi->sb_type;
 #if !INTRA_CORE_OPT 
+    not in use
     struct MacroblockdPlane  pd_s;
     struct MacroblockdPlane * pd = &pd_s;
-    if (plane == 0) {
-        pd->subsampling_x = pd->subsampling_y = 0;
-    }
-    else {
-        pd->subsampling_x = pd->subsampling_y = 1;
-    }
+    //if (plane == 0) {
+    //    pd->subsampling_x = pd->subsampling_y = 0;
+    //}
+    //else {
+    //    pd->subsampling_x = pd->subsampling_y = 1;
+    //}
+
+    pd->subsampling_x = cm->subsampling_x;
+    pd->subsampling_y = cm->subsampling_y;
 
     const int32_t txw = tx_size_wide_unit[tx_size];
     const int32_t txh = tx_size_high_unit[tx_size];
@@ -9517,13 +9692,10 @@ extern void av1_predict_intra_block(
         cm, bsize, mi_row, mi_col, bottom_available, have_left, partition,
         tx_size, row_off, col_off, pd->subsampling_x, pd->subsampling_y);
 #else
-    int32_t subsampling_x;
-    int32_t subsampling_y;
+    int32_t subsampling_x = cm->subsampling_x;
+    int32_t subsampling_y = cm->subsampling_y;
     if (plane == 0) {
         subsampling_x = subsampling_y = 0;
-    }
-    else {
-        subsampling_x = subsampling_y = 1;
     }
 
 
@@ -9552,7 +9724,7 @@ extern void av1_predict_intra_block(
     int32_t have_bottom_left;
     if (stage == ED_STAGE) { // EncDec
 
-                             // force 4x4 chroma component block size.
+        // force 4x4 chroma component block size.
         bsize = scale_chroma_bsize(bsize, subsampling_x, subsampling_y);
         const int32_t txw = tx_size_wide_unit[tx_size];
         const int32_t txh = tx_size_high_unit[tx_size];

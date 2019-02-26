@@ -418,9 +418,8 @@ void LoadDefaultBufferConfigurationSettings(
     //#====================== Processes number ======================
     sequence_control_set_ptr->total_process_init_count                    = 0;
 
-#if ONE_SEG
+#if 1//ONE_SEG
     sequence_control_set_ptr->total_process_init_count += sequence_control_set_ptr->picture_analysis_process_init_count = 1;//MAX(15, coreCount / 6);
-    asdf
     sequence_control_set_ptr->total_process_init_count += sequence_control_set_ptr->motion_estimation_process_init_count = 1;//MAX(20, coreCount / 3);
     sequence_control_set_ptr->total_process_init_count += sequence_control_set_ptr->source_based_operations_process_init_count = 1;//MAX(3, coreCount / 12);
     sequence_control_set_ptr->total_process_init_count += sequence_control_set_ptr->mode_decision_configuration_process_init_count = 1;//MAX(3, coreCount / 12);
@@ -803,7 +802,7 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
     EbSequenceControlSetInitData_t scs_init;
     scs_init.sb_size = encHandlePtr->sequenceControlSetInstanceArray[0]->sequence_control_set_ptr->static_config.super_block_size;
 
-    build_blk_geom(scs_init.sb_size == 128);
+    build_blk_geom(scs_init.sb_size == 128, color_format);
 
 
     /************************************

@@ -900,13 +900,15 @@ void AV1PerformInverseTransformReconLuma(
         } while (txb_itr < tuTotalCount);
     }
 }
-void AV1PerformInverseTransformRecon(
+
+static void AV1PerformInverseTransformRecon(
     PictureControlSet_t               *picture_control_set_ptr,
     ModeDecisionContext_t             *context_ptr,
     ModeDecisionCandidateBuffer_t     *candidateBuffer,
     CodingUnit_t                      *cu_ptr,
     const BlockGeom                   *blk_geom,
-    EbAsm                              asm_type) {
+    EbAsm                              asm_type)
+{
 
     uint32_t                           tu_width;
     uint32_t                           tu_height;
@@ -2913,7 +2915,7 @@ void md_encode_block(
     EbAsm                                     asm_type = sequence_control_set_ptr->encode_context_ptr->asm_type;
     uint32_t                                  best_intra_mode = EB_INTRA_MODE_INVALID;
 
-    EbPictureBufferDesc_t                    *inputPicturePtr = picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr;
+    EbPictureBufferDesc_t                    *inputPicturePtr = picture_control_set_ptr->parent_pcs_ptr->chroma_downsampled_picture_ptr;
     const uint32_t                            inputOriginIndex = (context_ptr->cu_origin_y + inputPicturePtr->origin_y) * inputPicturePtr->strideY + (context_ptr->cu_origin_x + inputPicturePtr->origin_x);
 
     const uint32_t inputCbOriginIndex = ((context_ptr->round_origin_y >> 1) + (inputPicturePtr->origin_y >> 1)) * inputPicturePtr->strideCb + ((context_ptr->round_origin_x >> 1) + (inputPicturePtr->origin_x >> 1));

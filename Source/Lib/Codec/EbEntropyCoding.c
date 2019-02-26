@@ -737,7 +737,7 @@ static EbErrorType Av1EncodeCoeff1D(
     for (txb_itr = 0; txb_itr < txb_count; txb_itr++) {
 
         const TxSize tx_size = blk_geom->txsize[txb_itr];
-        const TxSize chroma_tx_size = blk_geom->txsize_uv[txb_itr];
+        const TxSize chroma_tx_size = blk_geom->txsize_uv_ex[txb_itr];
         int32_t *coeffBuffer;
 
         const uint32_t coeff1dOffset = context_ptr->coded_area_sb;
@@ -973,6 +973,7 @@ static void EncodePartitionAv1(
     const int32_t hbs = (mi_size_wide[bsize] << 2) >> 1;
     const int32_t hasRows = (cu_origin_y + hbs) < sequence_control_set_ptr->luma_height;
     const int32_t hasCols = (cu_origin_x + hbs) < sequence_control_set_ptr->luma_width;
+    printf("hbs %d, hasRows %d, hasCols %d\n", hbs, hasRows, hasCols);
 
     uint32_t partitionContextLeftNeighborIndex = GetNeighborArrayUnitLeftIndex(
         partition_context_neighbor_array,
@@ -1120,6 +1121,8 @@ static void EncodeIntraLumaModeAv1(
 
     if (cu_ptr->pred_mode != INTRA_MODE_4x4)
 
+        //intra_angle_info_y()
+        //Jing: need to check MiSize >= BLOCK_8X8?
         if (cu_ptr->prediction_unit_array[0].use_angle_delta && cu_ptr->prediction_unit_array[0].is_directional_mode_flag) {
             aom_write_symbol(ecWriter,
                 cu_ptr->prediction_unit_array[0].angle_delta[PLANE_TYPE_Y] + MAX_ANGLE_DELTA,
@@ -1197,7 +1200,7 @@ static void EncodeIntraChromaModeAv1(
     if (chroma_mode == UV_CFL_PRED)
         write_cfl_alphas(frameContext, cu_ptr->prediction_unit_array->cfl_alpha_idx, cu_ptr->prediction_unit_array->cfl_alpha_signs, ecWriter);
 
-    if (cu_ptr->pred_mode != INTRA_MODE_4x4)
+    if (cu_ptr->pred_mode != INTRA_MODE_4x4) //intra_angle_info_uv, again, do we need to check miSize >= BLOCK_8X8?
         if (cu_ptr->prediction_unit_array[0].use_angle_delta && cu_ptr->prediction_unit_array[0].is_directional_chroma_mode_flag) {
             aom_write_symbol(ecWriter,
                 cu_ptr->prediction_unit_array[0].angle_delta[PLANE_TYPE_UV] + MAX_ANGLE_DELTA,
@@ -5168,7 +5171,7 @@ EbErrorType write_modes_b(
         EncodeSkipCoeffAv1(
             frameContext,
             ecWriter,
-            skipCoeff,
+            skipCoeff, //skip in 6.10.11, like cbf
             blkOriginX,
             blkOriginY,
             skip_coeff_neighbor_array);
@@ -5183,6 +5186,7 @@ EbErrorType write_modes_b(
             blkOriginY >> MI_SIZE_LOG2);
 
 #if ADD_DELTA_QP_SUPPORT //PART 1
+        asdf
         if (picture_control_set_ptr->parent_pcs_ptr->delta_q_present_flag) {
 
             int32_t current_q_index = cu_ptr->qp;
@@ -5221,6 +5225,7 @@ EbErrorType write_modes_b(
             const uint32_t intra_luma_mode = cu_ptr->pred_mode;
             uint32_t intra_chroma_mode = cu_ptr->prediction_unit_array->intra_chroma_mode;
 
+            //intra_frame_y_mode
             EncodeIntraLumaModeAv1(
                 frameContext,
                 ecWriter,
@@ -5242,7 +5247,7 @@ EbErrorType write_modes_b(
 
 
             if (blk_geom->has_uv)
-                EncodeIntraChromaModeAv1(
+                EncodeIntraChromaModeAv1( //uv_mode in intra_block_mode_info()
                     frameContext,
                     ecWriter,
                     cu_ptr,
@@ -5582,7 +5587,7 @@ EbErrorType write_modes_b(
 
 }
 /**********************************************
-* Write sb
+* Write sb: decode_partition()
 **********************************************/
 EB_EXTERN EbErrorType write_sb(
     EntropyCodingContext_t  *context_ptr,
@@ -5615,6 +5620,7 @@ EB_EXTERN EbErrorType write_sb(
     SbGeom_t * sb_geom = &sequence_control_set_ptr->sb_geom[tbPtr->index];// .block_is_inside_md_scan[blk_index])
 
 #if !TILES 
+    asdf
     if (context_ptr->sb_origin_x == 0 && context_ptr->sb_origin_y == 0)
 
         av1_reset_loop_restoration(picture_control_set_ptr);
@@ -5641,6 +5647,8 @@ EB_EXTERN EbErrorType write_sb(
                 codeCuCond = EB_TRUE;
         }
 
+        printf("Processing blk (%d, %d), bsize is %d, partition is %d, codeCuCond %d\n",
+                cu_origin_x, cu_origin_y, bsize, tbPtr->cu_partition_array[cu_index], codeCuCond);
 
         if (codeCuCond) {
             uint32_t blkOriginX = cu_origin_x;
@@ -5653,7 +5661,6 @@ EB_EXTERN EbErrorType write_sb(
             int32_t mi_col = blkOriginX >> MI_SIZE_LOG2;
 
             if (bsize >= BLOCK_8X8) {
-
                 for (int32_t plane = 0; plane < 3; ++plane) {
                     int32_t rcol0, rcol1, rrow0, rrow1, tile_tl_idx;
                     if (av1_loop_restoration_corners_in_sb(cm, plane, mi_row, mi_col, bsize,
@@ -5682,13 +5689,11 @@ EB_EXTERN EbErrorType write_sb(
                     blkOriginX,
                     blkOriginY,
                     partition_context_neighbor_array);
-
             }
 
             switch (tbPtr->cu_partition_array[cu_index]) {
             case PARTITION_NONE:
                 write_modes_b(
-
                     picture_control_set_ptr,
                     context_ptr,
                     entropy_coder_ptr,

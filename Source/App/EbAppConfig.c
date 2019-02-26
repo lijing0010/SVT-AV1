@@ -825,8 +825,8 @@ static EbErrorType VerifySettings(EbConfig_t *config, uint32_t channelNumber)
     }
 
     //if (config->encoderColorFormat < 1 || config->encoderColorFormat > 3)
-    if (config->encoderColorFormat != 1) {
-        fprintf(config->errorLogFile, "Error instance %u: Only support 420 now \n", channelNumber + 1);
+    if (config->encoderColorFormat > 2) {
+        fprintf(config->errorLogFile, "Error instance %u: Only support 420/422 now \n", channelNumber + 1);
         return_error = EB_ErrorBadParameter;
     }
 

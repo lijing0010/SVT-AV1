@@ -487,6 +487,7 @@ void* cdef_kernel(void *input_ptr)
         if (sequence_control_set_ptr->enable_cdef && picture_control_set_ptr->parent_pcs_ptr->cdef_filter_mode)
         {
 #endif
+            assert(0);
             if (is16bit)
                 cdef_seg_search16bit(
                     picture_control_set_ptr,
@@ -542,6 +543,7 @@ void* cdef_kernel(void *input_ptr)
         if (sequence_control_set_ptr->enable_cdef && picture_control_set_ptr->parent_pcs_ptr->cdef_filter_mode) {
 #endif
 #if CDEF_M
+            assert(0);
                 finish_cdef_search(
                     0,
                     sequence_control_set_ptr,
@@ -613,6 +615,7 @@ void* cdef_kernel(void *input_ptr)
 
         if (sequence_control_set_ptr->enable_restoration)
         {
+            assert(0);
             av1_loop_restoration_save_boundary_lines(
                 cm->frame_to_show,
                 cm,
