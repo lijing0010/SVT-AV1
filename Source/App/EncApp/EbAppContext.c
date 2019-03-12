@@ -204,7 +204,7 @@ EbErrorType CopyConfigurationParameters(
     callback_data->eb_enc_parameters.improve_sharpness = (uint8_t)config->improve_sharpness;
     callback_data->eb_enc_parameters.high_dynamic_range_input = config->high_dynamic_range_input;
     callback_data->eb_enc_parameters.encoder_bit_depth = config->encoder_bit_depth;
-    callbackData->ebEncParameters.encoder_color_format = config->encoder_color_format;
+    callback_data->eb_enc_parameters.encoder_color_format = config->encoder_color_format;
     callback_data->eb_enc_parameters.compressed_ten_bit_format = config->compressed_ten_bit_format;
     callback_data->eb_enc_parameters.profile = config->profile;
     callback_data->eb_enc_parameters.tier = config->tier;
@@ -255,9 +255,9 @@ static EbErrorType AllocateFrameBuffer(
 
     // Determine
     EbSvtIOFormat* inputPtr = (EbSvtIOFormat*)p_buffer;
-    inputPtr->yStride = config->input_padded_width;
-    inputPtr->crStride = config->input_padded_width >> subsampling_x;
-    inputPtr->cbStride = config->input_padded_width >> subsampling_x;
+    inputPtr->y_stride = config->input_padded_width;
+    inputPtr->cr_stride = config->input_padded_width >> subsampling_x;
+    inputPtr->cb_stride = config->input_padded_width >> subsampling_x;
     if (luma8bitSize) {
         EB_APP_MALLOC(uint8_t*, inputPtr->luma, luma8bitSize, EB_N_PTR, EB_ErrorInsufficientResources);
     }
@@ -394,9 +394,9 @@ EbErrorType PreloadFramesIntoRam(
 
     FILE *input_file = config->input_file;
 
-    readSize = inputPaddedWidth * inputPaddedHeight; //Luma
+    readSize = input_padded_width * input_padded_height; //Luma
     readSize += 2 * (readSize >> (3 - color_format)); // Add Chroma
-    if (config->encoder_bit_depth == 10 && config->compressedTenBitFormat == 1) {
+    if (config->encoder_bit_depth == 10 && config->compressed_ten_bit_format == 1) {
         readSize += readSize / 4;
     } else {
         readSize *= (config->encoder_bit_depth > 8 ? 2 : 1); //10 bit
@@ -535,14 +535,14 @@ EbErrorType PreloadFramesIntoRam(
         } else {
             // Fill the buffer with a complete frame
             filledLen = 0;
-            filledLen += (uint32_t)fread(config->sequence_buffer[processed_frame_count], 1, readSize, inputFile);
+            filledLen += (uint32_t)fread(config->sequence_buffer[processed_frame_count], 1, readSize, input_file);
 
             if (readSize != filledLen) {
                 fseek(config->input_file, 0, SEEK_SET);
 
                 // Fill the buffer with a complete frame
                 filledLen = 0;
-                filledLen += (uint32_t)fread(config->sequence_buffer[processed_frame_count], 1, readSize, inputFile);
+                filledLen += (uint32_t)fread(config->sequence_buffer[processed_frame_count], 1, readSize, input_file);
             }
         }
     }

@@ -765,7 +765,7 @@ void ReadInputFrames(
     uint64_t  readSize;
     const uint32_t  input_padded_width = config->input_padded_width;
     const uint32_t  input_padded_height = config->input_padded_height;
-    FILE   *inputFile = config->inputFile;
+    FILE   *input_file = config->input_file;
     uint8_t  *ebInputPtr;
     EbSvtIOFormat* inputPtr = (EbSvtIOFormat*)headerPtr->p_buffer;
 
@@ -776,7 +776,7 @@ void ReadInputFrames(
     inputPtr->cr_stride = input_padded_width >> subsampling_x;
     inputPtr->cb_stride = input_padded_width >> subsampling_x;
 
-    if (config->bufferedInput == -1) {
+    if (config->buffered_input == -1) {
         if (is16bit == 0 || (is16bit == 1 && config->compressed_ten_bit_format == 0)) {
             readSize = (uint64_t)SIZE_OF_ONE_FRAME_IN_BYTES(input_padded_width, input_padded_height, color_format, is16bit);
 
@@ -831,16 +831,16 @@ void ReadInputFrames(
                     ebInputPtr += YUV4MPEG2_IND_SIZE;
                     headerPtr->n_filled_len += (uint32_t)fread(ebInputPtr, 1, lumaReadSize-YUV4MPEG2_IND_SIZE, input_file);
                 }else {
-                    headerPtr->n_filled_len += (uint32_t)fread(inputPtr->luma, 1, lumaReadSize, inputFile);
+                    headerPtr->n_filled_len += (uint32_t)fread(inputPtr->luma, 1, lumaReadSize, input_file);
                 }
-                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cb, 1, lumaReadSize >> (3 - color_format), inputFile);
-                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cr, 1, lumaReadSize >> (3 - color_format), inputFile);
+                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cb, 1, lumaReadSize >> (3 - color_format), input_file);
+                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cr, 1, lumaReadSize >> (3 - color_format), input_file);
 
                 if (readSize != headerPtr->n_filled_len) {
-                    fseek(inputFile, 0, SEEK_SET);
-                    headerPtr->n_filled_len = (uint32_t)fread(inputPtr->luma, 1, lumaReadSize, inputFile);
-                    headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cb, 1, lumaReadSize >> (3 - color_format), inputFile);
-                    headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cr, 1, lumaReadSize >> (3 - color_format), inputFile);
+                    fseek(input_file, 0, SEEK_SET);
+                    headerPtr->n_filled_len = (uint32_t)fread(inputPtr->luma, 1, lumaReadSize, input_file);
+                    headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cb, 1, lumaReadSize >> (3 - color_format), input_file);
+                    headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cr, 1, lumaReadSize >> (3 - color_format), input_file);
                 }
             }
         } else if (is16bit == 1 && config->compressed_ten_bit_format == 1) {
@@ -853,24 +853,24 @@ void ReadInputFrames(
             // Fill the buffer with a complete frame
             headerPtr->n_filled_len = 0;
 
-            headerPtr->n_filled_len += (uint32_t)fread(inputPtr->luma, 1, lumaReadSize, inputFile);
-            headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cb, 1, chromaReadSize, inputFile);
-            headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cr, 1, chromaReadSize, inputFile);
+            headerPtr->n_filled_len += (uint32_t)fread(inputPtr->luma, 1, lumaReadSize, input_file);
+            headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cb, 1, chromaReadSize, input_file);
+            headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cr, 1, chromaReadSize, input_file);
 
-            headerPtr->n_filled_len += (uint32_t)fread(inputPtr->luma_ext, 1, nbitLumaReadSize, inputFile);
-            headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cb_ext, 1, nbitChromaReadSize, inputFile);
-            headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cr_ext, 1, nbitChromaReadSize, inputFile);
+            headerPtr->n_filled_len += (uint32_t)fread(inputPtr->luma_ext, 1, nbitLumaReadSize, input_file);
+            headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cb_ext, 1, nbitChromaReadSize, input_file);
+            headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cr_ext, 1, nbitChromaReadSize, input_file);
 
             readSize = lumaReadSize + nbitLumaReadSize + 2 * (chromaReadSize + nbitChromaReadSize);
 
             if (readSize != headerPtr->n_filled_len) {
-                fseek(inputFile, 0, SEEK_SET);
-                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->luma, 1, lumaReadSize, inputFile);
-                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cb, 1, chromaReadSize, inputFile);
-                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cr, 1, chromaReadSize, inputFile);
-                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->luma_ext, 1, nbitLumaReadSize, inputFile);
-                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cb_ext, 1, nbitChromaReadSize, inputFile);
-                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cr_ext, 1, nbitChromaReadSize, inputFile);
+                fseek(input_file, 0, SEEK_SET);
+                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->luma, 1, lumaReadSize, input_file);
+                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cb, 1, chromaReadSize, input_file);
+                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cr, 1, chromaReadSize, input_file);
+                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->luma_ext, 1, nbitLumaReadSize, input_file);
+                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cb_ext, 1, nbitChromaReadSize, input_file);
+                headerPtr->n_filled_len += (uint32_t)fread(inputPtr->cr_ext, 1, nbitChromaReadSize, input_file);
             }
         }
     } else {
@@ -890,9 +890,9 @@ void ReadInputFrames(
             inputPtr->cb = config->sequence_buffer[config->processed_frame_count % config->buffered_input] + luma8bitSize;
             inputPtr->cr = config->sequence_buffer[config->processed_frame_count % config->buffered_input] + luma8bitSize + chroma8bitSize;
 
-            inputPtr->luma_ext = config->sequenceBuffer[config->processedFrameCount % config->bufferedInput] + luma8bitSize + 2 * chroma8bitSize;
-            inputPtr->cb_ext = config->sequenceBuffer[config->processedFrameCount % config->bufferedInput] + luma8bitSize + 2 * chroma8bitSize + luma2bitSize;
-            inputPtr->cr_ext = config->sequenceBuffer[config->processedFrameCount % config->bufferedInput] + luma8bitSize + 2 * chroma8bitSize + luma2bitSize + chroma2bitSize;
+            inputPtr->luma_ext = config->sequence_buffer[config->processed_frame_count % config->buffered_input] + luma8bitSize + 2 * chroma8bitSize;
+            inputPtr->cb_ext = config->sequence_buffer[config->processed_frame_count % config->buffered_input] + luma8bitSize + 2 * chroma8bitSize + luma2bitSize;
+            inputPtr->cr_ext = config->sequence_buffer[config->processed_frame_count % config->buffered_input] + luma8bitSize + 2 * chroma8bitSize + luma2bitSize + chroma2bitSize;
 
             headerPtr->n_filled_len = luma8bitSize + luma2bitSize + 2 * (chroma8bitSize + chroma2bitSize);
         } else {
@@ -906,9 +906,9 @@ void ReadInputFrames(
             inputPtr->cr_stride = input_padded_width >> subsampling_x;
             inputPtr->cb_stride = input_padded_width >> subsampling_x;
 
-            inputPtr->luma = config->sequenceBuffer[config->processedFrameCount % config->bufferedInput];
-            inputPtr->cb = config->sequenceBuffer[config->processedFrameCount % config->bufferedInput] + lumaSize;
-            inputPtr->cr = config->sequenceBuffer[config->processedFrameCount % config->bufferedInput] + lumaSize+ chromaSize;
+            inputPtr->luma = config->sequence_buffer[config->processed_frame_count % config->buffered_input];
+            inputPtr->cb = config->sequence_buffer[config->processed_frame_count % config->buffered_input] + lumaSize;
+            inputPtr->cr = config->sequence_buffer[config->processed_frame_count % config->buffered_input] + lumaSize+ chromaSize;
 
             headerPtr->n_filled_len = lumaSize + 2 * chromaSize;
         }

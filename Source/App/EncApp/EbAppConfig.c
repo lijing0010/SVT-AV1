@@ -800,7 +800,7 @@ static EbErrorType VerifySettings(EbConfig *config, uint32_t channelNumber)
     }
 
     if (config->encoder_color_format != 1) {
-        fprintf(config->errorLogFile, "Error instance %u: Only support 420 now \n", channelNumber + 1);
+        fprintf(config->error_log_file, "Error instance %u: Only support 420 now \n", channelNumber + 1);
         return_error = EB_ErrorBadParameter;
     }
     if (config->injector > 1 ){
@@ -1226,8 +1226,8 @@ EbErrorType read_command_line(
 
                 // Assuming no errors, add padding to width and height
                 if (return_errors[index] == EB_ErrorNone) {
-                    configs[index]->input_padded_width  = configs[index]->sourceWidth;
-                    configs[index]->input_padded_height = configs[index]->sourceHeight;
+                    configs[index]->input_padded_width  = configs[index]->source_width;
+                    configs[index]->input_padded_height = configs[index]->source_height;
                 }
 
 
