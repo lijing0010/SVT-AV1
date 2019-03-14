@@ -204,6 +204,10 @@ extern void av1_predict_intra_block(
     int32_t col_off,
     int32_t row_off,
 #endif
+#if INTRA_CORE_OPT
+    int32_t col_off,
+    int32_t row_off,
+#endif
     int32_t plane,
     BlockSize bsize,
     uint32_t bl_org_x_pict,
@@ -3608,6 +3612,10 @@ EB_EXTERN void AV1EncodePass(
 #if !INTRA_CORE_OPT
                                             0,                                                          //int32_t col_off,
                                             0,                                                          //int32_t row_off,
+#endif
+#if INTRA_CORE_OPT
+                                            col >> 2,                                                   //int32_t col_off,
+                                            row >> 2,                                                   //int32_t row_off,
 #endif
                                             plane,                                                      //int32_t plane,
                                             blk_geom->bsize,                  //uint32_t puSize,

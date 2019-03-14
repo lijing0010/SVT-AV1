@@ -9471,6 +9471,10 @@ extern void av1_predict_intra_block(
     int32_t col_off,
     int32_t row_off,
 #endif
+#if INTRA_CORE_OPT
+    int32_t col_off,
+    int32_t row_off,
+#endif
     int32_t plane,
     BlockSize bsize,
     uint32_t bl_org_x_pict,
@@ -9488,12 +9492,18 @@ extern void av1_predict_intra_block(
     uint32_t  pred_buf_y_offest;
     uint32_t  recon_origin_x;
     uint32_t  recon_origin_y;
+#if !INTRA_CORE_OPT
+    uint32_t  col = 0;
+    uint32_t  row = 0;
+#endif
+#if INTRA_CORE_OPT
+    uint32_t  col = col_off << 2;
+    uint32_t  row = row_off << 2;
+#endif
 
     if (stage == ED_STAGE) { // EncDec
-//        pred_buf_x_offest = bl_org_x_pict;
-//        pred_buf_y_offest = bl_org_y_pict;
-        pred_buf_x_offest = plane ? ((bl_org_x_pict >> 3) << 3) >> cm->subsampling_x : bl_org_x_pict;
-        pred_buf_y_offest = plane ? ((bl_org_y_pict >> 3) << 3) >> cm->subsampling_y : bl_org_y_pict;
+        pred_buf_x_offest = plane ? ((((bl_org_x_pict >> 3) << 3) >> cm->subsampling_x) + col) : bl_org_x_pict;
+        pred_buf_y_offest = plane ? ((((bl_org_y_pict >> 3) << 3) >> cm->subsampling_y) + row) : bl_org_y_pict;
 
         recon_origin_x = plane ? (reconBuffer->origin_x >> cm->subsampling_x) : reconBuffer->origin_x;
         recon_origin_y = plane ? (reconBuffer->origin_y >> cm->subsampling_y) : reconBuffer->origin_y;
@@ -9608,8 +9618,8 @@ extern void av1_predict_intra_block(
     const int32_t txwpx = tx_size_wide[tx_size];
     const int32_t txhpx = tx_size_high[tx_size];
 #if INTRA_CORE_OPT
-    const int32_t x = 0;//col_off << tx_size_wide_log2[0];
-    const int32_t y = 0;//row_off << tx_size_high_log2[0];
+    const int32_t x = col;
+    const int32_t y = row;
 #else
     not use
     const int32_t x = col_off << tx_size_wide_log2[0];
@@ -9699,10 +9709,10 @@ extern void av1_predict_intra_block(
     }
 
 
-    const int32_t have_top = /*row_off ||*/ (subsampling_y ? /*xd->*/chroma_up_available
+    const int32_t have_top = row_off || (subsampling_y ? /*xd->*/chroma_up_available
         : up_available);
     const int32_t have_left =
-        /*col_off ||*/
+        col_off ||
         (subsampling_x ? /*xd->*/chroma_left_available : left_available);
 
     const int32_t xr_chr_offset = 0;
@@ -9733,17 +9743,17 @@ extern void av1_predict_intra_block(
         const int32_t mi_col = -mb_to_left_edge >> (3 + MI_SIZE_LOG2);
 
         const int32_t right_available =
-            mi_col + ((/*col_off + */txw) << subsampling_x) < tile_mi_col_end;
+            mi_col + ((col_off + txw) << subsampling_x) < tile_mi_col_end;
         const int32_t bottom_available =
             (yd > 0) &&
-            (mi_row + ((/*row_off +*/ txh) << subsampling_y) < tile_mi_row_end);
+            (mi_row + ((row_off + txh) << subsampling_y) < tile_mi_row_end);
 
         have_top_right = has_top_right(
             cm, bsize, mi_row, mi_col, have_top, right_available, partition, tx_size,
-            0, 0,/*row_off, col_off,*/ subsampling_x, subsampling_y);
+            row_off, col_off, subsampling_x, subsampling_y);
         have_bottom_left = has_bottom_left(
             cm, bsize, mi_row, mi_col, bottom_available, have_left, partition,
-            tx_size, 0, 0,/*row_off, col_off,*/ subsampling_x, subsampling_y);
+            tx_size, row_off, col_off, subsampling_x, subsampling_y);
     }
     else {
 
@@ -10147,6 +10157,10 @@ EbErrorType AV1IntraPredictionCL(
             candidate_buffer_ptr->prediction_ptr,                                              //uint8_t *dst,
                                                                                             //int32_t dst_stride,
 #if !INTRA_CORE_OPT
+            0,                                                                              //int32_t col_off,
+            0,                                                                              //int32_t row_off,
+#endif
+#if INTRA_CORE_OPT
             0,                                                                              //int32_t col_off,
             0,                                                                              //int32_t row_off,
 #endif
