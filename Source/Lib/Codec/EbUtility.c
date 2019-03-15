@@ -5,6 +5,7 @@
 
 #include "EbDefinitions.h"
 #include "EbUtility.h"
+#include <assert.h>
 
 #ifdef _WIN32
 //#if  (WIN_ENCODER_TIMING || WIN_DECODER_TIMING)
@@ -639,8 +640,10 @@ static uint32_t search_matching_from_dps(
         }
     }
 
-    if (matched == 0xFFFF)
-        printf(" \n\n PROBLEM\n\n ");
+    if (matched == 0xFFFF) {
+        printf(" \n\n --PROBLEM--\n\n ");
+        assert(0);
+    }
 
     return matched;
 
@@ -672,8 +675,10 @@ static uint32_t search_matching_from_mds(
         }
     }
 
-    if (matched == 0xFFFF)
+    if (matched == 0xFFFF) {
         printf(" \n\n PROBLEM\n\n ");
+        assert(0);
+    }
 
     return matched;
 
@@ -759,8 +764,6 @@ static void md_scan_all_blks(uint32_t *idx_mds, uint32_t sq_size, uint32_t x, ui
             blk_geom_mds[*idx_mds].bsize = hvsize_to_bsize[blk_geom_mds[*idx_mds].bwidth_log2 - 2][blk_geom_mds[*idx_mds].bheight_log2 - 2];
             blk_geom_mds[*idx_mds].bwidth_uv = MAX(4, blk_geom_mds[*idx_mds].bwidth >> 1); // AMIR to clean to check for 4x4
             blk_geom_mds[*idx_mds].bheight_uv = MAX(4, blk_geom_mds[*idx_mds].bheight >> 1);
-            blk_geom_mds[*idx_mds].bwidth_uv_ex = MAX(4, blk_geom_mds[*idx_mds].bwidth >> subsampling_x); // AMIR to clean to check for 4x4
-            blk_geom_mds[*idx_mds].bheight_uv_ex = MAX(4, blk_geom_mds[*idx_mds].bheight >> subsampling_y);
             blk_geom_mds[*idx_mds].has_uv = 1;
 
             if (blk_geom_mds[*idx_mds].bwidth == 4 && blk_geom_mds[*idx_mds].bheight == 4)
@@ -781,16 +784,56 @@ static void md_scan_all_blks(uint32_t *idx_mds, uint32_t sq_size, uint32_t x, ui
 
             blk_geom_mds[*idx_mds].bsize_uv = get_plane_block_size(blk_geom_mds[*idx_mds].bsize, 1, 1);
             blk_geom_mds[*idx_mds].bsize_uv_ex = get_plane_block_size(blk_geom_mds[*idx_mds].bsize, subsampling_x, subsampling_y);
+            if (blk_geom_mds[*idx_mds].bsize_uv_ex == BLOCK_INVALID) {
+                blk_geom_mds[*idx_mds].valid_block =  0;
+                
+                //Jing: Decide whether put it here, if MD stage can loop over valid mds
+                blk_geom_mds[*idx_mds].blkidx_mds = (*idx_mds);
+                (*idx_mds) = (*idx_mds) + 1;
+                continue;
+            } else {
+                blk_geom_mds[*idx_mds].valid_block =  1;
+                blk_geom_mds[*idx_mds].bwidth_uv_ex = block_size_wide[blk_geom_mds[*idx_mds].bsize_uv_ex];
+                blk_geom_mds[*idx_mds].bheight_uv_ex = block_size_high[blk_geom_mds[*idx_mds].bsize_uv_ex];
+                assert(blk_geom_mds[*idx_mds].bwidth_uv_ex >= 4);
+                assert(blk_geom_mds[*idx_mds].bheight_uv_ex >= 4);
+            }
+
             uint16_t   txb_itr = 0;
-            blk_geom_mds[*idx_mds].txb_count = blk_geom_mds[*idx_mds].bsize == BLOCK_128X128 ? 4 :
-                blk_geom_mds[*idx_mds].bsize == BLOCK_128X64 || blk_geom_mds[*idx_mds].bsize == BLOCK_64X128 ? 2 : 1;
 
-            for (txb_itr = 0; txb_itr < blk_geom_mds[*idx_mds].txb_count; txb_itr++) {
+            //Jing: Calculate correct txb_count here for 420/422/444
+            blk_geom_mds[*idx_mds].txsize[txb_itr] = av1_get_tx_size(blk_geom_mds[*idx_mds].bsize, 0, subsampling_x, subsampling_y);
+            blk_geom_mds[*idx_mds].txsize_uv[txb_itr] = av1_get_tx_size(blk_geom_mds[*idx_mds].bsize, 1, 1, 1);
+            blk_geom_mds[*idx_mds].txsize_uv_ex[txb_itr] = av1_get_tx_size(blk_geom_mds[*idx_mds].bsize, 1, subsampling_x, subsampling_y);
 
+            blk_geom_mds[*idx_mds].tx_width[txb_itr] = tx_size_wide[blk_geom_mds[*idx_mds].txsize[txb_itr]];
+            blk_geom_mds[*idx_mds].tx_height[txb_itr] = tx_size_high[blk_geom_mds[*idx_mds].txsize[txb_itr]];
+            blk_geom_mds[*idx_mds].tx_width_uv[txb_itr] = tx_size_wide[blk_geom_mds[*idx_mds].txsize_uv[txb_itr]];
+            blk_geom_mds[*idx_mds].tx_height_uv[txb_itr] = tx_size_high[blk_geom_mds[*idx_mds].txsize_uv[txb_itr]];
+            blk_geom_mds[*idx_mds].tx_width_uv_ex[txb_itr] = tx_size_wide[blk_geom_mds[*idx_mds].txsize_uv_ex[txb_itr]];
+            blk_geom_mds[*idx_mds].tx_height_uv_ex[txb_itr] = tx_size_high[blk_geom_mds[*idx_mds].txsize_uv_ex[txb_itr]];
+
+            uint16_t uv_tx_row_number = blk_geom_mds[*idx_mds].bheight_uv_ex / blk_geom_mds[*idx_mds].tx_height_uv_ex[txb_itr];
+            uint16_t uv_tx_col_number = blk_geom_mds[*idx_mds].bwidth_uv_ex / blk_geom_mds[*idx_mds].tx_width_uv_ex[txb_itr];
+
+            blk_geom_mds[*idx_mds].txb_count[0] = (blk_geom_mds[*idx_mds].bheight * blk_geom_mds[*idx_mds].bwidth) /
+                (blk_geom_mds[*idx_mds].tx_width[txb_itr] * blk_geom_mds[*idx_mds].tx_height[txb_itr]);
+            blk_geom_mds[*idx_mds].txb_count[1] = (blk_geom_mds[*idx_mds].bheight_uv_ex * blk_geom_mds[*idx_mds].bwidth_uv_ex) /
+                (blk_geom_mds[*idx_mds].tx_width_uv_ex[txb_itr] * blk_geom_mds[*idx_mds].tx_height_uv_ex[txb_itr]);
+
+
+            if (blk_geom_mds[*idx_mds].bsize == BLOCK_128X128) {
+                assert(blk_geom_mds[*idx_mds].txb_count[0] == 4);
+            } else if (blk_geom_mds[*idx_mds].bsize == BLOCK_128X64 || blk_geom_mds[*idx_mds].bsize == BLOCK_64X128) {
+                assert(blk_geom_mds[*idx_mds].txb_count[0] == 2);
+            } else {
+                assert(blk_geom_mds[*idx_mds].txb_count[0] == 1);
+            }
+
+            //Y and 420 UV for MD
+            for (txb_itr = 0; txb_itr < blk_geom_mds[*idx_mds].txb_count[0]; txb_itr++) {
                 blk_geom_mds[*idx_mds].txsize[txb_itr] = av1_get_tx_size(blk_geom_mds[*idx_mds].bsize, 0, subsampling_x, subsampling_y);
                 blk_geom_mds[*idx_mds].txsize_uv[txb_itr] = av1_get_tx_size(blk_geom_mds[*idx_mds].bsize, 1, 1, 1);
-                blk_geom_mds[*idx_mds].txsize_uv_ex[txb_itr] = av1_get_tx_size(blk_geom_mds[*idx_mds].bsize, 1, subsampling_x, subsampling_y);
-
 
                 if (blk_geom_mds[*idx_mds].bsize == BLOCK_128X128)
                 {
@@ -813,19 +856,38 @@ static void md_scan_all_blks(uint32_t *idx_mds, uint32_t sq_size, uint32_t x, ui
                     blk_geom_mds[*idx_mds].tx_org_y[txb_itr] = blk_geom_mds[*idx_mds].origin_y;
                 }
 
-
                 blk_geom_mds[*idx_mds].tx_boff_x[txb_itr] = blk_geom_mds[*idx_mds].tx_org_x[txb_itr] - blk_geom_mds[*idx_mds].origin_x;
                 blk_geom_mds[*idx_mds].tx_boff_y[txb_itr] = blk_geom_mds[*idx_mds].tx_org_y[txb_itr] - blk_geom_mds[*idx_mds].origin_y;
                 blk_geom_mds[*idx_mds].tx_width[txb_itr] = tx_size_wide[blk_geom_mds[*idx_mds].txsize[txb_itr]];
                 blk_geom_mds[*idx_mds].tx_height[txb_itr] = tx_size_high[blk_geom_mds[*idx_mds].txsize[txb_itr]];
                 blk_geom_mds[*idx_mds].tx_width_uv[txb_itr] = tx_size_wide[blk_geom_mds[*idx_mds].txsize_uv[txb_itr]];
                 blk_geom_mds[*idx_mds].tx_height_uv[txb_itr] = tx_size_high[blk_geom_mds[*idx_mds].txsize_uv[txb_itr]];
-
-                blk_geom_mds[*idx_mds].tx_width_uv_ex[txb_itr] = tx_size_wide[blk_geom_mds[*idx_mds].txsize_uv_ex[txb_itr]];
-                blk_geom_mds[*idx_mds].tx_height_uv_ex[txb_itr] = tx_size_high[blk_geom_mds[*idx_mds].txsize_uv_ex[txb_itr]];
             }
 
+            {
+                //422 and 444
+                for (txb_itr = 0; txb_itr < blk_geom_mds[*idx_mds].txb_count[1]; txb_itr++) {
 
+                    blk_geom_mds[*idx_mds].txsize_uv_ex[txb_itr] = av1_get_tx_size(blk_geom_mds[*idx_mds].bsize,
+                            1, subsampling_x, subsampling_y);
+
+                    blk_geom_mds[*idx_mds].tx_width_uv_ex[txb_itr] = tx_size_wide[blk_geom_mds[*idx_mds].txsize_uv_ex[txb_itr]];
+                    blk_geom_mds[*idx_mds].tx_height_uv_ex[txb_itr] = tx_size_high[blk_geom_mds[*idx_mds].txsize_uv_ex[txb_itr]];
+                    uint16_t uv_tx_row_number = blk_geom_mds[*idx_mds].bheight_uv_ex / blk_geom_mds[*idx_mds].tx_height_uv_ex[txb_itr];
+                    uint16_t uv_tx_col_number = blk_geom_mds[*idx_mds].bwidth_uv_ex / blk_geom_mds[*idx_mds].tx_width_uv_ex[txb_itr];
+                    assert(uv_tx_col_number * uv_tx_row_number == blk_geom_mds[*idx_mds].txb_count[1]);
+
+                    uint16_t offset_x = txb_itr % uv_tx_col_number;
+                    uint16_t offset_y = txb_itr / uv_tx_col_number;
+                    blk_geom_mds[*idx_mds].tx_boff_x_uv_ex[txb_itr] = offset_x * blk_geom_mds[*idx_mds].tx_width_uv_ex[txb_itr];
+                    blk_geom_mds[*idx_mds].tx_boff_y_uv_ex[txb_itr] = offset_y * blk_geom_mds[*idx_mds].tx_height_uv_ex[txb_itr];
+
+                    blk_geom_mds[*idx_mds].tx_org_x_uv_ex[txb_itr] = (ROUND_UV(blk_geom_mds[*idx_mds].origin_x) >> subsampling_x) +
+                        blk_geom_mds[*idx_mds].tx_boff_x_uv_ex[txb_itr];
+                    blk_geom_mds[*idx_mds].tx_org_y_uv_ex[txb_itr] = (ROUND_UV(blk_geom_mds[*idx_mds].origin_y) >> subsampling_y) +
+                        blk_geom_mds[*idx_mds].tx_boff_y_uv_ex[txb_itr];
+                }
+            }
 
             blk_geom_mds[*idx_mds].blkidx_mds = (*idx_mds);
             (*idx_mds) = (*idx_mds) + 1;
@@ -982,6 +1044,7 @@ static uint32_t count_total_num_of_active_blks()
 
     uint32_t  depth_scan_idx = 0;
 
+//get_plane_block_size(blk_geom_mds[*idx_mds].bsize, subsampling_x, subsampling_y)
     for (depth_it = 0; depth_it < max_depth; depth_it++)
     {
         uint32_t  tot_num_sq = 1 << depth_it;
@@ -1030,6 +1093,8 @@ void build_blk_geom(int32_t use_128x128, EbColorFormat color_format)
     max_num_active_blocks = count_total_num_of_active_blks();
     if (max_num_active_blocks != BLOCK_MAX_COUNT)
         printf(" \n\n Error %i blocks\n\n ", max_num_active_blocks);
+
+    printf("----total number of active blks is %d\n", max_num_active_blocks);
 
     //(1) Construct depth scan blk_geom_dps
     depth_scan_all_blks();

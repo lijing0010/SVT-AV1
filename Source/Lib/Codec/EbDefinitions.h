@@ -166,7 +166,7 @@ extern "C" {
 #else
 #define BLOCK_MAX_COUNT                           4421  //SB128_TODO: reduce alloction for 64x64
 #endif
-#define MAX_TXB_COUNT                             4 // Maximum number of transform blocks.
+#define MAX_TXB_COUNT                             16 // Maximum number of transform blocks.
 #define MAX_NFL                                   12
 #define MAX_LAD                                   120 // max lookahead-distance 2x60fps
 #define ROUND_UV(x) (((x)>>3)<<3)

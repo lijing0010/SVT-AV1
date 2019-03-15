@@ -967,7 +967,7 @@ void ProductFullLoop(
     context_ptr->three_quad_energy = 0;
     uint32_t  txb_1d_offset = 0;
     uint32_t txb_itr = 0;
-    for (txb_itr = 0; txb_itr < context_ptr->blk_geom->txb_count; txb_itr++)
+    for (txb_itr = 0; txb_itr < context_ptr->blk_geom->txb_count[0]; txb_itr++)
     {
         uint16_t tx_org_x = context_ptr->blk_geom->tx_org_x[txb_itr];
         uint16_t tx_org_y = context_ptr->blk_geom->tx_org_y[txb_itr];
@@ -1204,7 +1204,7 @@ void ProductFullLoopTxSearch(
 #endif
         context_ptr->three_quad_energy = 0;
         uint32_t txb_itr = 0;
-        for (txb_itr = 0; txb_itr < context_ptr->blk_geom->txb_count; txb_itr++)
+        for (txb_itr = 0; txb_itr < context_ptr->blk_geom->txb_count[0]; txb_itr++)
 
 
         {
@@ -1811,7 +1811,7 @@ void FullLoop_R(
     EbBool cleanSparseCoeffFlag = EB_FALSE;
     context_ptr->three_quad_energy = 0;
 
-    tuCount = context_ptr->blk_geom->txb_count;
+    tuCount = context_ptr->blk_geom->txb_count[0];
     uint32_t  txb_1d_offset = 0;
 
     txb_itr = 0;
@@ -1970,7 +1970,7 @@ void CuFullDistortionFastTuMode_R(
     uint32_t                          txb_itr = 0;
     //    SequenceControlSet_t           *sequence_control_set_ptr=((SequenceControlSet_t*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->objectPtr);
 
-    tuTotalCount = context_ptr->blk_geom->txb_count;
+    tuTotalCount = context_ptr->blk_geom->txb_count[0];
     currentTuIndex = 0;
     transform_buffer = context_ptr->trans_quant_buffers_ptr->tuTransCoeff2Nx2NPtr;
 

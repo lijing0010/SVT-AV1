@@ -8630,18 +8630,19 @@ static void build_intra_predictors(
 #if INTRA_CORE_OPT 
     uint8_t * above_row;
     uint8_t * left_col;
+    DECLARE_ALIGNED(16, uint8_t, left_data[MAX_TX_SIZE * 2 + 32]);
+    DECLARE_ALIGNED(16, uint8_t, above_data[MAX_TX_SIZE * 2 + 32]);
     if (stage == MD_STAGE) {
 
         above_row = md_context_ptr->above_data[plane] + 16;
         left_col = md_context_ptr->left_data[plane] + 16;
     }
     else {
-        DECLARE_ALIGNED(16, uint8_t, left_data[MAX_TX_SIZE * 2 + 32]);
-        DECLARE_ALIGNED(16, uint8_t, above_data[MAX_TX_SIZE * 2 + 32]);
         above_row = above_data + 16;
         left_col = left_data + 16;
     }
 #else
+    not use
     DECLARE_ALIGNED(16, uint8_t, left_data[MAX_TX_SIZE * 2 + 32]);
     DECLARE_ALIGNED(16, uint8_t, above_data[MAX_TX_SIZE * 2 + 32]);
     uint8_t *const above_row = above_data + 16;
@@ -9490,10 +9491,11 @@ extern void av1_predict_intra_block(
     uint32_t  recon_origin_y;
 
     if (stage == ED_STAGE) { // EncDec
-//        pred_buf_x_offest = bl_org_x_pict;
-//        pred_buf_y_offest = bl_org_y_pict;
-        pred_buf_x_offest = plane ? ((bl_org_x_pict >> 3) << 3) >> cm->subsampling_x : bl_org_x_pict;
-        pred_buf_y_offest = plane ? ((bl_org_y_pict >> 3) << 3) >> cm->subsampling_y : bl_org_y_pict;
+        //pred_buf_x_offest = plane ? ((bl_org_x_pict >> 3) << 3) >> cm->subsampling_x : bl_org_x_pict;
+        //pred_buf_y_offest = plane ? ((bl_org_y_pict >> 3) << 3) >> cm->subsampling_y : bl_org_y_pict;
+
+        pred_buf_x_offest = plane ? ((((bl_org_x_pict >> 3) << 3) >> cm->subsampling_x) + bl_org_x_mb) : (bl_org_x_pict + bl_org_x_mb);
+        pred_buf_y_offest = plane ? ((((bl_org_y_pict >> 3) << 3) >> cm->subsampling_y) + bl_org_y_mb) : (bl_org_y_pict + bl_org_y_mb);
 
         recon_origin_x = plane ? (reconBuffer->origin_x >> cm->subsampling_x) : reconBuffer->origin_x;
         recon_origin_y = plane ? (reconBuffer->origin_y >> cm->subsampling_y) : reconBuffer->origin_y;
@@ -9503,6 +9505,11 @@ extern void av1_predict_intra_block(
         pred_buf_y_offest = bl_org_y_mb;
         recon_origin_x = plane ? (reconBuffer->origin_x >> 1) : reconBuffer->origin_x; //420 for MD
         recon_origin_y = plane ? (reconBuffer->origin_y >> 1) : reconBuffer->origin_y;
+
+
+        // Jing: hack here, set it to 0 so that MD stage won't mess with EncDec stage
+        bl_org_x_mb = 0;
+        bl_org_y_mb = 0;
     }
 
     // Adjust mirow , micol ;
@@ -9587,8 +9594,8 @@ extern void av1_predict_intra_block(
     int32_t chroma_up_available = xd->up_available;
     int32_t chroma_left_available = xd->left_available;
 #endif
-    const int32_t ss_x = plane == 0 ? 0 : 1; //CHKN
-    const int32_t ss_y = plane == 0 ? 0 : 1;
+    const int32_t ss_x = plane == 0 ? 0 : cm->subsampling_x; //CHKN
+    const int32_t ss_y = plane == 0 ? 0 : cm->subsampling_y;
 
 #if TILES
     if (ss_x && bw < mi_size_wide[BLOCK_8X8])
@@ -9607,9 +9614,12 @@ extern void av1_predict_intra_block(
     //CHKN  const MbModeInfo *const mbmi = xd->mi[0];
     const int32_t txwpx = tx_size_wide[tx_size];
     const int32_t txhpx = tx_size_high[tx_size];
+    assert(txwpx == wpx);
 #if INTRA_CORE_OPT
-    const int32_t x = 0;//col_off << tx_size_wide_log2[0];
-    const int32_t y = 0;//row_off << tx_size_high_log2[0];
+    const int32_t col_off = bl_org_x_mb >> tx_size_wide_log2[0];
+    const int32_t row_off = bl_org_y_mb >> tx_size_high_log2[0];
+    //const int32_t x = 0;//col_off << tx_size_wide_log2[0];
+    //const int32_t y = 0;//row_off << tx_size_high_log2[0];
 #else
     not use
     const int32_t x = col_off << tx_size_wide_log2[0];
@@ -9699,11 +9709,8 @@ extern void av1_predict_intra_block(
     }
 
 
-    const int32_t have_top = /*row_off ||*/ (subsampling_y ? /*xd->*/chroma_up_available
-        : up_available);
-    const int32_t have_left =
-        /*col_off ||*/
-        (subsampling_x ? /*xd->*/chroma_left_available : left_available);
+    const int32_t have_top = row_off || (subsampling_y ? chroma_up_available : up_available);
+    const int32_t have_left = col_off || (subsampling_x ? chroma_left_available : left_available);
 
     const int32_t xr_chr_offset = 0;
     const int32_t yd_chr_offset = 0;
@@ -9711,11 +9718,11 @@ extern void av1_predict_intra_block(
     // Distance between the right edge of this prediction block to
     // the frame right edge
     const int32_t xr = (mb_to_right_edge >> (3 + subsampling_x)) +
-        (wpx - x - txwpx) - xr_chr_offset;
+        (wpx - bl_org_x_mb - txwpx) - xr_chr_offset;
     // Distance between the bottom edge of this prediction block to
     // the frame bottom edge
     const int32_t yd = (mb_to_bottom_edge >> (3 + subsampling_y)) +
-        (hpx - y - txhpx) - yd_chr_offset;
+        (hpx - bl_org_y_mb - txhpx) - yd_chr_offset;
 
 
     const PartitionType partition = from_shape_to_part[blk_geom->shape]; //cu_ptr->part;// PARTITION_NONE;//CHKN this is good enough as the avail functions need to know if VERT part is used or not mbmi->partition;
@@ -9733,17 +9740,17 @@ extern void av1_predict_intra_block(
         const int32_t mi_col = -mb_to_left_edge >> (3 + MI_SIZE_LOG2);
 
         const int32_t right_available =
-            mi_col + ((/*col_off + */txw) << subsampling_x) < tile_mi_col_end;
+            mi_col + ((col_off + txw) << subsampling_x) < tile_mi_col_end;
         const int32_t bottom_available =
             (yd > 0) &&
-            (mi_row + ((/*row_off +*/ txh) << subsampling_y) < tile_mi_row_end);
+            (mi_row + ((row_off + txh) << subsampling_y) < tile_mi_row_end);
 
         have_top_right = has_top_right(
             cm, bsize, mi_row, mi_col, have_top, right_available, partition, tx_size,
-            0, 0,/*row_off, col_off,*/ subsampling_x, subsampling_y);
+            row_off, col_off, subsampling_x, subsampling_y);
         have_bottom_left = has_bottom_left(
             cm, bsize, mi_row, mi_col, bottom_available, have_left, partition,
-            tx_size, 0, 0,/*row_off, col_off,*/ subsampling_x, subsampling_y);
+            tx_size, row_off, col_off, subsampling_x, subsampling_y);
     }
     else {
 

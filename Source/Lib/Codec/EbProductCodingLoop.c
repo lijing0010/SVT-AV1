@@ -841,7 +841,7 @@ void AV1PerformInverseTransformReconLuma(
     uint32_t                              txb_itr;
 
     if (picture_control_set_ptr->intra_md_open_loop_flag == EB_FALSE) {
-        tuTotalCount = blk_geom->txb_count;
+        tuTotalCount = blk_geom->txb_count[0];
         txb_itr = 0;
         uint32_t txb_1d_offset = 0;
         uint32_t recLumaOffset = (blk_geom->origin_y) * candidateBuffer->reconPtr->strideY +
@@ -923,7 +923,7 @@ static void AV1PerformInverseTransformRecon(
     UNUSED(blk_geom);
 
     if (picture_control_set_ptr->intra_md_open_loop_flag == EB_FALSE) {
-        tuTotalCount = context_ptr->blk_geom->txb_count;
+        tuTotalCount = context_ptr->blk_geom->txb_count[0];
         tu_index = 0;
         txb_itr = 0;
         uint32_t txb_1d_offset = 0, txb_1d_offset_uv = 0;
@@ -2778,7 +2778,7 @@ void inter_depth_tx_search(
         uint32_t                tu_index;
         uint32_t                tuTotalCount;
 
-        tuTotalCount = context_ptr->blk_geom->txb_count;
+        tuTotalCount = context_ptr->blk_geom->txb_count[0];
         tu_index = 0;
         txb_itr = 0;
         

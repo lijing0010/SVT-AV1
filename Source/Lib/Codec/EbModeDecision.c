@@ -2262,7 +2262,7 @@ uint8_t product_full_mode_decision(
     uint32_t  cu_size_log2 = context_ptr->cu_size_log2;
 
     {
-        tuTotalCount = context_ptr->blk_geom->txb_count;
+        tuTotalCount = context_ptr->blk_geom->txb_count[0];
         tu_index = 0;
         txb_itr = 0;
     }

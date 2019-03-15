@@ -1896,7 +1896,7 @@ void CodingLoopContextGeneration(
     cu_ptr->cr_txb_skip_context = 0;
     cu_ptr->cr_dc_sign_context = 0;
 
-    int32_t txb_count = context_ptr->blk_geom->txb_count;
+    int32_t txb_count = context_ptr->blk_geom->txb_count[0];
     int32_t txb_itr = 0;
     for (txb_itr = 0; txb_itr < txb_count; txb_itr++) {
 

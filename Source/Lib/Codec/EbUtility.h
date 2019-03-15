@@ -42,6 +42,9 @@ extern "C" {
         BlockSize  bsize;           // bloc size
         BlockSize  bsize_uv;           // bloc size for Chroma 4:2:0
         BlockSize  bsize_uv_ex;           // bloc size for Chroma in coding loop
+        uint8_t    valid_block;
+#if 0
+        //Jing: add plane for Tx 
         uint16_t    txb_count;       //4-2-1
         TxSize     txsize[MAX_TXB_COUNT];
         TxSize     txsize_uv[MAX_TXB_COUNT];
@@ -57,6 +60,35 @@ extern "C" {
 
         uint8_t     tx_width_uv_ex[MAX_TXB_COUNT];//tx_size_wide
         uint8_t     tx_height_uv_ex[MAX_TXB_COUNT];//tx_size_wide
+        ////
+#else
+        uint16_t    txb_count[2];       //4-2-1
+        TxSize     txsize[MAX_TXB_COUNT];
+        TxSize     txsize_uv[MAX_TXB_COUNT];
+        TxSize     txsize_uv_ex[MAX_TXB_COUNT];
+
+        uint16_t    tx_org_x[MAX_TXB_COUNT];    //orgin is SB
+        uint16_t    tx_org_y[MAX_TXB_COUNT];    //origin is SB
+        uint16_t    tx_boff_x[MAX_TXB_COUNT];    //block offset , origin is block
+        uint16_t    tx_boff_y[MAX_TXB_COUNT];    //block offset , origin is block
+
+        //for 422/444 chroma
+        uint16_t    tx_org_x_uv_ex[MAX_TXB_COUNT];    //orgin is SB
+        uint16_t    tx_org_y_uv_ex[MAX_TXB_COUNT];    //origin is SB
+        uint16_t    tx_boff_x_uv_ex[MAX_TXB_COUNT];    //block offset , origin is block
+        uint16_t    tx_boff_y_uv_ex[MAX_TXB_COUNT];    //block offset , origin is block
+        ///
+
+
+        uint8_t     tx_width[MAX_TXB_COUNT];//tx_size_wide
+        uint8_t     tx_height[MAX_TXB_COUNT];//tx_size_wide
+        uint8_t     tx_width_uv[MAX_TXB_COUNT];//tx_size_wide
+        uint8_t     tx_height_uv[MAX_TXB_COUNT];//tx_size_wide
+
+        uint8_t     tx_width_uv_ex[MAX_TXB_COUNT];//tx_size_wide
+        uint8_t     tx_height_uv_ex[MAX_TXB_COUNT];//tx_size_wide
+#endif
+
 
 
         uint16_t      blkidx_mds;      // block index in md scan
