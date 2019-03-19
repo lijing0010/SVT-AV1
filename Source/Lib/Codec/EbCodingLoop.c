@@ -3048,6 +3048,7 @@ EB_EXTERN void AV1EncodePass(
         const BlockGeom * blk_geom = context_ptr->blk_geom = Get_blk_geom_mds(blk_it);
         UNUSED(blk_geom);
 
+        assert(blk_geom->valid_block == 1);
         sb_ptr->cu_partition_array[blk_it] = context_ptr->md_context->md_cu_arr_nsq[blk_it].part;
 
 
@@ -3154,7 +3155,7 @@ EB_EXTERN void AV1EncodePass(
                     // *Note - Transforms are the same size as predictions
                     // Partition Loop
                     context_ptr->txb_itr = 0;
-                    int32_t plane_end = blk_geom->has_uv ? 2 : 0;
+                    int32_t plane_end = blk_geom->has_uv_ex ? 2 : 0;
 
                     for (int32_t plane = 0; plane <= plane_end; ++plane) {
                         TxSize  tx_size = plane ? blk_geom->txsize_uv_ex[context_ptr->txb_itr] : blk_geom->txsize[context_ptr->txb_itr];
@@ -3634,7 +3635,7 @@ Jing: Disable it first
                     uint32_t totTu = context_ptr->blk_geom->txb_count[0];
                     uint8_t   tuIt;
                     uint8_t    cbQp = cu_ptr->qp;
-                    uint32_t  component_mask = context_ptr->blk_geom->has_uv ? PICTURE_BUFFER_DESC_FULL_MASK : PICTURE_BUFFER_DESC_LUMA_MASK;
+                    uint32_t  component_mask = context_ptr->blk_geom->has_uv_ex ? PICTURE_BUFFER_DESC_FULL_MASK : PICTURE_BUFFER_DESC_LUMA_MASK;
 
                     if (cu_ptr->prediction_unit_array[0].merge_flag == EB_FALSE) {
 
@@ -3661,7 +3662,7 @@ Jing: Disable it first
                                     transform_inner_array_ptr,
                                     asm_type,
                                     count_non_zero_coeffs,
-                                    context_ptr->blk_geom->has_uv ? PICTURE_BUFFER_DESC_FULL_MASK : PICTURE_BUFFER_DESC_LUMA_MASK,
+                                    context_ptr->blk_geom->has_uv_ex ? PICTURE_BUFFER_DESC_FULL_MASK : PICTURE_BUFFER_DESC_LUMA_MASK,
                                     useDeltaQpSegments,
                                     cu_ptr->delta_qp > 0 ? 0 : dZoffset,
                                     eobs[context_ptr->txb_itr],
@@ -3732,7 +3733,7 @@ Jing: Disable it first
                                         &crTuCoeffBits,
                                         context_ptr->blk_geom->txsize[context_ptr->txb_itr],
                                         context_ptr->blk_geom->txsize_uv[context_ptr->txb_itr],
-                                        context_ptr->blk_geom->has_uv ? COMPONENT_ALL : COMPONENT_LUMA,
+                                        context_ptr->blk_geom->has_uv_ex ? COMPONENT_ALL : COMPONENT_LUMA,
                                         asm_type);
                                 }
 
@@ -3754,7 +3755,7 @@ Jing: Disable it first
                                 // Update count_non_zero_coeffs after CBF decision
                                 if (cu_ptr->transform_unit_array[context_ptr->txb_itr].y_has_coeff == EB_FALSE)
                                     count_non_zero_coeffs[0] = 0;
-                                if (context_ptr->blk_geom->has_uv) {
+                                if (context_ptr->blk_geom->has_uv_ex) {
                                     if (cu_ptr->transform_unit_array[context_ptr->txb_itr].u_has_coeff == EB_FALSE)
                                         count_non_zero_coeffs[1] = 0;
                                     if (cu_ptr->transform_unit_array[context_ptr->txb_itr].v_has_coeff == EB_FALSE)
@@ -3768,7 +3769,7 @@ Jing: Disable it first
 
                                 y_coeff_bits += yTuCoeffBits;
 
-                                if (context_ptr->blk_geom->has_uv) {
+                                if (context_ptr->blk_geom->has_uv_ex) {
                                     cb_coeff_bits += cbTuCoeffBits;
                                     cr_coeff_bits += crTuCoeffBits;
                                 }
@@ -3778,7 +3779,7 @@ Jing: Disable it first
 
                             }
                             context_ptr->coded_area_sb += blk_geom->tx_width[tuIt] * blk_geom->tx_height[tuIt];
-                            if (blk_geom->has_uv)
+                            if (blk_geom->has_uv_ex)
                                 context_ptr->coded_area_sb_uv += blk_geom->tx_width_uv[tuIt] * blk_geom->tx_height_uv[tuIt];
 
                         } // Transform Loop
@@ -3842,7 +3843,7 @@ Jing: Disable it first
                                 transform_inner_array_ptr,
                                 asm_type,
                                 count_non_zero_coeffs,
-                                context_ptr->blk_geom->has_uv ? PICTURE_BUFFER_DESC_FULL_MASK : PICTURE_BUFFER_DESC_LUMA_MASK,
+                                context_ptr->blk_geom->has_uv_ex ? PICTURE_BUFFER_DESC_FULL_MASK : PICTURE_BUFFER_DESC_LUMA_MASK,
                                 useDeltaQpSegments,
                                 cu_ptr->delta_qp > 0 ? 0 : dZoffset,
                                 eobs[context_ptr->txb_itr],
@@ -3852,7 +3853,7 @@ Jing: Disable it first
 
                         }
 
-                        if (context_ptr->blk_geom->has_uv) {
+                        if (context_ptr->blk_geom->has_uv_ex) {
                             cu_ptr->block_has_coeff = cu_ptr->block_has_coeff |
                                 cu_ptr->transform_unit_array[context_ptr->txb_itr].y_has_coeff |
                                 cu_ptr->transform_unit_array[context_ptr->txb_itr].u_has_coeff |
@@ -3874,10 +3875,10 @@ Jing: Disable it first
                                 reconBuffer,
                                 inverse_quant_buffer,
                                 transform_inner_array_ptr,
-                                context_ptr->blk_geom->has_uv ? PICTURE_BUFFER_DESC_FULL_MASK : PICTURE_BUFFER_DESC_LUMA_MASK,
+                                context_ptr->blk_geom->has_uv_ex ? PICTURE_BUFFER_DESC_FULL_MASK : PICTURE_BUFFER_DESC_LUMA_MASK,
                                 eobs[context_ptr->txb_itr],
                                 asm_type);
-                        if (context_ptr->blk_geom->has_uv) {
+                        if (context_ptr->blk_geom->has_uv_ex) {
                             y_has_coeff |= cu_ptr->transform_unit_array[context_ptr->txb_itr].y_has_coeff;
                             u_has_coeff |= cu_ptr->transform_unit_array[context_ptr->txb_itr].u_has_coeff;
                             v_has_coeff |= cu_ptr->transform_unit_array[context_ptr->txb_itr].v_has_coeff;
@@ -3888,14 +3889,14 @@ Jing: Disable it first
 
 
                         context_ptr->coded_area_sb += blk_geom->tx_width[tuIt] * blk_geom->tx_height[tuIt];
-                        if (blk_geom->has_uv)
+                        if (blk_geom->has_uv_ex)
                             context_ptr->coded_area_sb_uv += blk_geom->tx_width_uv[tuIt] * blk_geom->tx_height_uv[tuIt];
 
 
                     } // Transform Loop
 
                     // Calculate Root CBF
-                    if (context_ptr->blk_geom->has_uv)
+                    if (context_ptr->blk_geom->has_uv_ex)
                         cu_ptr->block_has_coeff = (y_has_coeff | u_has_coeff | v_has_coeff) ? EB_TRUE : EB_FALSE;
                     else
                         cu_ptr->block_has_coeff = (y_has_coeff) ? EB_TRUE : EB_FALSE;
@@ -3951,7 +3952,7 @@ Jing: Disable it first
                             context_ptr->blk_geom->bheight,
                             context_ptr->blk_geom->bwidth_uv,
                             context_ptr->blk_geom->bheight_uv,
-                            context_ptr->blk_geom->has_uv ? PICTURE_BUFFER_DESC_FULL_MASK : PICTURE_BUFFER_DESC_LUMA_MASK,
+                            context_ptr->blk_geom->has_uv_ex ? PICTURE_BUFFER_DESC_FULL_MASK : PICTURE_BUFFER_DESC_LUMA_MASK,
                             is16bit);
 #endif
                 }
@@ -3972,7 +3973,7 @@ Jing: Disable it first
                 {
 
                     assert(0);
-                    if (blk_geom->has_uv) {
+                    if (blk_geom->has_uv_ex) {
                         availableCoeff = (cu_ptr->prediction_mode_flag == INTER_MODE) ? (EbBool)cu_ptr->block_has_coeff :
                             (cu_ptr->transform_unit_array[0].y_has_coeff ||
                                 cu_ptr->transform_unit_array[0].v_has_coeff ||
@@ -4125,7 +4126,7 @@ EB_EXTERN void no_enc_dec_pass(
                         memcpy(dstPtr + j * bwidth, srcPtr + j * bwidth, bwidth * sizeof(int32_t));
                     }
 
-                    if (context_ptr->blk_geom->has_uv)
+                    if (context_ptr->blk_geom->has_uv_ex)
                     {
                         // Cb
                         bwidth = context_ptr->blk_geom->tx_width_uv[txb_itr];
@@ -4151,11 +4152,11 @@ EB_EXTERN void no_enc_dec_pass(
                     }
 
                     context_ptr->coded_area_sb += context_ptr->blk_geom->tx_width[txb_itr] * context_ptr->blk_geom->tx_height[txb_itr];
-                    if (context_ptr->blk_geom->has_uv)
+                    if (context_ptr->blk_geom->has_uv_ex)
                         context_ptr->coded_area_sb_uv += context_ptr->blk_geom->tx_width_uv[txb_itr] * context_ptr->blk_geom->tx_height_uv[txb_itr];
 
                     txb_1d_offset += context_ptr->blk_geom->tx_width[txb_itr] * context_ptr->blk_geom->tx_height[txb_itr];
-                    if (context_ptr->blk_geom->has_uv)
+                    if (context_ptr->blk_geom->has_uv_ex)
                         txb_1d_offset_uv += context_ptr->blk_geom->tx_width_uv[txb_itr] * context_ptr->blk_geom->tx_height_uv[txb_itr];
 
                     txb_itr++;
@@ -4195,7 +4196,7 @@ EB_EXTERN void no_enc_dec_pass(
                         memcpy(dstPtr + j * ref_pic->strideY, srcPtr + j * 128, bwidth * sizeof(uint8_t));
                     }
 
-                    if (context_ptr->blk_geom->has_uv)
+                    if (context_ptr->blk_geom->has_uv_ex)
                     {
 
                         bwidth = context_ptr->blk_geom->bwidth_uv;

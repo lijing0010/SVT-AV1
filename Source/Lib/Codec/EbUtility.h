@@ -94,6 +94,7 @@ extern "C" {
         uint16_t      blkidx_mds;      // block index in md scan
         uint16_t      blkidx_dps;      // block index in depth scan
         int32_t         has_uv;
+        int32_t         has_uv_ex;
         int32_t         sq_size;
         int32_t         is_last_quadrant;      // only for square bloks, is this the fourth quadrant block?
 

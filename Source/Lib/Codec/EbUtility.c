@@ -765,22 +765,38 @@ static void md_scan_all_blks(uint32_t *idx_mds, uint32_t sq_size, uint32_t x, ui
             blk_geom_mds[*idx_mds].bwidth_uv = MAX(4, blk_geom_mds[*idx_mds].bwidth >> 1); // AMIR to clean to check for 4x4
             blk_geom_mds[*idx_mds].bheight_uv = MAX(4, blk_geom_mds[*idx_mds].bheight >> 1);
             blk_geom_mds[*idx_mds].has_uv = 1;
+            blk_geom_mds[*idx_mds].has_uv_ex = 1;
 
-            if (blk_geom_mds[*idx_mds].bwidth == 4 && blk_geom_mds[*idx_mds].bheight == 4)
-                blk_geom_mds[*idx_mds].has_uv = is_last_quadrant ? 1 : 0;  //Jing to check for 422 case
-
-            else
-                if ((blk_geom_mds[*idx_mds].bwidth >> 1) < blk_geom_mds[*idx_mds].bwidth_uv || (blk_geom_mds[*idx_mds].bheight >> 1) < blk_geom_mds[*idx_mds].bheight_uv) {
-                    int32_t num_blk_same_uv = 1;
-                    if (blk_geom_mds[*idx_mds].bwidth >> 1 < 4)
-                        num_blk_same_uv *= 2;
-                    if (blk_geom_mds[*idx_mds].bheight >> 1 < 4)
-                        num_blk_same_uv *= 2;
-                    //if (blk_geom_mds[*idx_mds].nsi % 2 == 0)
-                    //if (blk_geom_mds[*idx_mds].nsi != (blk_geom_mds[*idx_mds].totns-1) )
-                    if (blk_geom_mds[*idx_mds].nsi != (num_blk_same_uv - 1) && blk_geom_mds[*idx_mds].nsi != (2 * num_blk_same_uv - 1))
-                        blk_geom_mds[*idx_mds].has_uv = 0;
+            if (blk_geom_mds[*idx_mds].bwidth == 4 && blk_geom_mds[*idx_mds].bheight == 4) {
+                blk_geom_mds[*idx_mds].has_uv = is_last_quadrant ? 1 : 0;//Jing: this is for MD
+                if (subsampling_x == 1 && subsampling_y == 1) {
+                    //420
+                    blk_geom_mds[*idx_mds].has_uv_ex = blk_geom_mds[*idx_mds].has_uv;
+                } else if (subsampling_x == 1 && subsampling_y == 0) {
+                    //Jing to check for 422 and 444 case
+                    blk_geom_mds[*idx_mds].has_uv_ex = ((ROUND_UV(blk_geom_mds[*idx_mds].origin_x) == blk_geom_mds[*idx_mds].origin_x) ? 0 : 1);
+                } else if (subsampling_x == 0 && subsampling_y == 0) {
+                    // 444 case
+                    blk_geom_mds[*idx_mds].has_uv_ex = 1;
                 }
+            } else {
+                //Jing:TODO, change here for 422/444
+                if ((blk_geom_mds[*idx_mds].bwidth >> 1) < blk_geom_mds[*idx_mds].bwidth_uv ||
+                        (blk_geom_mds[*idx_mds].bheight >> 1) < blk_geom_mds[*idx_mds].bheight_uv) {
+                    //4x8, 4x16, 8x4, 16x4
+                    if (subsampling_x == 1 && subsampling_y == 1) {
+                        int32_t num_blk_same_uv = 1;
+                        if (blk_geom_mds[*idx_mds].bwidth >> 1 < 4) //4x8, 4x16
+                            num_blk_same_uv *= 2;
+                        if (blk_geom_mds[*idx_mds].bheight >> 1 < 4) //8x4, 16x4
+                            num_blk_same_uv *= 2;
+                        //if (blk_geom_mds[*idx_mds].nsi % 2 == 0)
+                        //if (blk_geom_mds[*idx_mds].nsi != (blk_geom_mds[*idx_mds].totns-1) )
+                        if (blk_geom_mds[*idx_mds].nsi != (num_blk_same_uv - 1) && blk_geom_mds[*idx_mds].nsi != (2 * num_blk_same_uv - 1))
+                            blk_geom_mds[*idx_mds].has_uv = 0;
+                    }
+                }
+            }
 
             blk_geom_mds[*idx_mds].bsize_uv = get_plane_block_size(blk_geom_mds[*idx_mds].bsize, 1, 1);
             blk_geom_mds[*idx_mds].bsize_uv_ex = get_plane_block_size(blk_geom_mds[*idx_mds].bsize, subsampling_x, subsampling_y);

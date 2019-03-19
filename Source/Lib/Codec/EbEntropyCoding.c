@@ -807,7 +807,7 @@ static EbErrorType Av1EncodeCoeff1D(
     }
 
     // UV plane
-    if (blk_geom->has_uv) {
+    if (blk_geom->has_uv_ex) {
         //Cb
         for (txb_itr = 0; txb_itr < blk_geom->txb_count[1]; txb_itr++) {
             const TxSize chroma_tx_size = blk_geom->txsize_uv_ex[txb_itr];
@@ -5082,7 +5082,7 @@ EbErrorType ec_update_neighbors(
             blk_geom->bheight,
             NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
 
-        if (blk_geom->has_uv)
+        if (blk_geom->has_uv_ex)
             NeighborArrayUnitModeWrite(
                 cb_dc_sign_level_coeff_neighbor_array,
                 (uint8_t*)&dcSignLevelCoeff,
@@ -5092,7 +5092,7 @@ EbErrorType ec_update_neighbors(
                 blk_geom->bheight_uv,
                 NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
 
-        if (blk_geom->has_uv)
+        if (blk_geom->has_uv_ex)
             NeighborArrayUnitModeWrite(
                 cr_dc_sign_level_coeff_neighbor_array,
                 (uint8_t*)&dcSignLevelCoeff,
@@ -5107,7 +5107,7 @@ EbErrorType ec_update_neighbors(
         //Jing:
         //TODO:
         //Double check here if need to be updated after each txb
-        if (blk_geom->has_uv) {
+        if (blk_geom->has_uv_ex) {
             context_ptr->coded_area_sb[1] += blk_geom->bwidth_uv_ex * blk_geom->bheight_uv_ex;
             context_ptr->coded_area_sb[2] += blk_geom->bwidth_uv_ex * blk_geom->bheight_uv_ex;
         }
@@ -5267,7 +5267,7 @@ EbErrorType write_modes_b(
                 NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
 
 
-            if (blk_geom->has_uv)
+            if (blk_geom->has_uv_ex)
                 EncodeIntraChromaModeAv1( //uv_mode in intra_block_mode_info()
                     frameContext,
                     ecWriter,
@@ -5392,7 +5392,7 @@ EbErrorType write_modes_b(
                     NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
 
 
-                if (blk_geom->has_uv)
+                if (blk_geom->has_uv_ex)
                     EncodeIntraChromaModeAv1(
                         frameContext,
                         ecWriter,
