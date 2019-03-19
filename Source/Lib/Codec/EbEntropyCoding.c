@@ -3379,38 +3379,38 @@ static void write_color_config(
         aom_wb_write_bit(wb, 0);
         //aom_wb_write_bit(wb, cm->color_range);
 
-        //if (cm->profile == PROFILE_0) {
-        //    // 420 only
-        //    assert(cm->subsampling_x == 1 && cm->subsampling_y == 1);
-        //}
-        //else if (cm->profile == PROFILE_1) {
-        //    // 444 only
-        //    assert(cm->subsampling_x == 0 && cm->subsampling_y == 0);
-        //}
-        //else if (cm->profile == PROFILE_2) {
-        //    if (cm->bit_depth == AOM_BITS_12) {
-        //        // 420, 444 or 422
-        //        aom_wb_write_bit(wb, cm->subsampling_x);
-        //        if (cm->subsampling_x == 0) {
-        //            assert(cm->subsampling_y == 0 &&
-        //                "4:4:0 subsampling not allowed in AV1");
-        //        }
-        //        else {
-        //            aom_wb_write_bit(wb, cm->subsampling_y);
-        //        }
-        //    }
-        //    else {
-        //        // 422 only
-        //        assert(cm->subsampling_x == 1 && cm->subsampling_y == 0);
-        //    }
-        //}
+        if (scsPtr->static_config.profile == PROFILE_0) {
+            // 420 only
+            assert(scsPtr->subsampling_x == 1 && scsPtr->subsampling_y == 1);
+        }
+        else if (scsPtr->static_config.profile == PROFILE_1) {
+            // 444 only
+            assert(scsPtr->subsampling_x == 0 && scsPtr->subsampling_y == 0);
+        }
+        else if (scsPtr->static_config.profile == PROFILE_2) {
+            if (scsPtr->encoder_bit_depth == AOM_BITS_12) {
+                // 420, 444 or 422
+                aom_wb_write_bit(wb, scsPtr->subsampling_x);
+                if (scsPtr->subsampling_x == 0) {
+                    assert(scsPtr->subsampling_y == 0 &&
+                        "4:4:0 subsampling not allowed in AV1");
+                }
+                else {
+                    aom_wb_write_bit(wb, scsPtr->subsampling_y);
+                }
+            }
+            else {
+                // 422 only
+                assert(scsPtr->subsampling_x == 1 && scsPtr->subsampling_y == 0);
+            }
+        }
         //if (cm->matrix_coefficients == AOM_CICP_MC_IDENTITY) {
-        //    assert(cm->subsampling_x == 0 && cm->subsampling_y == 0);
+        //    assert(scsPtr->subsampling_x == 0 && scsPtr->subsampling_y == 0);
         //}
-        aom_wb_write_literal(wb, 0, 2);
-        //if (cm->subsampling_x == 1 && cm->subsampling_y == 1) {
+        if (scsPtr->subsampling_x == 1 && scsPtr->subsampling_y == 1) {
+            aom_wb_write_literal(wb, 0, 2);
         //    aom_wb_write_literal(wb, cm->chroma_sample_position, 2);
-        //}
+        }
     }
     aom_wb_write_bit(wb, 0);
     //aom_wb_write_bit(wb, cm->separate_uv_delta_q);
