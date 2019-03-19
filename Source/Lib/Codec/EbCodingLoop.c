@@ -33,7 +33,7 @@
 #include "EbCodingLoop.h"
 #endif
 
-//#define DEBUG_REF_INFO
+#define DEBUG_REF_INFO
 #ifdef DEBUG_REF_INFO
 static void dump_left_array(NeighborArrayUnit_t *neighbor, int y_pos, int size)
 {
@@ -780,9 +780,6 @@ static void Av1EncodeLoop(
     uint32_t                 qp = cu_ptr->qp;
     EbPictureBufferDesc_t  *input_samples = context_ptr->input_samples;
 
-    const uint32_t coeff1dOffset = context_ptr->coded_area_sb;
-    const uint32_t coeff1dOffsetChroma = context_ptr->coded_area_sb_uv;
-
     //2D
     EbByte input_ptr[3];
     EbByte pred_ptr[3];
@@ -799,14 +796,14 @@ static void Av1EncodeLoop(
     for (int p = 0; p < 3; p++) {
         uint32_t sb_plane_origin_x = (p == 0) ? sb_origin_x : sb_origin_x >> subsampling_x;
         uint32_t sb_plane_origin_y = (p == 0) ? sb_origin_y : sb_origin_y >> subsampling_y;
-        uint32_t offset1d = (p == 0) ? context_ptr->coded_area_sb : context_ptr->coded_area_sb_uv;
+        //uint32_t offset1d = (p == 0) ? context_ptr->coded_area_sb : context_ptr->coded_area_sb_uv[p];
         Get2dOrigin(origin_x, origin_y, input_samples, p, &input_ptr[p], &input_stride[p]);
         Get2dOrigin(origin_x, origin_y, predSamples, p, &pred_ptr[p], &pred_stride[p]);
         Get2dOrigin(origin_x - sb_plane_origin_x, origin_y - sb_plane_origin_y, residual16bit, p, &res_ptr[p], &res_stride[p]);
 
-        Get1dOrigin(offset1d, transform32bit, p, &trans_ptr[p]);
-        Get1dOrigin(offset1d, coeffSamplesTB, p, &coeff_ptr[p]);
-        Get1dOrigin(offset1d, inverse_quant_buffer, p, &inverse_ptr[p]);
+        Get1dOrigin(context_ptr->coded_area_sb[p], transform32bit, p, &trans_ptr[p]);
+        Get1dOrigin(context_ptr->coded_area_sb[p], coeffSamplesTB, p, &coeff_ptr[p]);
+        Get1dOrigin(context_ptr->coded_area_sb[p], inverse_quant_buffer, p, &inverse_ptr[p]);
     }
 
     EbBool cleanSparseCoeffFlag = EB_FALSE;
@@ -890,18 +887,18 @@ static void Av1EncodeLoop(
 
 #ifdef DEBUG_REF_INFO
     if (sb_origin_x == 0 && sb_origin_y == 0) {
-    printf("shape_luma %d, shape chroma %d, nz_coef_count (%d, %d, %d)\n",
+    printf("shape_luma %d, shape chroma %d, nz_coef_count (%d, %d, %d), txb_itr is %d\n",
             txb_ptr->trans_coeff_shape_luma,
             txb_ptr->trans_coeff_shape_chroma,
             txb_ptr->nz_coef_count[0],
             txb_ptr->nz_coef_count[1],
-            txb_ptr->nz_coef_count[2]);
+            txb_ptr->nz_coef_count[2], txb_itr);
     {
-        originX = origin_x; 
-        originY = origin_y; 
+        int originX = origin_x; 
+        int originY = origin_y; 
         printf("\nAbout to dump coeff for (%d, %d) at plane %d, size %dx%d\n",
                 originX, originY, plane, txw, txh);
-        dump_block_from_desc(txw, txh, reconBuffer, originX, originY, plane);
+        //dump_block_from_desc(txw, txh, coeffSamplesTB, originX, originY, plane);
     }
     }
 #endif
@@ -1433,7 +1430,8 @@ static void Av1EncodeGenerateRecon(
     //1D
     EbByte inverse_ptr;
 
-    uint32_t offset1d = (plane == 0) ? context_ptr->coded_area_sb : context_ptr->coded_area_sb_uv;
+    //uint32_t offset1d = (plane == 0) ? context_ptr->coded_area_sb : context_ptr->coded_area_sb_uv;
+    uint32_t offset1d = context_ptr->coded_area_sb[plane];
 
     EbBool has_coeff = (plane == 0) ? txb_ptr->y_has_coeff :
                         (plane == 1) ? txb_ptr->u_has_coeff :txb_ptr->v_has_coeff;
@@ -1523,7 +1521,7 @@ static void Av1EncodeGenerateRecon16bit(
 #if QT_10BIT_SUPPORT
                 uint16_t     *predBuffer = ((uint16_t*)predSamples->bufferY) + predLumaOffset;
                 Av1InvTransformRecon(
-                    ((int32_t*)residual16bit->bufferY) + context_ptr->coded_area_sb,
+                    ((int32_t*)residual16bit->bufferY) + context_ptr->coded_area_sb[0],
                     CONVERT_TO_BYTEPTR(predBuffer),
                     predSamples->strideY,
                     context_ptr->blk_geom->txsize[context_ptr->txb_itr],
@@ -2761,8 +2759,8 @@ EB_EXTERN void AV1EncodePass(
 #else
     NeighborArrayUnit_t      *ep_intra_mode_neighbor_array[3];
     ep_intra_mode_neighbor_array[0] = picture_control_set_ptr->ep_intra_luma_mode_neighbor_array;
-    ep_intra_mode_neighbor_array[1] = picture_control_set_ptr->ep_intra_chroma_mode_neighbor_array;
-    ep_intra_mode_neighbor_array[2] = picture_control_set_ptr->ep_intra_chroma_mode_neighbor_array;
+    ep_intra_mode_neighbor_array[1] = picture_control_set_ptr->ep_intra_chroma_mode_neighbor_array_cb;
+    ep_intra_mode_neighbor_array[2] = picture_control_set_ptr->ep_intra_chroma_mode_neighbor_array_cr;
 #endif
     NeighborArrayUnit_t      *ep_mv_neighbor_array = picture_control_set_ptr->ep_mv_neighbor_array;
 #if 0
@@ -2999,8 +2997,9 @@ EB_EXTERN void AV1EncodePass(
 
     context_ptr->trans_coeff_shape_luma = 0;
     context_ptr->trans_coeff_shape_chroma = 0;
-    context_ptr->coded_area_sb = 0;
-    context_ptr->coded_area_sb_uv = 0;
+    context_ptr->coded_area_sb[0] = 0;
+    context_ptr->coded_area_sb[1] = 0;
+    context_ptr->coded_area_sb[2] = 0;
 
 #if AV1_LF 
     if (dlfEnableFlag && picture_control_set_ptr->parent_pcs_ptr->loop_filter_mode == 1){        
@@ -3078,16 +3077,16 @@ EB_EXTERN void AV1EncodePass(
                 cu_ptr->block_has_coeff = 0;
 
 #ifdef DEBUG_REF_INFO
-                assert(cu_ptr->skip_flag == 0);
-                printf("(%d, %d), mode %d, angle is (%d, %d)\n",
-                        context_ptr->cu_origin_x, context_ptr->cu_origin_y, cu_ptr->pred_mode,
-                        cu_ptr->prediction_unit_array->angle_delta[0], cu_ptr->prediction_unit_array->angle_delta[1]);
+                //assert(cu_ptr->skip_flag == 0);
+                //printf("(%d, %d), mode %d, angle is (%d, %d)\n",
+                //        context_ptr->cu_origin_x, context_ptr->cu_origin_y, cu_ptr->pred_mode,
+                //        cu_ptr->prediction_unit_array->angle_delta[0], cu_ptr->prediction_unit_array->angle_delta[1]);
 #endif
 
                 // if(picture_control_set_ptr->picture_number==4 && context_ptr->cu_origin_x==0 && context_ptr->cu_origin_y==0)
                 //     printf("CHEDD");
-                uint32_t  coded_area_org = context_ptr->coded_area_sb;
-                uint32_t  coded_area_org_uv = context_ptr->coded_area_sb_uv;
+                uint32_t  coded_area_org = context_ptr->coded_area_sb[0];
+                uint32_t  coded_area_org_uv = context_ptr->coded_area_sb[1]; //Jing: change here for inter
 
 #if CHROMA_BLIND
                 // Derive disable_cfl_flag as evaluate_cfl_ep = f(disable_cfl_flag)
@@ -3345,21 +3344,15 @@ EB_EXTERN void AV1EncodePass(
 #endif
 
                                 // Update the Intra-specific Neighbor Arrays
-                                if (plane != 1) {
-                                    //Jing:
-                                    //TODO:
-                                    //Hack here since cb/cr always has the same pred mode
-                                    //So reuse the same intra_chroma neighbor array
                                     EncodePassUpdateIntraModeNeighborArrays(
-                                            ep_mode_type_neighbor_array,
-                                            ep_intra_mode_neighbor_array[plane],
-                                            plane == 0 ? (uint8_t)cu_ptr->pred_mode : (uint8_t)pu_ptr->intra_chroma_mode,
-                                            plane,
-                                            pu_block_origin_x,
-                                            pu_block_origin_y,
-                                            txw,
-                                            txh);
-                                }
+                                      ep_mode_type_neighbor_array,
+                                      ep_intra_mode_neighbor_array[plane],
+                                      plane == 0 ? (uint8_t)cu_ptr->pred_mode : (uint8_t)pu_ptr->intra_chroma_mode,
+                                      plane,
+                                      pu_block_origin_x,
+                                      pu_block_origin_y,
+                                      txw,
+                                      txh);
 
                                 // Update Recon Samples-INTRA-
                                 EncodePassUpdateReconSampleNeighborArrays(
@@ -3387,16 +3380,14 @@ EB_EXTERN void AV1EncodePass(
                                 }
 #else
 #endif
+                                context_ptr->coded_area_sb[plane] += txw * txh;
                                 txb_itr[plane] += 1;
                             }
                         }// Txb Loop
                     } // Plane Loop
 
-                    context_ptr->coded_area_sb += blk_geom->bwidth * blk_geom->bheight;
-                    if (blk_geom->has_uv)
-                        context_ptr->coded_area_sb_uv += blk_geom->bwidth_uv_ex * blk_geom->bheight_uv_ex;
-                    printf("Finished CU (%d, %d), coded_area_sb is %d, coded_area_sb_uv %d\n",
-                            context_ptr->cu_origin_x, context_ptr->cu_origin_y, context_ptr->coded_area_sb, context_ptr->coded_area_sb_uv);
+                    //printf("Finished CU (%d, %d), coded_area_sb is %d, coded_area_sb_uv %d\n",
+                    //        context_ptr->cu_origin_x, context_ptr->cu_origin_y, context_ptr->coded_area_sb, context_ptr->coded_area_sb_uv);
                 } else if (cu_ptr->prediction_mode_flag == INTER_MODE) {
 #if 0
 Jing: Disable it first

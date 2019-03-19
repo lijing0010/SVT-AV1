@@ -648,6 +648,8 @@ int32_t  Av1WriteCoeffsTxb1D(
         int32_t level = ABS(v);
 
         if (c == eob - 1) {
+            //printf("eob is %d, level is %d\n", eob, level);
+            assert(level >=1);
             //coeff_base_eob
             aom_write_symbol(
                 ecWriter, AOMMIN(level, 3) - 1,
@@ -738,8 +740,6 @@ static EbErrorType Av1EncodeCoeff1D(
     const BlockGeom *blk_geom = Get_blk_geom_mds(cu_ptr->mds_idx);
     int32_t cul_level_y, cul_level_cb = 0 , cul_level_cr = 0;
 
-    int32_t coded_area_sb_uv = context_ptr->coded_area_sb_uv;
-
     uint8_t txb_itr = 0;
 
     //Process Y plane
@@ -747,7 +747,7 @@ static EbErrorType Av1EncodeCoeff1D(
         const TxSize tx_size = blk_geom->txsize[txb_itr];
         int32_t *coeffBuffer;
 
-        const uint32_t coeff1dOffset = context_ptr->coded_area_sb;
+        const uint32_t coeff1dOffset = context_ptr->coded_area_sb[0];
 
         coeffBuffer = (int32_t*)coeffPtr->bufferY + coeff1dOffset;
 
@@ -766,6 +766,9 @@ static EbErrorType Av1EncodeCoeff1D(
                 &dcSignCtx);
 
 
+            printf("write luma, txb_itr %d, nz_coeff %d, txb is %dx%d\n",
+                    txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[0],
+                    tx_size_wide[tx_size], tx_size_high[tx_size]);
             cul_level_y =
                 Av1WriteCoeffsTxb1D(
                     pcsPtr->parent_pcs_ptr,
@@ -800,7 +803,7 @@ static EbErrorType Av1EncodeCoeff1D(
                 NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
         }
 
-        context_ptr->coded_area_sb += blk_geom->tx_width[txb_itr] * blk_geom->tx_height[txb_itr];
+        context_ptr->coded_area_sb[0] += blk_geom->tx_width[txb_itr] * blk_geom->tx_height[txb_itr];
     }
 
     // UV plane
@@ -808,7 +811,7 @@ static EbErrorType Av1EncodeCoeff1D(
         //Cb
         for (txb_itr = 0; txb_itr < blk_geom->txb_count[1]; txb_itr++) {
             const TxSize chroma_tx_size = blk_geom->txsize_uv_ex[txb_itr];
-            int32_t *coeffBuffer = (int32_t*)coeffPtr->bufferCb + context_ptr->coded_area_sb_uv;
+            int32_t *coeffBuffer = (int32_t*)coeffPtr->bufferCb + context_ptr->coded_area_sb[1];
             int16_t txbSkipCtx = 0;
             int16_t dcSignCtx = 0;
 
@@ -817,7 +820,7 @@ static EbErrorType Av1EncodeCoeff1D(
                     cb_dc_sign_level_coeff_neighbor_array,
                     //ROUND_UV(cu_origin_x + blk_geom->tx_org_x[txb_itr] - blk_geom->origin_x) >> 1,
                     //ROUND_UV(cu_origin_y + blk_geom->tx_org_y[txb_itr] - blk_geom->origin_y) >> 1,
-            //Jing: Double check here, not right for 4x4
+            //Jing: Double check here, not right for 4x4 for 422
                     (ROUND_UV(cu_origin_x) >> subsampling_x) + blk_geom->tx_boff_x_uv_ex[txb_itr],
                     (ROUND_UV(cu_origin_y) >> subsampling_y) + blk_geom->tx_boff_y_uv_ex[txb_itr],
                     blk_geom->bsize_uv_ex,
@@ -825,6 +828,9 @@ static EbErrorType Av1EncodeCoeff1D(
                     &txbSkipCtx,
                     &dcSignCtx);
 
+            printf("write cb, txb_itr %d, nz_coeff %d, tx size %dx%d\n",
+                    txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[1],
+                    tx_size_wide[chroma_tx_size], tx_size_high[chroma_tx_size]);
             cul_level_cb =
                 Av1WriteCoeffsTxb1D(
                         pcsPtr->parent_pcs_ptr,
@@ -847,22 +853,22 @@ static EbErrorType Av1EncodeCoeff1D(
             NeighborArrayUnitModeWrite(
                     cb_dc_sign_level_coeff_neighbor_array,
                     (uint8_t*)&dcSignLevelCoeff,
-                    ROUND_UV(cu_origin_x + blk_geom->tx_org_x[txb_itr] - blk_geom->origin_x) >> 1,
-                    ROUND_UV(cu_origin_y + blk_geom->tx_org_y[txb_itr] - blk_geom->origin_y) >> 1,
-                    blk_geom->tx_width_uv[txb_itr],
-                    blk_geom->tx_height_uv[txb_itr],
+                    //ROUND_UV(cu_origin_x + blk_geom->tx_org_x[txb_itr] - blk_geom->origin_x) >> 1,
+                    //ROUND_UV(cu_origin_y + blk_geom->tx_org_y[txb_itr] - blk_geom->origin_y) >> 1,
+                    (ROUND_UV(cu_origin_x) >> subsampling_x) + blk_geom->tx_boff_x_uv_ex[txb_itr],
+                    (ROUND_UV(cu_origin_y) >> subsampling_y) + blk_geom->tx_boff_y_uv_ex[txb_itr],
+                    blk_geom->tx_width_uv_ex[txb_itr],
+                    blk_geom->tx_height_uv_ex[txb_itr],
                     NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
 
-            context_ptr->coded_area_sb_uv += blk_geom->tx_width_uv[txb_itr] * blk_geom->tx_height_uv[txb_itr];
+            context_ptr->coded_area_sb[1] += blk_geom->tx_width_uv_ex[txb_itr] * blk_geom->tx_height_uv_ex[txb_itr]; //Jing: double check here
         }
 
-        //Reset coded area for Cr
-        context_ptr->coded_area_sb_uv = coded_area_sb_uv;
         // Cr
         for (txb_itr = 0; txb_itr < blk_geom->txb_count[1]; txb_itr++) {
 
             const TxSize chroma_tx_size = blk_geom->txsize_uv_ex[txb_itr];
-            int32_t *coeffBuffer = (int32_t*)coeffPtr->bufferCr + context_ptr->coded_area_sb_uv;
+            int32_t *coeffBuffer = (int32_t*)coeffPtr->bufferCr + context_ptr->coded_area_sb[2];
             int16_t txbSkipCtx = 0;
             int16_t dcSignCtx = 0;
 
@@ -879,6 +885,9 @@ static EbErrorType Av1EncodeCoeff1D(
                     &txbSkipCtx,
                     &dcSignCtx);
 
+            printf("write cr, txb_itr %d, nz_coeff %d, tx size %dx%d\n",
+                    txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[2],
+                    tx_size_wide[chroma_tx_size], tx_size_high[chroma_tx_size]);
             cul_level_cr =
                 Av1WriteCoeffsTxb1D(
                         pcsPtr->parent_pcs_ptr,
@@ -902,13 +911,15 @@ static EbErrorType Av1EncodeCoeff1D(
             NeighborArrayUnitModeWrite(
                     cr_dc_sign_level_coeff_neighbor_array,
                     (uint8_t*)&dcSignLevelCoeff,
-                    ROUND_UV(cu_origin_x + blk_geom->tx_org_x[txb_itr] - blk_geom->origin_x) >> 1,
-                    ROUND_UV(cu_origin_y + blk_geom->tx_org_y[txb_itr] - blk_geom->origin_y) >> 1,
-                    blk_geom->tx_width_uv[txb_itr],
-                    blk_geom->tx_height_uv[txb_itr],
+                    //ROUND_UV(cu_origin_x + blk_geom->tx_org_x[txb_itr] - blk_geom->origin_x) >> 1,
+                    //ROUND_UV(cu_origin_y + blk_geom->tx_org_y[txb_itr] - blk_geom->origin_y) >> 1,
+                    (ROUND_UV(cu_origin_x) >> subsampling_x) + blk_geom->tx_boff_x_uv_ex[txb_itr],
+                    (ROUND_UV(cu_origin_y) >> subsampling_y) + blk_geom->tx_boff_y_uv_ex[txb_itr],
+                    blk_geom->tx_width_uv_ex[txb_itr],
+                    blk_geom->tx_height_uv_ex[txb_itr],
                     NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
 
-            context_ptr->coded_area_sb_uv += blk_geom->tx_width_uv[txb_itr] * blk_geom->tx_height_uv[txb_itr];
+            context_ptr->coded_area_sb[2] += blk_geom->tx_width_uv_ex[txb_itr] * blk_geom->tx_height_uv_ex[txb_itr];
         }
     }
     return return_error;
@@ -979,7 +990,7 @@ static void EncodePartitionAv1(
     const int32_t hbs = (mi_size_wide[bsize] << 2) >> 1;
     const int32_t hasRows = (cu_origin_y + hbs) < sequence_control_set_ptr->luma_height;
     const int32_t hasCols = (cu_origin_x + hbs) < sequence_control_set_ptr->luma_width;
-    printf("hbs %d, hasRows %d, hasCols %d\n", hbs, hasRows, hasCols);
+    //printf("hbs %d, hasRows %d, hasCols %d\n", hbs, hasRows, hasCols);
 
     uint32_t partitionContextLeftNeighborIndex = GetNeighborArrayUnitLeftIndex(
         partition_context_neighbor_array,
@@ -5091,11 +5102,15 @@ EbErrorType ec_update_neighbors(
                 blk_geom->bheight_uv,
                 NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
 
-        context_ptr->coded_area_sb += blk_geom->bwidth * blk_geom->bheight;
+        context_ptr->coded_area_sb[0] += blk_geom->bwidth * blk_geom->bheight;
 
-        if (blk_geom->has_uv)
-            context_ptr->coded_area_sb_uv += blk_geom->bwidth_uv * blk_geom->bheight_uv;
-
+        //Jing:
+        //TODO:
+        //Double check here if need to be updated after each txb
+        if (blk_geom->has_uv) {
+            context_ptr->coded_area_sb[1] += blk_geom->bwidth_uv_ex * blk_geom->bheight_uv_ex;
+            context_ptr->coded_area_sb[2] += blk_geom->bwidth_uv_ex * blk_geom->bheight_uv_ex;
+        }
     }
 
     // Update the Inter Pred Type Neighbor Array
@@ -5276,6 +5291,8 @@ EbErrorType write_modes_b(
                     luma_dc_sign_level_coeff_neighbor_array,
                     cr_dc_sign_level_coeff_neighbor_array,
                     cb_dc_sign_level_coeff_neighbor_array);
+            } else {
+                printf("\t\t---(%d, %d) is skip, bsize is %d\n", blkOriginX, blkOriginY, bsize);
             }
         }
     }
@@ -5577,6 +5594,9 @@ EbErrorType write_modes_b(
             }
         }
     }
+
+
+    // Jing: TODO: double check here
     // Update the neighbors
     ec_update_neighbors(
         picture_control_set_ptr,
@@ -5617,8 +5637,9 @@ EB_EXTERN EbErrorType write_sb(
     uint32_t                    cu_origin_y;
     BlockSize                bsize;
 
-    context_ptr->coded_area_sb = 0;
-    context_ptr->coded_area_sb_uv = 0;
+    context_ptr->coded_area_sb[0] = 0;
+    context_ptr->coded_area_sb[1] = 0;
+    context_ptr->coded_area_sb[2] = 0;
 
     tbPtr->quantized_coeffs_bits = 0;
     EbBool checkCuOutOfBound = EB_FALSE;

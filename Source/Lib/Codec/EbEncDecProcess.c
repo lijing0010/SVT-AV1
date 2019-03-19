@@ -294,7 +294,8 @@ EbErrorType enc_dec_context_ctor(
 static void ResetEncodePassNeighborArrays(PictureControlSet_t *picture_control_set_ptr)
 {
     NeighborArrayUnitReset(picture_control_set_ptr->ep_intra_luma_mode_neighbor_array);
-    NeighborArrayUnitReset(picture_control_set_ptr->ep_intra_chroma_mode_neighbor_array);
+    NeighborArrayUnitReset(picture_control_set_ptr->ep_intra_chroma_mode_neighbor_array_cb);
+    NeighborArrayUnitReset(picture_control_set_ptr->ep_intra_chroma_mode_neighbor_array_cr);
     NeighborArrayUnitReset(picture_control_set_ptr->ep_mv_neighbor_array);
     NeighborArrayUnitReset(picture_control_set_ptr->ep_skip_flag_neighbor_array);
     NeighborArrayUnitReset(picture_control_set_ptr->ep_mode_type_neighbor_array);
@@ -1651,7 +1652,7 @@ void* EncDecKernel(void *input_ptr)
                         sb_origin_y,
                         sb_ptr->qp,
                         context_ptr);
-                    printf("---Finish coding SB (%d, %d), size %d\n", sb_origin_x, sb_origin_y, sequence_control_set_ptr->sb_size_pix);
+                    //printf("---Finish coding SB (%d, %d), size %d\n", sb_origin_x, sb_origin_y, sequence_control_set_ptr->sb_size_pix);
 #endif
 
                     if (picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr != NULL) {

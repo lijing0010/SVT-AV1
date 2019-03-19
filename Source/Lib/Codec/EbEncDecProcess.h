@@ -134,7 +134,7 @@ extern "C" {
 #if !CHROMA_BLIND
         int16_t                                pred_buf_q3[CFL_BUF_SQUARE];
 #endif
-        uint16_t                               coded_area_sb;
+        uint16_t                               coded_area_sb[3];
         uint16_t                               coded_area_sb_uv;
 
 #if ENCDEC_TX_SEARCH

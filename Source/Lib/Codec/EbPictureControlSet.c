@@ -524,7 +524,16 @@ EbErrorType PictureControlSetCtor(
 
     // Encode Pass Neighbor Arrays
     return_error = NeighborArrayUnitCtor(
-        &objectPtr->ep_intra_chroma_mode_neighbor_array,
+        &objectPtr->ep_intra_chroma_mode_neighbor_array_cb,
+        MAX_PICTURE_WIDTH_SIZE >> subsampling_x,
+        MAX_PICTURE_HEIGHT_SIZE >> subsampling_y,
+        sizeof(uint8_t),
+        PU_NEIGHBOR_ARRAY_GRANULARITY,
+        PU_NEIGHBOR_ARRAY_GRANULARITY,
+        NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
+
+    return_error = NeighborArrayUnitCtor(
+        &objectPtr->ep_intra_chroma_mode_neighbor_array_cr,
         MAX_PICTURE_WIDTH_SIZE >> subsampling_x,
         MAX_PICTURE_HEIGHT_SIZE >> subsampling_y,
         sizeof(uint8_t),
