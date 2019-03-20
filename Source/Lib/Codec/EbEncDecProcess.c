@@ -640,6 +640,10 @@ static void ReconOutput(
     EbBufferHeaderType           *outputReconPtr;
     EncodeContext_t               *encode_context_ptr = sequence_control_set_ptr->encode_context_ptr;
     EbBool is16bit = (sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
+    const EbColorFormat color_format = (EbColorFormat)sequence_control_set_ptr->chroma_format_idc;
+    Av1Common  *cm  = picture_control_set_ptr->parent_pcs_ptr->av1_cm;
+    uint8_t subsampling_x = cm->subsampling_x;
+    uint8_t subsampling_y = cm->subsampling_y;
     // The totalNumberOfReconFrames counter has to be write/read protected as
     //   it is used to determine the end of the stream.  If it is not protected
     //   the encoder might not properly terminate.
@@ -729,8 +733,9 @@ static void ReconOutput(
         outputReconPtr->n_filled_len += sampleTotalCount;
 
         // U Recon Samples
-        sampleTotalCount = ((reconPtr->maxWidth - sequence_control_set_ptr->max_input_pad_right) * (reconPtr->maxHeight - sequence_control_set_ptr->max_input_pad_bottom) >> 2) << is16bit;
-        reconReadPtr = reconPtr->bufferCb + ((reconPtr->origin_y << is16bit) >> 1) * reconPtr->strideCb + ((reconPtr->origin_x << is16bit) >> 1);
+        sampleTotalCount = ((reconPtr->maxWidth - sequence_control_set_ptr->max_input_pad_right) * (reconPtr->maxHeight - sequence_control_set_ptr->max_input_pad_bottom) >> (3 - color_format)) << is16bit;
+        reconReadPtr = reconPtr->bufferCb + ((reconPtr->origin_x << is16bit) >> subsampling_x) +
+            ((reconPtr->origin_y << is16bit) >> subsampling_y) * reconPtr->strideCb;
         reconWritePtr = &(outputReconPtr->p_buffer[outputReconPtr->n_filled_len]);
 
         CHECK_REPORT_ERROR(
@@ -743,15 +748,16 @@ static void ReconOutput(
             reconReadPtr,
             reconPtr->strideCb,
             reconWritePtr,
-            (reconPtr->maxWidth - sequence_control_set_ptr->max_input_pad_right) >> 1,
-            (reconPtr->width - sequence_control_set_ptr->pad_right) >> 1,
-            (reconPtr->height - sequence_control_set_ptr->pad_bottom) >> 1,
+            (reconPtr->maxWidth - sequence_control_set_ptr->max_input_pad_right) >> subsampling_x,
+            (reconPtr->width - sequence_control_set_ptr->pad_right) >> subsampling_x,
+            (reconPtr->height - sequence_control_set_ptr->pad_bottom) >> subsampling_y,
             1 << is16bit);
         outputReconPtr->n_filled_len += sampleTotalCount;
 
         // V Recon Samples
-        sampleTotalCount = ((reconPtr->maxWidth - sequence_control_set_ptr->max_input_pad_right) * (reconPtr->maxHeight - sequence_control_set_ptr->max_input_pad_bottom) >> 2) << is16bit;
-        reconReadPtr = reconPtr->bufferCr + ((reconPtr->origin_y << is16bit) >> 1) * reconPtr->strideCr + ((reconPtr->origin_x << is16bit) >> 1);
+        sampleTotalCount = ((reconPtr->maxWidth - sequence_control_set_ptr->max_input_pad_right) * (reconPtr->maxHeight - sequence_control_set_ptr->max_input_pad_bottom) >> (3 - color_format)) << is16bit;
+        reconReadPtr = reconPtr->bufferCr + ((reconPtr->origin_x << is16bit) >> subsampling_x) +
+            ((reconPtr->origin_y << is16bit) >> subsampling_y) * reconPtr->strideCr;
         reconWritePtr = &(outputReconPtr->p_buffer[outputReconPtr->n_filled_len]);
 
         CHECK_REPORT_ERROR(
@@ -765,9 +771,9 @@ static void ReconOutput(
             reconReadPtr,
             reconPtr->strideCr,
             reconWritePtr,
-            (reconPtr->maxWidth - sequence_control_set_ptr->max_input_pad_right) >> 1,
-            (reconPtr->width - sequence_control_set_ptr->pad_right) >> 1,
-            (reconPtr->height - sequence_control_set_ptr->pad_bottom) >> 1,
+            (reconPtr->maxWidth - sequence_control_set_ptr->max_input_pad_right) >> subsampling_x,
+            (reconPtr->width - sequence_control_set_ptr->pad_right) >> subsampling_x,
+            (reconPtr->height - sequence_control_set_ptr->pad_bottom) >> subsampling_y,
             1 << is16bit);
         outputReconPtr->n_filled_len += sampleTotalCount;
         outputReconPtr->pts = picture_control_set_ptr->picture_number;

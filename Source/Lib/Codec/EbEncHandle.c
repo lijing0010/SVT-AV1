@@ -3425,13 +3425,12 @@ EbErrorType EbOutputReconBufferHeaderCtor(
 {
     EbBufferHeaderType         *reconBuffer;
     SequenceControlSet_t        *sequence_control_set_ptr = (SequenceControlSet_t*)objectInitDataPtr;
-    const uint32_t lumaSize =
-        sequence_control_set_ptr->luma_width    *
-        sequence_control_set_ptr->luma_height;
+    const EbColorFormat color_format = (EbColorFormat)sequence_control_set_ptr->chroma_format_idc;
+    const uint32_t lumaSize = sequence_control_set_ptr->luma_width * sequence_control_set_ptr->luma_height;
     // both u and v
-    const uint32_t chromaSize = lumaSize >> 1;
+    const uint32_t chromaSize = lumaSize >> (3 - color_format);
     const uint32_t tenBit = (sequence_control_set_ptr->static_config.encoder_bit_depth > 8);
-    const uint32_t frameSize = (lumaSize + chromaSize) << tenBit;
+    const uint32_t frameSize = (lumaSize + 2 * chromaSize) << tenBit;
 
     EB_MALLOC(EbBufferHeaderType*, reconBuffer, sizeof(EbBufferHeaderType), EB_N_PTR);
     *objectDblPtr = (EbPtr)reconBuffer;
