@@ -898,9 +898,9 @@ static void md_scan_all_blks(uint32_t *idx_mds, uint32_t sq_size, uint32_t x, ui
                     blk_geom_mds[*idx_mds].tx_boff_x_uv_ex[txb_itr] = offset_x * blk_geom_mds[*idx_mds].tx_width_uv_ex[txb_itr];
                     blk_geom_mds[*idx_mds].tx_boff_y_uv_ex[txb_itr] = offset_y * blk_geom_mds[*idx_mds].tx_height_uv_ex[txb_itr];
 
-                    blk_geom_mds[*idx_mds].tx_org_x_uv_ex[txb_itr] = (ROUND_UV(blk_geom_mds[*idx_mds].origin_x) >> subsampling_x) +
+                    blk_geom_mds[*idx_mds].tx_org_x_uv_ex[txb_itr] = ROUND_UV_EX(blk_geom_mds[*idx_mds].origin_x, subsampling_x) +
                         blk_geom_mds[*idx_mds].tx_boff_x_uv_ex[txb_itr];
-                    blk_geom_mds[*idx_mds].tx_org_y_uv_ex[txb_itr] = (ROUND_UV(blk_geom_mds[*idx_mds].origin_y) >> subsampling_y) +
+                    blk_geom_mds[*idx_mds].tx_org_y_uv_ex[txb_itr] = ROUND_UV_EX(blk_geom_mds[*idx_mds].origin_y, subsampling_y) +
                         blk_geom_mds[*idx_mds].tx_boff_y_uv_ex[txb_itr];
                 }
             }
