@@ -5072,6 +5072,9 @@ EbErrorType ec_update_neighbors(
     if (skipCoeff)
     {
         uint8_t dcSignLevelCoeff = 0;
+        Av1Common  *cm  = picture_control_set_ptr->parent_pcs_ptr->av1_cm;
+        uint8_t subsampling_x = cm->subsampling_x;
+        uint8_t subsampling_y = cm->subsampling_y;
 
         NeighborArrayUnitModeWrite(
             luma_dc_sign_level_coeff_neighbor_array,
@@ -5086,20 +5089,24 @@ EbErrorType ec_update_neighbors(
             NeighborArrayUnitModeWrite(
                 cb_dc_sign_level_coeff_neighbor_array,
                 (uint8_t*)&dcSignLevelCoeff,
-                ((blkOriginX >> 3) << 3) >> 1,
-                ((blkOriginY >> 3) << 3) >> 1,
-                blk_geom->bwidth_uv,
-                blk_geom->bheight_uv,
+                ((blkOriginX >> (2+subsampling_x)) << (2+subsampling_x)) >> subsampling_x,
+                ((blkOriginY >> (2+subsampling_y)) << (2+subsampling_y)) >> subsampling_y,
+                //blk_geom->bwidth_uv,
+                //blk_geom->bheight_uv,
+                subsampling_x ? blk_geom->bwidth_uv : blk_geom->bwidth_uv_ex,
+                subsampling_y ? blk_geom->bheight_uv : blk_geom->bheight_uv_ex,
                 NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
 
         if (blk_geom->has_uv_ex)
             NeighborArrayUnitModeWrite(
                 cr_dc_sign_level_coeff_neighbor_array,
                 (uint8_t*)&dcSignLevelCoeff,
-                ((blkOriginX >> 3) << 3) >> 1,
-                ((blkOriginY >> 3) << 3) >> 1,
-                blk_geom->bwidth_uv,
-                blk_geom->bheight_uv,
+                ((blkOriginX >> (2+subsampling_x)) << (2+subsampling_x)) >> subsampling_x,
+                ((blkOriginY >> (2+subsampling_y)) << (2+subsampling_y)) >> subsampling_y,
+                //blk_geom->bwidth_uv,
+                //blk_geom->bheight_uv,
+                subsampling_x ? blk_geom->bwidth_uv : blk_geom->bwidth_uv_ex,
+                subsampling_y ? blk_geom->bheight_uv : blk_geom->bheight_uv_ex,
                 NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
 
         context_ptr->coded_area_sb[0] += blk_geom->bwidth * blk_geom->bheight;
