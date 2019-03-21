@@ -9494,8 +9494,8 @@ extern void av1_predict_intra_block(
         //pred_buf_x_offest = plane ? ((bl_org_x_pict >> 3) << 3) >> cm->subsampling_x : bl_org_x_pict;
         //pred_buf_y_offest = plane ? ((bl_org_y_pict >> 3) << 3) >> cm->subsampling_y : bl_org_y_pict;
 
-        pred_buf_x_offest = plane ? ((((bl_org_x_pict >> 3) << 3) >> cm->subsampling_x) + bl_org_x_mb) : (bl_org_x_pict + bl_org_x_mb);
-        pred_buf_y_offest = plane ? ((((bl_org_y_pict >> 3) << 3) >> cm->subsampling_y) + bl_org_y_mb) : (bl_org_y_pict + bl_org_y_mb);
+        pred_buf_x_offest = plane ? ROUND_UV_EX(bl_org_x_pict, cm->subsampling_x) + bl_org_x_mb : (bl_org_x_pict + bl_org_x_mb);
+        pred_buf_y_offest = plane ? ROUND_UV_EX(bl_org_y_pict, cm->subsampling_y) + bl_org_y_mb : (bl_org_y_pict + bl_org_y_mb);
 
         recon_origin_x = plane ? (reconBuffer->origin_x >> cm->subsampling_x) : reconBuffer->origin_x;
         recon_origin_y = plane ? (reconBuffer->origin_y >> cm->subsampling_y) : reconBuffer->origin_y;

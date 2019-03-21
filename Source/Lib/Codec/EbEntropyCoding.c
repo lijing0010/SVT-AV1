@@ -771,9 +771,9 @@ static EbErrorType Av1EncodeCoeff1D(
             assert(blk_geom->tx_org_x[txb_itr] - blk_geom->origin_x == blk_geom->tx_boff_x[txb_itr]);
             assert(blk_geom->tx_org_y[txb_itr] - blk_geom->origin_y == blk_geom->tx_boff_y[txb_itr]);
 
-            printf("write luma, txb_itr %d, nz_coeff %d, txb is %dx%d\n",
-                    txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[0],
-                    tx_size_wide[tx_size], tx_size_high[tx_size]);
+            //printf("write luma, txb_itr %d, nz_coeff %d, txb is %dx%d\n",
+            //        txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[0],
+            //        tx_size_wide[tx_size], tx_size_high[tx_size]);
             cul_level_y =
                 Av1WriteCoeffsTxb1D(
                     pcsPtr->parent_pcs_ptr,
@@ -830,9 +830,9 @@ static EbErrorType Av1EncodeCoeff1D(
                     &txbSkipCtx,
                     &dcSignCtx);
 
-            printf("write cb, txb_itr %d, nz_coeff %d, tx size %dx%d\n",
-                    txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[1],
-                    tx_size_wide[chroma_tx_size], tx_size_high[chroma_tx_size]);
+            //printf("write cb, txb_itr %d, nz_coeff %d, tx size %dx%d\n",
+            //        txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[1],
+            //        tx_size_wide[chroma_tx_size], tx_size_high[chroma_tx_size]);
             cul_level_cb =
                 Av1WriteCoeffsTxb1D(
                         pcsPtr->parent_pcs_ptr,
@@ -882,9 +882,9 @@ static EbErrorType Av1EncodeCoeff1D(
                     &txbSkipCtx,
                     &dcSignCtx);
 
-            printf("write cr, txb_itr %d, nz_coeff %d, tx size %dx%d\n",
-                    txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[2],
-                    tx_size_wide[chroma_tx_size], tx_size_high[chroma_tx_size]);
+            //printf("write cr, txb_itr %d, nz_coeff %d, tx size %dx%d\n",
+            //        txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[2],
+            //        tx_size_wide[chroma_tx_size], tx_size_high[chroma_tx_size]);
             cul_level_cr =
                 Av1WriteCoeffsTxb1D(
                         pcsPtr->parent_pcs_ptr,
@@ -5672,8 +5672,8 @@ EB_EXTERN EbErrorType write_sb(
                 codeCuCond = EB_TRUE;
         }
 
-        printf("Processing blk (%d, %d), bsize is %d, partition is %d, codeCuCond %d\n",
-                cu_origin_x, cu_origin_y, bsize, tbPtr->cu_partition_array[cu_index], codeCuCond);
+        //printf("Processing blk (%d, %d), bsize is %d, partition is %d, codeCuCond %d\n",
+        //        cu_origin_x, cu_origin_y, bsize, tbPtr->cu_partition_array[cu_index], codeCuCond);
 
         if (codeCuCond) {
             uint32_t blkOriginX = cu_origin_x;

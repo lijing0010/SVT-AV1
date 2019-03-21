@@ -104,14 +104,18 @@ static void dump_block_from_desc(int txw, int txh, EbPictureBufferDesc_t *buf_tm
     } else if (componentMask == 1) {
         buf=buf_tmp->bufferCb;
         stride=buf_tmp->strideCb;
+        startX=ROUND_UV_EX(startX, subWidthCMinus1);
+        startY=ROUND_UV_EX(startY, subHeightCMinus1);
     } else if (componentMask == 2) {
         buf=buf_tmp->bufferCr;
         stride=buf_tmp->strideCr;
+        startX=ROUND_UV_EX(startX, subWidthCMinus1);
+        startY=ROUND_UV_EX(startY, subHeightCMinus1);
     } else {
         assert(0);
     }
 
-    int offset=((stride*(buf_tmp->origin_y + startY))>>subHeightCMinus1) + ((startX+buf_tmp->origin_x)>>subWidthCMinus1);
+    int offset=((stride*((buf_tmp->origin_y>>subHeightCMinus1) + startY))) + (startX+(buf_tmp->origin_x>>subWidthCMinus1));
     printf("bitDepth is %d, dump block size %dx%d at offset %d, (%d, %d), component is %s\n",
             bitDepth, txw, txh, offset, startX, startY, componentMask==0?"luma":(componentMask==1?"Cb":"Cr"));
             unsigned char* start_tmp=buf+offset*val;
@@ -661,8 +665,8 @@ static void InitNeighborArray(
     uint8_t     *top_neigh_array,
     uint8_t     *left_neigh_array)
 {
-    uint32_t cu_originy_uv = (context_ptr->cu_origin_y >> 3 << 3) >> subsampling_y;
-    uint32_t cu_originx_uv = (context_ptr->cu_origin_x >> 3 << 3) >> subsampling_x;
+    uint32_t cu_originx_uv = ROUND_UV_EX(context_ptr->cu_origin_x ,subsampling_x);
+    uint32_t cu_originy_uv = ROUND_UV_EX(context_ptr->cu_origin_y ,subsampling_y);
     if (plane == 0) {
         if (context_ptr->cu_origin_y != 0)
             memcpy((uint8_t*)top_neigh_array + 1, recon_neighbor_array->topArray + context_ptr->cu_origin_x, blk_geom->bwidth * 2);
@@ -886,20 +890,20 @@ static void Av1EncodeLoop(
     }
 
 #ifdef DEBUG_REF_INFO
-    if (sb_origin_x == 0 && sb_origin_y == 0) {
-    printf("shape_luma %d, shape chroma %d, nz_coef_count (%d, %d, %d), txb_itr is %d\n",
-            txb_ptr->trans_coeff_shape_luma,
-            txb_ptr->trans_coeff_shape_chroma,
-            txb_ptr->nz_coef_count[0],
-            txb_ptr->nz_coef_count[1],
-            txb_ptr->nz_coef_count[2], txb_itr);
-    {
-        int originX = origin_x; 
-        int originY = origin_y; 
-        printf("\nAbout to dump coeff for (%d, %d) at plane %d, size %dx%d\n",
-                originX, originY, plane, txw, txh);
-        //dump_block_from_desc(txw, txh, coeffSamplesTB, originX, originY, plane);
-    }
+    if (sb_origin_x == 0 && sb_origin_y == 1) {
+        printf("shape_luma %d, shape chroma %d, nz_coef_count (%d, %d, %d), txb_itr is %d\n",
+                txb_ptr->trans_coeff_shape_luma,
+                txb_ptr->trans_coeff_shape_chroma,
+                txb_ptr->nz_coef_count[0],
+                txb_ptr->nz_coef_count[1],
+                txb_ptr->nz_coef_count[2], txb_itr);
+        {
+            int originX = origin_x; 
+            int originY = origin_y; 
+            printf("\nAbout to dump coeff for (%d, %d) at plane %d, size %dx%d\n",
+                    originX, originY, plane, txw, txh);
+            //dump_block_from_desc(txw, txh, coeffSamplesTB, originX, originY, plane);
+        }
     }
 #endif
     return;
@@ -3185,8 +3189,8 @@ EB_EXTERN void AV1EncodePass(
                                     // 4x4 case for chroma, its neighbor mode is same as 1st luma or last luma?
                                     subsampling_x = (color_format == EB_YUV444 ? 1 : 2) - 1;
                                     subsampling_y = (color_format >= EB_YUV422 ? 1 : 2) - 1;
-                                    pu_block_origin_x = (((context_ptr->cu_origin_x >> 3) << 3) >> subsampling_x) + col;
-                                    pu_block_origin_y = (((context_ptr->cu_origin_y >> 3) << 3) >> subsampling_y) + row;
+                                    pu_block_origin_x = ROUND_UV_EX(context_ptr->cu_origin_x, subsampling_x) + col;
+                                    pu_block_origin_y = ROUND_UV_EX(context_ptr->cu_origin_y, subsampling_y) + row;
                                 }
                                 pu_ptr = cu_ptr->prediction_unit_array;
 
@@ -3265,13 +3269,13 @@ EB_EXTERN void AV1EncodePass(
                                             row);
 #ifdef DEBUG_REF_INFO
                                     {
-                                        int originX = pu_block_origin_x;
-                                        int originY = pu_block_origin_y;
-                                        //if (originX == 64 && originY == 0 && plane == 1)
+                                        int originX = context_ptr->cu_origin_x;
+                                        int originY = context_ptr->cu_origin_y;
+                                        //if (originX == 84 && originY == 88 && plane == 1)
                                         {
-                                            //printf("\nAbout to dump pred for (%d, %d) at plane %d, size %dx%d\n",
-                                            //        originX, originY, plane, txw, txh);
-                                            //dump_block_from_desc(txw, txh, reconBuffer, originX, originY, plane);
+                                            printf("\nAbout to dump pred for (%d, %d) at plane %d, size %dx%d, pu offset (%d, %d)\n",
+                                                    originX, originY, plane, txw, txh, col, row);
+                                            dump_block_from_desc(txw, txh, reconBuffer, originX, originY, plane);
                                         }
                                     }
 #endif
