@@ -35,6 +35,64 @@
 
 #define DEBUG_REF_INFO
 #ifdef DEBUG_REF_INFO
+static void dump_buf_desc_to_file(EbPictureBufferDesc_t* reconBuffer, const char* filename, int POC)
+{
+    const int bitDepth = reconBuffer->bit_depth;
+    const int unitSize = ((bitDepth == 8) ? 1 : 2);
+    const int colorFormat = reconBuffer->color_format;    // Chroma format
+    const int subWidthCMinus1 = (colorFormat == EB_YUV444 ? 1 : 2) - 1;
+    const int subHeightCMinus1 = (colorFormat >= EB_YUV422 ? 1 : 2) - 1;
+
+    if (POC == 0) {
+        FILE* tmp=fopen(filename, "w");
+        fclose(tmp);
+    }
+    FILE* fp = fopen(filename, "r+");
+    assert(fp);
+    long descSize = reconBuffer->height * reconBuffer->width; //Luma
+    descSize += 2 * ((reconBuffer->height * reconBuffer->width) >> (3 - reconBuffer->color_format)); //Chroma
+    descSize = descSize * unitSize;
+    long offset = descSize * POC;
+    fseek(fp, 0, SEEK_END);
+    long fileSize = ftell(fp);
+    if (offset > fileSize) {
+        int count = (offset - fileSize) / descSize;
+        char *tmpBuf = (char*)malloc(descSize);
+        for (int i=0;i<count;i++) {
+            fwrite(tmpBuf, 1, descSize, fp);
+        }
+        free(tmpBuf);
+    }
+    fseek(fp, offset, SEEK_SET);
+    assert(ftell(fp) == offset);
+
+
+    unsigned char* luma_ptr = reconBuffer->bufferY +
+        ((reconBuffer->strideY * (reconBuffer->origin_y) + reconBuffer->origin_x) * unitSize);
+    unsigned char* cb_ptr = reconBuffer->bufferCb +
+        ((reconBuffer->strideCb * (reconBuffer->origin_y >> subHeightCMinus1) + (reconBuffer->origin_x>>subWidthCMinus1)) * unitSize);
+    unsigned char* cr_ptr = reconBuffer->bufferCr +
+        ((reconBuffer->strideCr * (reconBuffer->origin_y >> subHeightCMinus1) + (reconBuffer->origin_x>>subWidthCMinus1)) * unitSize);
+
+    for (int i=0; i<reconBuffer->height; i++) {
+        fwrite(luma_ptr, 1, reconBuffer->width * unitSize, fp);
+        luma_ptr += reconBuffer->strideY * unitSize;
+    }
+
+    for (int i=0; i<reconBuffer->height >> subHeightCMinus1 ;i++) {
+        fwrite(cb_ptr, 1, (reconBuffer->width >> subWidthCMinus1) * unitSize, fp);
+        cb_ptr += reconBuffer->strideCb * unitSize;
+    }
+
+    for (int i=0;i<reconBuffer->height>>subHeightCMinus1;i++) {
+        fwrite(cr_ptr, 1, (reconBuffer->width >> subWidthCMinus1) * unitSize, fp);
+        cr_ptr += reconBuffer->strideCr * unitSize;
+    }
+    fseek(fp, 0, SEEK_END);
+    //printf("After write POC %d, filesize %d\n", POC, ftell(fp));
+    fclose(fp);
+}
+
 static void dump_left_array(NeighborArrayUnit_t *neighbor, int y_pos, int size)
 {
     int unitSize = neighbor->unitSize;
@@ -3271,7 +3329,7 @@ EB_EXTERN void AV1EncodePass(
                                     {
                                         int originX = context_ptr->cu_origin_x;
                                         int originY = context_ptr->cu_origin_y;
-                                        //if (originX == 84 && originY == 88 && plane == 1)
+                                        if (originX == 0 && originY == 496 && plane == 1)
                                         {
                                             printf("\nAbout to dump pred for (%d, %d) at plane %d, size %dx%d, pu offset (%d, %d)\n",
                                                     originX, originY, plane, txw, txh, col, row);
@@ -3340,10 +3398,10 @@ EB_EXTERN void AV1EncodePass(
                                     {
                                         int originX = pu_block_origin_x;
                                         int originY = pu_block_origin_y;
-                                        //if (originX == 0 && originY == 0)
+                                        if (originX == 0 && originY == 496 && plane == 1)
                                         {
-                                            //printf("\nAbout to dump recon for (%d, %d) at plane %d\n", originX, originY, plane);
-                                            //dump_block_from_desc(txw, txh, reconBuffer, originX, originY, plane);
+                                            printf("\nAbout to dump recon for (%d, %d) at plane %d\n", originX, originY, plane);
+                                            dump_block_from_desc(txw, txh, reconBuffer, originX, originY, plane);
                                         }
                                     }
 #endif
@@ -4033,9 +4091,19 @@ Jing: Disable it first
     } // CU Loop
 
     sb_ptr->tot_final_cu = final_cu_itr;
+
+#ifdef DEBUG_REF_INFO
+    static int sb_index = 0;
+    if (sb_index == sequence_control_set_ptr->sb_tot_cnt - 1) {
+        dump_buf_desc_to_file(reconBuffer, "internal_recon.yuv", 0);
+    } else {
+        sb_index++;
+    }
+#endif
 #if AV1_LF
     // First Pass Deblocking
     if (dlfEnableFlag && picture_control_set_ptr->parent_pcs_ptr->loop_filter_mode == 1) {
+        assert(0);
         if (picture_control_set_ptr->parent_pcs_ptr->lf.filter_level[0] || picture_control_set_ptr->parent_pcs_ptr->lf.filter_level[1]) {
             uint8_t LastCol = ((sb_origin_x)+sb_width == sequence_control_set_ptr->luma_width) ? 1 : 0;
             loop_filter_sb(
