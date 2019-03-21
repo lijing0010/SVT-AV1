@@ -1155,6 +1155,9 @@ void PadRefAndSetFlags(
     EbPictureBufferDesc_t *refPic16BitPtr = (EbPictureBufferDesc_t*)referenceObject->referencePicture16bit;
     EbBool                is16bit = (sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
 
+    uint16_t subsampling_x = sequence_control_set_ptr->subsampling_x;
+    uint16_t subsampling_y = sequence_control_set_ptr->subsampling_y;
+
     if (!is16bit) {
         // Y samples
         generate_padding(
@@ -1169,19 +1172,19 @@ void PadRefAndSetFlags(
         generate_padding(
             refPicPtr->bufferCb,
             refPicPtr->strideCb,
-            refPicPtr->width >> 1,
-            refPicPtr->height >> 1,
-            refPicPtr->origin_x >> 1,
-            refPicPtr->origin_y >> 1);
+            refPicPtr->width >> subsampling_x,
+            refPicPtr->height >> subsampling_y,
+            refPicPtr->origin_x >> subsampling_x,
+            refPicPtr->origin_y >> subsampling_y);
 
         // Cr samples
         generate_padding(
             refPicPtr->bufferCr,
             refPicPtr->strideCr,
-            refPicPtr->width >> 1,
-            refPicPtr->height >> 1,
-            refPicPtr->origin_x >> 1,
-            refPicPtr->origin_y >> 1);
+            refPicPtr->width >> subsampling_x,
+            refPicPtr->height >> subsampling_y,
+            refPicPtr->origin_x >> subsampling_x,
+            refPicPtr->origin_y >> subsampling_y);
     }
 
     //We need this for MCP
@@ -1199,19 +1202,19 @@ void PadRefAndSetFlags(
         generate_padding16_bit(
             refPic16BitPtr->bufferCb,
             refPic16BitPtr->strideCb << 1,
-            refPic16BitPtr->width,
-            refPic16BitPtr->height >> 1,
-            refPic16BitPtr->origin_x,
-            refPic16BitPtr->origin_y >> 1);
+            refPic16BitPtr->width << (1 - subsampling_x),
+            refPic16BitPtr->height >> subsampling_y,
+            refPic16BitPtr->origin_x << (1 - subsampling_x),
+            refPic16BitPtr->origin_y >> subsampling_y);
 
         // Cr samples
         generate_padding16_bit(
             refPic16BitPtr->bufferCr,
             refPic16BitPtr->strideCr << 1,
-            refPic16BitPtr->width,
-            refPic16BitPtr->height >> 1,
-            refPic16BitPtr->origin_x,
-            refPic16BitPtr->origin_y >> 1);
+            refPic16BitPtr->width << (1 - subsampling_x),
+            refPic16BitPtr->height >> subsampling_y,
+            refPic16BitPtr->origin_x << (1 - subsampling_x),
+            refPic16BitPtr->origin_y >> subsampling_y);
 
     }
 
@@ -1910,16 +1913,22 @@ void* EncDecKernel(void *input_ptr)
             if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE && picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr)
             {
                 //Jing: TODO
+                uint16_t subsampling_x = sequence_control_set_ptr->subsampling_x;
+                uint16_t subsampling_y = sequence_control_set_ptr->subsampling_y;
                 EbPictureBufferDesc_t *inputPicturePtr = (EbPictureBufferDesc_t*)picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr;
                 const uint32_t  SrclumaOffSet = inputPicturePtr->origin_x + inputPicturePtr->origin_y    *inputPicturePtr->strideY;
-                const uint32_t  SrccbOffset = (inputPicturePtr->origin_x >> 1) + (inputPicturePtr->origin_y >> 1)*inputPicturePtr->strideCb;
-                const uint32_t  SrccrOffset = (inputPicturePtr->origin_x >> 1) + (inputPicturePtr->origin_y >> 1)*inputPicturePtr->strideCr;
+                const uint32_t  SrccbOffset = (inputPicturePtr->origin_x >> subsampling_x) +
+                    (inputPicturePtr->origin_y >> subsampling_y) * inputPicturePtr->strideCb;
+                const uint32_t  SrccrOffset = (inputPicturePtr->origin_x >> subsampling_x) +
+                    (inputPicturePtr->origin_y >> subsampling_y) * inputPicturePtr->strideCr;
 
                 EbReferenceObject_t   *referenceObject = (EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->objectPtr;
                 EbPictureBufferDesc_t *refDenPic = referenceObject->refDenSrcPicture;
                 const uint32_t           ReflumaOffSet = refDenPic->origin_x + refDenPic->origin_y    *refDenPic->strideY;
-                const uint32_t           RefcbOffset = (refDenPic->origin_x >> 1) + (refDenPic->origin_y >> 1)*refDenPic->strideCb;
-                const uint32_t           RefcrOffset = (refDenPic->origin_x >> 1) + (refDenPic->origin_y >> 1)*refDenPic->strideCr;
+                const uint32_t           RefcbOffset = (refDenPic->origin_x >> subsampling_x) +
+                    (refDenPic->origin_y >> subsampling_y) * refDenPic->strideCb;
+                const uint32_t           RefcrOffset = (refDenPic->origin_x >> subsampling_x) +
+                    (refDenPic->origin_y >> subsampling_y) * refDenPic->strideCr;
 
                 uint16_t  verticalIdx;
 
@@ -1930,15 +1939,15 @@ void* EncDecKernel(void *input_ptr)
                         inputPicturePtr->width);
                 }
 
-                for (verticalIdx = 0; verticalIdx < inputPicturePtr->height / 2; ++verticalIdx)
+                for (verticalIdx = 0; verticalIdx < inputPicturePtr->height >> subsampling_y; ++verticalIdx)
                 {
                     EB_MEMCPY(refDenPic->bufferCb + RefcbOffset + verticalIdx * refDenPic->strideCb,
                         inputPicturePtr->bufferCb + SrccbOffset + verticalIdx * inputPicturePtr->strideCb,
-                        inputPicturePtr->width / 2);
+                        inputPicturePtr->width >> subsampling_x);
 
                     EB_MEMCPY(refDenPic->bufferCr + RefcrOffset + verticalIdx * refDenPic->strideCr,
                         inputPicturePtr->bufferCr + SrccrOffset + verticalIdx * inputPicturePtr->strideCr,
-                        inputPicturePtr->width / 2);
+                        inputPicturePtr->width >> subsampling_x);
                 }
 
                 generate_padding(
@@ -1952,18 +1961,18 @@ void* EncDecKernel(void *input_ptr)
                 generate_padding(
                     refDenPic->bufferCb,
                     refDenPic->strideCb,
-                    refDenPic->width >> 1,
-                    refDenPic->height >> 1,
-                    refDenPic->origin_x >> 1,
-                    refDenPic->origin_y >> 1);
+                    refDenPic->width >> subsampling_x,
+                    refDenPic->height >> subsampling_y,
+                    refDenPic->origin_x >> subsampling_x,
+                    refDenPic->origin_y >> subsampling_y);
 
                 generate_padding(
                     refDenPic->bufferCr,
                     refDenPic->strideCr,
-                    refDenPic->width >> 1,
-                    refDenPic->height >> 1,
-                    refDenPic->origin_x >> 1,
-                    refDenPic->origin_y >> 1);
+                    refDenPic->width >> subsampling_x,
+                    refDenPic->height >> subsampling_y,
+                    refDenPic->origin_x >> subsampling_x,
+                    refDenPic->origin_y >> subsampling_y);
             }
             if (sequence_control_set_ptr->static_config.recon_enabled) {
                 ReconOutput(

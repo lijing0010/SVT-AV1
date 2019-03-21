@@ -3329,7 +3329,7 @@ EB_EXTERN void AV1EncodePass(
                                     {
                                         int originX = context_ptr->cu_origin_x;
                                         int originY = context_ptr->cu_origin_y;
-                                        if (originX == 0 && originY == 496 && plane == 1)
+                                        if (originX == 0 && originY == 448 && plane == 1)
                                         {
                                             printf("\nAbout to dump pred for (%d, %d) at plane %d, size %dx%d, pu offset (%d, %d)\n",
                                                     originX, originY, plane, txw, txh, col, row);
@@ -3398,7 +3398,7 @@ EB_EXTERN void AV1EncodePass(
                                     {
                                         int originX = pu_block_origin_x;
                                         int originY = pu_block_origin_y;
-                                        if (originX == 0 && originY == 496 && plane == 1)
+                                        if (originX == 0 && originY == 448 && plane == 1)
                                         {
                                             printf("\nAbout to dump recon for (%d, %d) at plane %d\n", originX, originY, plane);
                                             dump_block_from_desc(txw, txh, reconBuffer, originX, originY, plane);
