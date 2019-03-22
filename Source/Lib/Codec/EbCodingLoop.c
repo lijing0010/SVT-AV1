@@ -3119,10 +3119,13 @@ EB_EXTERN void AV1EncodePass(
         if (part != PARTITION_SPLIT) {
             int32_t offset_d1 = ns_blk_offset[(int32_t)part]; //cu_ptr->best_d1_blk; // TOCKECK
             int32_t num_d1_block = ns_blk_num[(int32_t)part]; // context_ptr->blk_geom->totns; // TOCKECK
+            assert(part == PARTITION_NONE);
 
             for (int32_t d1_itr = (int32_t)blk_it + offset_d1; d1_itr < (int32_t)blk_it + offset_d1 + num_d1_block; d1_itr++) {
 
                 const BlockGeom * blk_geom = context_ptr->blk_geom = Get_blk_geom_mds(d1_itr);
+                assert(blk_geom->valid_block == 1);
+                assert(blk_geom->bwidth == blk_geom->bheight);
 
                 // PU Stack variables
                 PredictionUnit_t        *pu_ptr = (PredictionUnit_t *)EB_NULL; //  done
@@ -3370,12 +3373,13 @@ EB_EXTERN void AV1EncodePass(
 
 #ifdef DEBUG_REF_INFO
                                     {
-                                        int originX = pu_block_origin_x;
-                                        int originY = pu_block_origin_y;
-                                        //if (originX == 64 && originY == 0 && plane > 0)
+                                        int originX = context_ptr->cu_origin_x;
+                                        int originY = context_ptr->cu_origin_y;
+                                        if (originX == 128 && originY == 320)// && plane > 0)
                                         {
-                                            //printf("\nAbout to dump coeff for (%d, %d) at plane %d\n", originX, originY, plane);
-                                            //dump_block_from_desc(txw, txh, coeff_buffer_sb, originX, originY, plane);
+                                            printf("\nAbout to dump coeff for (%d, %d) at plane %d, tx size %d\n",
+                                                    originX, originY, plane, tx_size);
+                                            dump_block_from_desc(txw, txh, coeff_buffer_sb, originX, originY, plane);
                                         }
                                     }
 #endif
@@ -3433,11 +3437,12 @@ EB_EXTERN void AV1EncodePass(
                                     cu_ptr->block_has_coeff = cu_ptr->block_has_coeff |
                                         cu_ptr->transform_unit_array[txb_itr[plane]].y_has_coeff;
                                 } else if (plane == 1 && cu_ptr->transform_unit_array[txb_itr[plane]].u_has_coeff) {
-                                        cu_ptr->transform_unit_array[0].u_has_coeff = EB_TRUE;
+                                        //Jing: why here? comment first, may be useful for inter with 128x128
+                                        //cu_ptr->transform_unit_array[0].u_has_coeff = EB_TRUE;
                                         cu_ptr->block_has_coeff = cu_ptr->block_has_coeff |
                                             cu_ptr->transform_unit_array[txb_itr[plane]].u_has_coeff;
                                 } else if (plane == 2 && cu_ptr->transform_unit_array[txb_itr[plane]].v_has_coeff) {
-                                        cu_ptr->transform_unit_array[0].v_has_coeff = EB_TRUE;
+                                        //cu_ptr->transform_unit_array[0].v_has_coeff = EB_TRUE;
                                         cu_ptr->block_has_coeff = cu_ptr->block_has_coeff |
                                             cu_ptr->transform_unit_array[txb_itr[plane]].v_has_coeff;
                                 }
@@ -4095,7 +4100,7 @@ Jing: Disable it first
 #ifdef DEBUG_REF_INFO
     static int sb_index = 0;
     if (sb_index == sequence_control_set_ptr->sb_tot_cnt - 1) {
-        dump_buf_desc_to_file(reconBuffer, "internal_recon.yuv", 0);
+        //dump_buf_desc_to_file(reconBuffer, "internal_recon.yuv", 0);
     } else {
         sb_index++;
     }

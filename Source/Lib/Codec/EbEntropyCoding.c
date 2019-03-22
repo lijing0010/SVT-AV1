@@ -710,9 +710,6 @@ int32_t  Av1WriteCoeffsTxb1D(
     // DC value
     set_dc_sign(&cul_level, coeffBufferPtr[0]);
     return cul_level;
-
-
-
 }
 
 /************************************
@@ -813,6 +810,14 @@ static EbErrorType Av1EncodeCoeff1D(
 
     // UV plane
     if (blk_geom->has_uv_ex) {
+        if (blk_geom->txb_count[1] > 1) {
+            printf("txb count is (%d, %d)\n", blk_geom->txb_count[0], blk_geom->txb_count[1]);
+            printf("nz Cb: %d, %d, Cr: %d, %d\n",
+                    cu_ptr->transform_unit_array[0].nz_coef_count[1],
+                    cu_ptr->transform_unit_array[1].nz_coef_count[1],
+                    cu_ptr->transform_unit_array[0].nz_coef_count[2],
+                    cu_ptr->transform_unit_array[1].nz_coef_count[2]);
+        }
         //Cb
         for (txb_itr = 0; txb_itr < blk_geom->txb_count[1]; txb_itr++) {
             const TxSize chroma_tx_size = blk_geom->txsize_uv_ex[txb_itr];
@@ -862,11 +867,14 @@ static EbErrorType Av1EncodeCoeff1D(
                     NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
 
             context_ptr->coded_area_sb[1] += blk_geom->tx_width_uv_ex[txb_itr] * blk_geom->tx_height_uv_ex[txb_itr]; //Jing: double check here
+            if (blk_geom->txb_count[1] > 1) {
+                printf("coded_area_sb increase %d\n", blk_geom->tx_width_uv_ex[txb_itr] * blk_geom->tx_height_uv_ex[txb_itr]);
+                printf("cur_level_cb is %d\n", dcSignLevelCoeff);
+            }
         }
 
         // Cr
         for (txb_itr = 0; txb_itr < blk_geom->txb_count[1]; txb_itr++) {
-
             const TxSize chroma_tx_size = blk_geom->txsize_uv_ex[txb_itr];
             int32_t *coeffBuffer = (int32_t*)coeffPtr->bufferCr + context_ptr->coded_area_sb[2];
             int16_t txbSkipCtx = 0;
@@ -877,7 +885,7 @@ static EbErrorType Av1EncodeCoeff1D(
                     cr_dc_sign_level_coeff_neighbor_array,
                     ROUND_UV_EX(cu_origin_x, subsampling_x) + blk_geom->tx_boff_x_uv_ex[txb_itr],
                     ROUND_UV_EX(cu_origin_y, subsampling_y) + blk_geom->tx_boff_y_uv_ex[txb_itr],
-                    blk_geom->bsize_uv,
+                    blk_geom->bsize_uv_ex,
                     chroma_tx_size,
                     &txbSkipCtx,
                     &dcSignCtx);
@@ -1015,8 +1023,10 @@ static void EncodePartitionAv1(
         return;
     }
 
+    assert(p == PARTITION_SPLIT || p == PARTITION_NONE);
     if (hasRows && hasCols) {
-
+        //printf("--Encode partition size %d, pos (%d, %d), ctx is %d\n",
+        //        bsize, cu_origin_x, cu_origin_y, contextIndex - bsl * PARTITION_PLOFFSET);
         aom_write_symbol(
             ecWriter,
             p,
@@ -5672,8 +5682,8 @@ EB_EXTERN EbErrorType write_sb(
                 codeCuCond = EB_TRUE;
         }
 
-        //printf("Processing blk (%d, %d), bsize is %d, partition is %d, codeCuCond %d\n",
-        //        cu_origin_x, cu_origin_y, bsize, tbPtr->cu_partition_array[cu_index], codeCuCond);
+        printf("Processing blk (%d, %d), bsize is %d, partition is %d\n",
+                cu_origin_x, cu_origin_y, bsize, tbPtr->cu_partition_array[cu_index]);
 
         if (codeCuCond) {
             uint32_t blkOriginX = cu_origin_x;
@@ -5729,6 +5739,7 @@ EB_EXTERN EbErrorType write_sb(
                 break;
 
             case PARTITION_HORZ:
+                assert(0);
                 write_modes_b(
                     picture_control_set_ptr,
                     context_ptr,
@@ -5751,6 +5762,7 @@ EB_EXTERN EbErrorType write_sb(
                 break;
 
             case PARTITION_VERT:
+                assert(0);
                 write_modes_b(
                     picture_control_set_ptr,
                     context_ptr,
@@ -5773,6 +5785,7 @@ EB_EXTERN EbErrorType write_sb(
             case PARTITION_SPLIT:
                 break;
             case PARTITION_HORZ_A:
+                assert(0);
                 write_modes_b(
                     picture_control_set_ptr,
                     context_ptr,
@@ -5803,6 +5816,7 @@ EB_EXTERN EbErrorType write_sb(
 
                 break;
             case PARTITION_HORZ_B:
+                assert(0);
                 write_modes_b(
                     picture_control_set_ptr,
                     context_ptr,
@@ -5833,6 +5847,7 @@ EB_EXTERN EbErrorType write_sb(
 
                 break;
             case PARTITION_VERT_A:
+                assert(0);
                 write_modes_b(
                     picture_control_set_ptr,
                     context_ptr,
@@ -5863,6 +5878,7 @@ EB_EXTERN EbErrorType write_sb(
 
                 break;
             case PARTITION_VERT_B:
+                assert(0);
                 write_modes_b(
                     picture_control_set_ptr,
                     context_ptr,
@@ -5893,6 +5909,7 @@ EB_EXTERN EbErrorType write_sb(
 
                 break;
             case PARTITION_HORZ_4:
+                assert(0);
                 for (int32_t i = 0; i < 4; ++i) {
                     int32_t this_mi_row = mi_row + i * quarter_step;
                     if (i > 0 && this_mi_row >= cm->mi_rows) break;
@@ -5911,6 +5928,7 @@ EB_EXTERN EbErrorType write_sb(
                 }
                 break;
             case PARTITION_VERT_4:
+                assert(0);
                 for (int32_t i = 0; i < 4; ++i) {
                     int32_t this_mi_col = mi_col + i * quarter_step;
                     if (i > 0 && this_mi_col >= cm->mi_cols) break;
