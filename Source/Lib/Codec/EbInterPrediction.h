@@ -46,6 +46,7 @@ extern "C" {
 #endif
     EbErrorType av1_inter_prediction(
         PictureControlSet_t                    *picture_control_set_ptr,
+        STAGE                                   stage,
         uint32_t                                interp_filters,
         CodingUnit_t                           *cu_ptr,
         uint8_t                                 ref_frame_type,
@@ -111,6 +112,7 @@ extern "C" {
         uint16_t                                pu_origin_y,
         CodingUnit_t                           *cu_ptr,
         const BlockGeom                        *blk_geom,
+        const Av1Common                        *cm,
         EbPictureBufferDesc_t                  *ref_pic_list0,
         EbPictureBufferDesc_t                  *prediction_ptr,
         uint16_t                                dst_origin_x,

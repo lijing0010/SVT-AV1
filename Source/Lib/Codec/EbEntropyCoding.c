@@ -27,6 +27,8 @@
 
 #include "aom_dsp_rtcd.h"
 
+//#define DUMP_ENTROPY
+
 #define S32 32*32
 #define S16 16*16
 #define S8  8*8
@@ -388,8 +390,6 @@ void GetTxbCtx(
             *txb_skip_ctx = 0;
         }
         else {
-            //Jing:TODO only works here for inter
-            assert(0);
             static const uint8_t skip_contexts[5][5] = { { 1, 2, 2, 2, 3 },
             { 1, 4, 4, 4, 5 },
             { 1, 4, 4, 4, 5 },
@@ -768,9 +768,11 @@ static EbErrorType Av1EncodeCoeff1D(
             assert(blk_geom->tx_org_x[txb_itr] - blk_geom->origin_x == blk_geom->tx_boff_x[txb_itr]);
             assert(blk_geom->tx_org_y[txb_itr] - blk_geom->origin_y == blk_geom->tx_boff_y[txb_itr]);
 
-            //printf("write luma, txb_itr %d, nz_coeff %d, txb is %dx%d\n",
-            //        txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[0],
-            //        tx_size_wide[tx_size], tx_size_high[tx_size]);
+#ifdef DUMP_ENTROPY
+            printf("write luma, txb_itr %d, nz_coeff %d, txb is %dx%d\n",
+                    txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[0],
+                    tx_size_wide[tx_size], tx_size_high[tx_size]);
+#endif
             cul_level_y =
                 Av1WriteCoeffsTxb1D(
                     pcsPtr->parent_pcs_ptr,
@@ -835,9 +837,11 @@ static EbErrorType Av1EncodeCoeff1D(
                     &txbSkipCtx,
                     &dcSignCtx);
 
-            //printf("write cb, txb_itr %d, nz_coeff %d, tx size %dx%d\n",
-            //        txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[1],
-            //        tx_size_wide[chroma_tx_size], tx_size_high[chroma_tx_size]);
+#ifdef DUMP_ENTROPY
+            printf("write cb, txb_itr %d, nz_coeff %d, tx size %dx%d\n",
+                    txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[1],
+                    tx_size_wide[chroma_tx_size], tx_size_high[chroma_tx_size]);
+#endif
             cul_level_cb =
                 Av1WriteCoeffsTxb1D(
                         pcsPtr->parent_pcs_ptr,
@@ -890,9 +894,11 @@ static EbErrorType Av1EncodeCoeff1D(
                     &txbSkipCtx,
                     &dcSignCtx);
 
-            //printf("write cr, txb_itr %d, nz_coeff %d, tx size %dx%d\n",
-            //        txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[2],
-            //        tx_size_wide[chroma_tx_size], tx_size_high[chroma_tx_size]);
+#ifdef DUMP_ENTROPY
+            printf("write cr, txb_itr %d, nz_coeff %d, tx size %dx%d\n",
+                    txb_itr, cu_ptr->transform_unit_array[txb_itr].nz_coef_count[2],
+                    tx_size_wide[chroma_tx_size], tx_size_high[chroma_tx_size]);
+#endif
             cul_level_cr =
                 Av1WriteCoeffsTxb1D(
                         pcsPtr->parent_pcs_ptr,
@@ -5299,7 +5305,9 @@ EbErrorType write_modes_b(
                     cr_dc_sign_level_coeff_neighbor_array,
                     cb_dc_sign_level_coeff_neighbor_array);
             } else {
-                printf("\t\t---(%d, %d) is skip, bsize is %d\n", blkOriginX, blkOriginY, bsize);
+#ifdef DUMP_ENTROPY
+                printf("\t\t---(%d, %d) is skip coeff intra, bsize is %d\n", blkOriginX, blkOriginY, bsize);
+#endif
             }
         }
     }
@@ -5312,6 +5320,9 @@ EbErrorType write_modes_b(
                 blkOriginX,
                 blkOriginY,
                 skip_flag_neighbor_array);
+#ifdef DUMP_ENTROPY
+            printf("\t\t---(%d, %d) is skip mode flag inter, bsize is %d\n", blkOriginX, blkOriginY, bsize);
+#endif
         }
         if (!picture_control_set_ptr->parent_pcs_ptr->skip_mode_flag && cu_ptr->skip_flag) {
             printf("ERROR[AN]: SKIP not supported\n");
@@ -5326,6 +5337,10 @@ EbErrorType write_modes_b(
                 blkOriginX,
                 blkOriginY,
                 skip_coeff_neighbor_array);
+        } else {
+#ifdef DUMP_ENTROPY
+            printf("\t\t---(%d, %d) is skip flag inter, bsize is %d\n", blkOriginX, blkOriginY, bsize);
+#endif
         }
 
         write_cdef(
@@ -5682,8 +5697,10 @@ EB_EXTERN EbErrorType write_sb(
                 codeCuCond = EB_TRUE;
         }
 
+#ifdef DUMP_ENTROPY
         printf("Processing blk (%d, %d), bsize is %d, partition is %d\n",
                 cu_origin_x, cu_origin_y, bsize, tbPtr->cu_partition_array[cu_index]);
+#endif
 
         if (codeCuCond) {
             uint32_t blkOriginX = cu_origin_x;

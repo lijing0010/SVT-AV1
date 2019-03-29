@@ -965,6 +965,7 @@ BlockSize scale_chroma_bsize(BlockSize bsize, int32_t subsampling_x,
 
 EbErrorType av1_inter_prediction(
     PictureControlSet_t                    *picture_control_set_ptr,
+    STAGE                                   stage,
     uint32_t                                interp_filters,
     CodingUnit_t                           *cu_ptr,
     uint8_t                                 ref_frame_type,
@@ -1002,6 +1003,13 @@ EbErrorType av1_inter_prediction(
     InterpFilterParams filter_params_x, filter_params_y;
 
     const BlockGeom * blk_geom = Get_blk_geom_mds(cu_ptr->mds_idx);
+    int32_t ss_x = 1;
+    int32_t ss_y = 1;
+    if(stage == ED_STAGE)
+    {
+        ss_x = picture_control_set_ptr->parent_pcs_ptr->av1_cm->subsampling_x;
+        ss_y = picture_control_set_ptr->parent_pcs_ptr->av1_cm->subsampling_y;
+    }
 
 
     //special treatment for chroma in 4XN/NX4 blocks
@@ -1068,8 +1076,6 @@ EbErrorType av1_inter_prediction(
 
         const BlockSize bsize = blk_geom->bsize;//mi->sb_type;
         ASSERT(bsize < BlockSizeS_ALL);
-        const int32_t ss_x = 1;// pd->subsampling_x;
-        const int32_t ss_y = 1;//pd->subsampling_y;
         sub8x8_inter = (block_size_wide[bsize] < 8 && ss_x) ||
             (block_size_high[bsize] < 8 && ss_y);
 
@@ -1141,8 +1147,8 @@ EbErrorType av1_inter_prediction(
 
                     EbPictureBufferDesc_t                  *ref_pic = this_mbmi->ref_frame[0] == LAST_FRAME ? ref_pic_list0 : ref_pic_list1;
                     ASSERT(ref_pic != NULL);
-                    srcPtr = ref_pic->bufferCb + (ref_pic->origin_x + ((pu_origin_x >> 3) << 3)) / 2 + (ref_pic->origin_y + ((pu_origin_y >> 3) << 3)) / 2 * ref_pic->strideCb;
-                    dstPtr = prediction_ptr->bufferCb + (prediction_ptr->origin_x + ((dst_origin_x >> 3) << 3)) / 2 + (prediction_ptr->origin_y + ((dst_origin_y >> 3) << 3)) / 2 * prediction_ptr->strideCb;
+                    srcPtr = ref_pic->bufferCb + (ref_pic->origin_x + ((pu_origin_x >> (2+ss_x)) << (2+ss_x))) / (1+ss_x) + ((ref_pic->origin_y + ((pu_origin_y >> (2+ss_y)) << (2+ss_y))) / (1+ss_y)) * ref_pic->strideCb;
+                    dstPtr = prediction_ptr->bufferCb + (prediction_ptr->origin_x + ((dst_origin_x >> (2+ss_x)) << (2+ss_x))) / (1+ss_x) + ((prediction_ptr->origin_y + ((dst_origin_y >> (2+ss_y)) << (2+ss_y))) / (1+ss_y)) * prediction_ptr->strideCb;
                     src_stride = ref_pic->strideCb;
                     dst_stride = prediction_ptr->strideCb;
                     srcPtr = srcPtr + x + y * ref_pic->strideCb;
@@ -1175,8 +1181,8 @@ EbErrorType av1_inter_prediction(
                     conv_params = get_conv_params_no_round(0, 0, 0, tmp_dstCr, BLOCK_SIZE_64, is_compound, EB_8BIT);
                     conv_params.use_jnt_comp_avg = 0;
 
-                    srcPtr = ref_pic->bufferCr + (ref_pic->origin_x + ((pu_origin_x >> 3) << 3)) / 2 + (ref_pic->origin_y + ((pu_origin_y >> 3) << 3)) / 2 * ref_pic->strideCr;
-                    dstPtr = prediction_ptr->bufferCr + (prediction_ptr->origin_x + ((dst_origin_x >> 3) << 3)) / 2 + (prediction_ptr->origin_y + ((dst_origin_y >> 3) << 3)) / 2 * prediction_ptr->strideCr;
+                    srcPtr = ref_pic->bufferCr + (ref_pic->origin_x + ((pu_origin_x >> (2+ss_x)) << (2+ss_x))) / (1+ss_x) + (ref_pic->origin_y + ((pu_origin_y >> (2+ss_y)) << (2+ss_y))) / (1+ss_y) * ref_pic->strideCr;
+                    dstPtr = prediction_ptr->bufferCr + (prediction_ptr->origin_x + ((dst_origin_x >> (2+ss_x)) << (2+ss_x))) / (1+ss_x) + (prediction_ptr->origin_y + ((dst_origin_y >> (2+ss_y)) << (2+ss_y))) / (1+ss_y) * prediction_ptr->strideCr;
 
                     src_stride = ref_pic->strideCr;
                     dst_stride = prediction_ptr->strideCr;
@@ -1257,8 +1263,8 @@ EbErrorType av1_inter_prediction(
         if (blk_geom->has_uv && sub8x8_inter == 0) {
 #endif
             //List0-Cb
-            srcPtr = ref_pic_list0->bufferCb + (ref_pic_list0->origin_x + ((pu_origin_x >> 3) << 3)) / 2 + (ref_pic_list0->origin_y + ((pu_origin_y >> 3) << 3)) / 2 * ref_pic_list0->strideCb;
-            dstPtr = prediction_ptr->bufferCb + (prediction_ptr->origin_x + ((dst_origin_x >> 3) << 3)) / 2 + (prediction_ptr->origin_y + ((dst_origin_y >> 3) << 3)) / 2 * prediction_ptr->strideCb;
+            srcPtr = ref_pic_list0->bufferCb + (ref_pic_list0->origin_x + ((pu_origin_x >> (2+ss_x)) << (2+ss_x))) / (1+ss_x) + ((ref_pic_list0->origin_y + ((pu_origin_y >> (2+ss_y)) << (2+ss_y))) / (1+ss_y)) * ref_pic_list0->strideCb;
+            dstPtr = prediction_ptr->bufferCb + (prediction_ptr->origin_x + ((dst_origin_x >> (2+ss_x)) << (2+ss_x))) / (1+ss_x) + ((prediction_ptr->origin_y + ((dst_origin_y >> (2+ss_y)) << (2+ss_y))) / (1+ss_y)) * prediction_ptr->strideCb;
             src_stride = ref_pic_list0->strideCb;
             dst_stride = prediction_ptr->strideCb;
 
@@ -2517,6 +2523,7 @@ EbErrorType warped_motion_prediction(
     uint16_t                                pu_origin_y,
     CodingUnit_t                           *cu_ptr,
     const BlockGeom                        *blk_geom,
+    const Av1Common                        *cm,
     EbPictureBufferDesc_t                  *ref_pic_list0,
     EbPictureBufferDesc_t                  *prediction_ptr,
     uint16_t                                dst_origin_x,
@@ -2543,6 +2550,10 @@ EbErrorType warped_motion_prediction(
     uint8_t ss_x = 1; // subsamplings
     uint8_t ss_y = 1;
 
+    if(cm) {
+        ss_x = cm->subsampling_x;
+        ss_y = cm->subsampling_y;
+    }
     if (!is16bit) {
         uint8_t *srcPtr;
         uint8_t *dstPtr;
@@ -3579,6 +3590,7 @@ static const int32_t filter_sets[DUAL_FILTER_SET_SIZE][2] = {
 
     av1_inter_prediction(
         picture_control_set_ptr,
+        MD_STAGE,
         candidate_buffer_ptr->candidate_ptr->interp_filters,
         md_context_ptr->cu_ptr,
         candidate_buffer_ptr->candidate_ptr->ref_frame_type,
@@ -3660,6 +3672,7 @@ static const int32_t filter_sets[DUAL_FILTER_SET_SIZE][2] = {
                     //                              bsize);
                     av1_inter_prediction(
                         picture_control_set_ptr,
+                        MD_STAGE,
                         candidate_buffer_ptr->candidate_ptr->interp_filters,
                         md_context_ptr->cu_ptr,
                         candidate_buffer_ptr->candidate_ptr->ref_frame_type,
@@ -3734,6 +3747,7 @@ static const int32_t filter_sets[DUAL_FILTER_SET_SIZE][2] = {
 
                     av1_inter_prediction(
                         picture_control_set_ptr,
+                        MD_STAGE,
                         candidate_buffer_ptr->candidate_ptr->interp_filters,
                         md_context_ptr->cu_ptr,
                         candidate_buffer_ptr->candidate_ptr->ref_frame_type,
@@ -3811,6 +3825,7 @@ static const int32_t filter_sets[DUAL_FILTER_SET_SIZE][2] = {
 
                     av1_inter_prediction(
                         picture_control_set_ptr,
+                        MD_STAGE,
                         candidate_buffer_ptr->candidate_ptr->interp_filters,
                         md_context_ptr->cu_ptr,
                         candidate_buffer_ptr->candidate_ptr->ref_frame_type,
@@ -4303,6 +4318,7 @@ EbErrorType inter_pu_prediction_av1(
                     md_context_ptr->cu_origin_y,
                     md_context_ptr->cu_ptr,
                     md_context_ptr->blk_geom,
+                    (Av1Common *)NULL,
                     ref_pic_list0,
                     candidate_buffer_ptr->prediction_ptr,
                     md_context_ptr->blk_geom->origin_x,
@@ -4407,6 +4423,7 @@ EbErrorType inter_pu_prediction_av1(
 
         av1_inter_prediction(
             picture_control_set_ptr,
+            MD_STAGE,
             candidate_buffer_ptr->candidate_ptr->interp_filters,
             md_context_ptr->cu_ptr,
             candidate_buffer_ptr->candidate_ptr->ref_frame_type,
