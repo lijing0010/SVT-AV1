@@ -1016,8 +1016,8 @@ static void Av1EncodeLoop(
     const uint32_t scratchLumaOffset = context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr] + context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr] * SB_STRIDE_Y;
     //const uint32_t scratchCbOffset = ROUND_UV(context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr]) / (1<<ss_x) + ROUND_UV(context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr]) / (1<<ss_y) * SB_STRIDE_UV;
     //const uint32_t scratchCrOffset = ROUND_UV(context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr]) / (1<<ss_x) + ROUND_UV(context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr]) / (1<<ss_y) * SB_STRIDE_UV;
-    const uint32_t scratchCbOffset = ROUND_UV_EX(context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr], ss_x) + ROUND_UV_EX(context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr], ss_y) * SB_STRIDE_UV;
-    const uint32_t scratchCrOffset = ROUND_UV_EX(context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr], ss_x) + ROUND_UV_EX(context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr], ss_y) * SB_STRIDE_UV;
+    const uint32_t scratchCbOffset = ROUND_UV_EX(context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr], ss_x) + ROUND_UV_EX(context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr], ss_y) * (SB_STRIDE_Y >> ss_x);
+    const uint32_t scratchCrOffset = ROUND_UV_EX(context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr], ss_x) + ROUND_UV_EX(context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr], ss_y) * (SB_STRIDE_Y >> ss_x);
 
 
     const uint32_t coeff1dOffset = context_ptr->coded_area_sb;
@@ -4483,6 +4483,16 @@ EB_EXTERN void AV1EncodePass(
                     uint8_t   tuIt;
                     uint8_t    cbQp = cu_ptr->qp;
                     uint32_t  component_mask = context_ptr->blk_geom->has_uv_ex ? PICTURE_BUFFER_DESC_FULL_MASK : PICTURE_BUFFER_DESC_LUMA_MASK;
+                    //kelvinhack force nz_coef_count to be 0 for sencond 32x32 chroma TU
+                    if(context_ptr->blk_geom->txb_count[0]==1 && context_ptr->blk_geom->txb_count[1]>1)
+                    {
+//                        printf("kelvinhack ---> chroma txb_count=%d, forcing second CbCr eob to be zero, txsize=%d, txsize_uv_ex=%d\n", context_ptr->blk_geom->txb_count[1], blk_geom->txsize[0], blk_geom->txsize_uv_ex[0]);
+                        cu_ptr->transform_unit_array[1].nz_coef_count[1] = 0;
+                        cu_ptr->transform_unit_array[1].nz_coef_count[2] = 0;
+                        cu_ptr->transform_unit_array[1].u_has_coeff = EB_FALSE;
+                        cu_ptr->transform_unit_array[1].v_has_coeff = EB_FALSE;
+                    }
+
                     if (cu_ptr->prediction_unit_array[0].merge_flag == EB_FALSE) {
 
                         for (tuIt = 0; tuIt < totTu; tuIt++) {
@@ -4641,6 +4651,13 @@ EB_EXTERN void AV1EncodePass(
                             context_ptr->coded_area_sb += blk_geom->tx_width[tuIt] * blk_geom->tx_height[tuIt];
                             if (blk_geom->has_uv_ex)
                                 context_ptr->coded_area_sb_uv += blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt];
+                            //kelvinhack
+                            if(context_ptr->blk_geom->txb_count[1]>1 && blk_geom->has_uv_ex && blk_geom->txsize_uv_ex[1]==TX_32X32)
+                            {
+//                                 printf("kelvinhack ---> chroma, forcing coded_area_sb_uv += %d * %d to be %d, tuIt=%d\n", blk_geom->tx_width_uv_ex[tuIt],  blk_geom->tx_height_uv_ex[tuIt], context_ptr->coded_area_sb_uv, tuIt);
+                                 context_ptr->coded_area_sb_uv += blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt];
+                            }
+
                         } // Transform Loop
 
                     }
@@ -4764,6 +4781,12 @@ EB_EXTERN void AV1EncodePass(
                         context_ptr->coded_area_sb += blk_geom->tx_width[tuIt] * blk_geom->tx_height[tuIt];
                         if (blk_geom->has_uv_ex)
                             context_ptr->coded_area_sb_uv += blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt];
+                        //kelvinhack
+                        if(context_ptr->blk_geom->txb_count[1]>1 && blk_geom->has_uv_ex && blk_geom->txsize_uv_ex[1]==TX_32X32)
+                        {
+//                             printf("kelvinhack ---> chroma, forcing coded_area_sb_uv += %d * %d to be %d, tuIt=%d\n", blk_geom->tx_width_uv_ex[tuIt],  blk_geom->tx_height_uv_ex[tuIt], context_ptr->coded_area_sb_uv, tuIt);
+                             context_ptr->coded_area_sb_uv += blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt];
+                        }
 
 
                     } // Transform Loop
