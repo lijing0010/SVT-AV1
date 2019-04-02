@@ -33,7 +33,7 @@
 #include "EbCodingLoop.h"
 #endif
 
-#define DEBUG_REF_INFO
+//#define DEBUG_REF_INFO
 #ifdef DEBUG_REF_INFO
 static void dump_buf_desc_to_file(EbPictureBufferDesc_t* reconBuffer, const char* filename, int POC)
 {
@@ -555,6 +555,7 @@ static void EncodePassUpdateInterModeNeighborArrays(
 * Update Recon Samples Neighbor Arrays
 ***************************************************/
 static void EncodePassUpdateReconSampleNeighborArrays(
+    EncDecContext_t         *context_ptr,
     NeighborArrayUnit_t     *lumaReconSampleNeighborArray,
     NeighborArrayUnit_t     *cbReconSampleNeighborArray,
     NeighborArrayUnit_t     *crReconSampleNeighborArray,
@@ -568,8 +569,14 @@ static void EncodePassUpdateReconSampleNeighborArrays(
     uint32_t                   component_mask,
     EbBool                  is16bit)
 {
-    uint32_t                 round_origin_x = (origin_x >> 3) << 3;// for Chroma blocks with size of 4
-    uint32_t                 round_origin_y = (origin_y >> 3) << 3;// for Chroma blocks with size of 4
+    //uint32_t                 round_origin_x = (origin_x >> 3) << 3;// for Chroma blocks with size of 4
+    //uint32_t                 round_origin_y = (origin_y >> 3) << 3;// for Chroma blocks with size of 4
+    const EbColorFormat  color_format = context_ptr->color_format;
+    const uint16_t ss_x = (color_format == EB_YUV444 ? 1 : 2) - 1;
+    const uint16_t ss_y = (color_format >= EB_YUV422 ? 1 : 2) - 1;
+
+    uint32_t  round_origin_x = (origin_x >> (2 + ss_x)) << (2 + ss_x);// for Chroma blocks with size of 4
+    uint32_t  round_origin_y = (origin_y >> (2 + ss_y)) << (2 + ss_y);// for Chroma blocks with size of 4
 
     if (is16bit == EB_TRUE) {
         if (component_mask & PICTURE_BUFFER_DESC_LUMA_MASK)
@@ -642,10 +649,10 @@ static void EncodePassUpdateReconSampleNeighborArrays(
                 cbReconSampleNeighborArray,
                 reconBuffer->bufferCb,
                 reconBuffer->strideCb,
-                (reconBuffer->origin_x + round_origin_x) >> 1,
-                (reconBuffer->origin_y + round_origin_y) >> 1,
-                round_origin_x >> 1,
-                round_origin_y >> 1,
+                (reconBuffer->origin_x + round_origin_x) >> ss_x,
+                (reconBuffer->origin_y + round_origin_y) >> ss_y,
+                round_origin_x >> ss_x,
+                round_origin_y >> ss_y,
                 bwidth_uv,
                 bheight_uv,
                 NEIGHBOR_ARRAY_UNIT_FULL_MASK);
@@ -655,10 +662,10 @@ static void EncodePassUpdateReconSampleNeighborArrays(
                 crReconSampleNeighborArray,
                 reconBuffer->bufferCr,
                 reconBuffer->strideCr,
-                (reconBuffer->origin_x + round_origin_x) >> 1,
-                (reconBuffer->origin_y + round_origin_y) >> 1,
-                round_origin_x >> 1,
-                round_origin_y >> 1,
+                (reconBuffer->origin_x + round_origin_x) >> ss_x,
+                (reconBuffer->origin_y + round_origin_y) >> ss_y,
+                round_origin_x >> ss_x,
+                round_origin_y >> ss_y,
                 bwidth_uv,
                 bheight_uv,
                 NEIGHBOR_ARRAY_UNIT_FULL_MASK);
@@ -990,22 +997,27 @@ static void Av1EncodeLoop(
     //    EB_SLICE               slice_type = sb_ptr->picture_control_set_ptr->slice_type;
     //    uint32_t                 temporal_layer_index = sb_ptr->picture_control_set_ptr->temporal_layer_index;
     uint32_t                 qp = cu_ptr->qp;
+    const EbColorFormat             color_format = context_ptr->color_format;
+    const uint16_t ss_x = (color_format == EB_YUV444 ? 1 : 2) - 1;
+    const uint16_t ss_y = (color_format >= EB_YUV422 ? 1 : 2) - 1;
     EbPictureBufferDesc_t  *input_samples = context_ptr->input_samples;
 
-    uint32_t                 round_origin_x = (origin_x >> 3) << 3;// for Chroma blocks with size of 4
-    uint32_t                 round_origin_y = (origin_y >> 3) << 3;// for Chroma blocks with size of 4
+    uint32_t  round_origin_x = (origin_x >> (2 + ss_x)) << (2 + ss_x);// for Chroma blocks with size of 4
+    uint32_t  round_origin_y = (origin_y >> (2 + ss_y)) << (2 + ss_y);// for Chroma blocks with size of 4
 
     const uint32_t inputLumaOffset = ((origin_y + input_samples->origin_y)          * input_samples->strideY) + (origin_x + input_samples->origin_x);
-    const uint32_t inputCbOffset = (((round_origin_y + input_samples->origin_y) >> 1)    * input_samples->strideCb) + ((round_origin_x + input_samples->origin_x) >> 1);
-    const uint32_t inputCrOffset = (((round_origin_y + input_samples->origin_y) >> 1)    * input_samples->strideCr) + ((round_origin_x + input_samples->origin_x) >> 1);
+    const uint32_t inputCbOffset = (((round_origin_y + input_samples->origin_y) >> ss_y)    * input_samples->strideCb) + ((round_origin_x + input_samples->origin_x) >> ss_x);
+    const uint32_t inputCrOffset = (((round_origin_y + input_samples->origin_y) >> ss_y)    * input_samples->strideCr) + ((round_origin_x + input_samples->origin_x) >> ss_x);
     const uint32_t predLumaOffset = ((predSamples->origin_y + origin_y)        * predSamples->strideY) + (predSamples->origin_x + origin_x);
-    const uint32_t predCbOffset = (((predSamples->origin_y + round_origin_y) >> 1)  * predSamples->strideCb) + ((predSamples->origin_x + round_origin_x) >> 1);
-    const uint32_t predCrOffset = (((predSamples->origin_y + round_origin_y) >> 1)  * predSamples->strideCr) + ((predSamples->origin_x + round_origin_x) >> 1);
+    const uint32_t predCbOffset = (((predSamples->origin_y + round_origin_y) >> ss_y)  * predSamples->strideCb) + ((predSamples->origin_x + round_origin_x) >> ss_x);
+    const uint32_t predCrOffset = (((predSamples->origin_y + round_origin_y) >> ss_y)  * predSamples->strideCr) + ((predSamples->origin_x + round_origin_x) >> ss_x);
 
 
     const uint32_t scratchLumaOffset = context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr] + context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr] * SB_STRIDE_Y;
-    const uint32_t scratchCbOffset = ROUND_UV(context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr]) / 2 + ROUND_UV(context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr]) / 2 * SB_STRIDE_UV;
-    const uint32_t scratchCrOffset = ROUND_UV(context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr]) / 2 + ROUND_UV(context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr]) / 2 * SB_STRIDE_UV;
+    //const uint32_t scratchCbOffset = ROUND_UV(context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr]) / (1<<ss_x) + ROUND_UV(context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr]) / (1<<ss_y) * SB_STRIDE_UV;
+    //const uint32_t scratchCrOffset = ROUND_UV(context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr]) / (1<<ss_x) + ROUND_UV(context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr]) / (1<<ss_y) * SB_STRIDE_UV;
+    const uint32_t scratchCbOffset = ROUND_UV_EX(context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr], ss_x) + ROUND_UV_EX(context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr], ss_y) * SB_STRIDE_UV;
+    const uint32_t scratchCrOffset = ROUND_UV_EX(context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr], ss_x) + ROUND_UV_EX(context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr], ss_y) * SB_STRIDE_UV;
 
 
     const uint32_t coeff1dOffset = context_ptr->coded_area_sb;
@@ -1055,7 +1067,7 @@ static void Av1EncodeLoop(
             if (context_ptr->blk_geom->sq_size < 128) //no tx search for 128x128 for now
 #endif
 #endif
-//kelvin
+//kelvin:  disable it first for yuv420 matching with old code
 //                encode_pass_tx_search(
 //                    picture_control_set_ptr,
 //                    context_ptr,
@@ -1205,8 +1217,8 @@ static void Av1EncodeLoop(
                 // Copy Cb pred samples from ep buffer to md buffer
                 src_pred_ptr = predSamples->bufferCb + predCbOffset;
                 dst_pred_ptr = &(candidateBuffer->prediction_ptr->bufferCb[scratchCbOffset]);
-                for (int i = 0; i < context_ptr->blk_geom->bheight_uv; i++) {
-                    memcpy(dst_pred_ptr, src_pred_ptr, context_ptr->blk_geom->bwidth_uv);
+                for (int i = 0; i < context_ptr->blk_geom->bheight_uv_ex; i++) {
+                    memcpy(dst_pred_ptr, src_pred_ptr, context_ptr->blk_geom->bwidth_uv_ex);
                     src_pred_ptr += predSamples->strideCb;
                     dst_pred_ptr += candidateBuffer->prediction_ptr->strideCb;
                 }
@@ -1214,8 +1226,8 @@ static void Av1EncodeLoop(
                 // Copy Cr pred samples from ep buffer to md buffer
                 src_pred_ptr = predSamples->bufferCr + predCrOffset;
                 dst_pred_ptr = &(candidateBuffer->prediction_ptr->bufferCr[scratchCrOffset]);
-                for (int i = 0; i < context_ptr->blk_geom->bheight_uv; i++) {
-                    memcpy(dst_pred_ptr, src_pred_ptr, context_ptr->blk_geom->bwidth_uv);
+                for (int i = 0; i < context_ptr->blk_geom->bheight_uv_ex; i++) {
+                    memcpy(dst_pred_ptr, src_pred_ptr, context_ptr->blk_geom->bwidth_uv_ex);
                     src_pred_ptr += predSamples->strideCr;
                     dst_pred_ptr += candidateBuffer->prediction_ptr->strideCr;
                 }
@@ -1303,8 +1315,8 @@ static void Av1EncodeLoop(
             predSamples->strideCb,
             ((int16_t*)residual16bit->bufferCb) + scratchCbOffset,
             residual16bit->strideCb,
-            context_ptr->blk_geom->tx_width_uv[context_ptr->txb_itr],
-            context_ptr->blk_geom->tx_height_uv[context_ptr->txb_itr]);
+            context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr],
+            context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr]);
 
 
         ResidualKernel(
@@ -1315,15 +1327,15 @@ static void Av1EncodeLoop(
             ((int16_t*)residual16bit->bufferCr) + scratchCrOffset,
             residual16bit->strideCr,
 
-            context_ptr->blk_geom->tx_width_uv[context_ptr->txb_itr],
-            context_ptr->blk_geom->tx_height_uv[context_ptr->txb_itr]);
+            context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr],
+            context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr]);
 
         Av1EstimateTransform(
             ((int16_t*)residual16bit->bufferCb) + scratchCbOffset,
             residual16bit->strideCb,
             ((tran_low_t*)transform16bit->bufferCb) + context_ptr->coded_area_sb_uv,
             NOT_USED_VALUE,
-            context_ptr->blk_geom->txsize_uv[context_ptr->txb_itr],
+            context_ptr->blk_geom->txsize_uv_ex[context_ptr->txb_itr],
             &context_ptr->three_quad_energy,
             transformScratchBuffer,
             BIT_INCREMENT_8BIT,
@@ -1341,9 +1353,9 @@ static void Av1EncodeLoop(
             ((int32_t*)coeffSamplesTB->bufferCb) + context_ptr->coded_area_sb_uv,
             ((int32_t*)inverse_quant_buffer->bufferCb) + context_ptr->coded_area_sb_uv,
             qp,
-            context_ptr->blk_geom->tx_width_uv[context_ptr->txb_itr],
-            context_ptr->blk_geom->tx_height_uv[context_ptr->txb_itr],
-            context_ptr->blk_geom->txsize_uv[context_ptr->txb_itr],
+            context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr],
+            context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr],
+            context_ptr->blk_geom->txsize_uv_ex[context_ptr->txb_itr],
             &eob[1],
             candidate_plane[1],
             asm_type,
@@ -1367,7 +1379,7 @@ static void Av1EncodeLoop(
             residual16bit->strideCr,
             ((tran_low_t*)transform16bit->bufferCr) + context_ptr->coded_area_sb_uv,
             NOT_USED_VALUE,
-            context_ptr->blk_geom->txsize_uv[context_ptr->txb_itr],
+            context_ptr->blk_geom->txsize_uv_ex[context_ptr->txb_itr],
             &context_ptr->three_quad_energy,
             transformScratchBuffer,
             BIT_INCREMENT_8BIT,
@@ -1384,9 +1396,9 @@ static void Av1EncodeLoop(
             ((int32_t*)coeffSamplesTB->bufferCr) + context_ptr->coded_area_sb_uv,
             ((tran_low_t*)inverse_quant_buffer->bufferCr) + context_ptr->coded_area_sb_uv,
             qp,
-            context_ptr->blk_geom->tx_width_uv[context_ptr->txb_itr],
-            context_ptr->blk_geom->tx_height_uv[context_ptr->txb_itr],
-            context_ptr->blk_geom->txsize_uv[context_ptr->txb_itr],
+            context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr],
+            context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr],
+            context_ptr->blk_geom->txsize_uv_ex[context_ptr->txb_itr],
             &eob[2],
             candidate_plane[2],
             asm_type,
@@ -2155,9 +2167,13 @@ static void Av1EncodeGenerateRecon(
         //**********************************
 
     {
-        uint32_t                 round_origin_x = (origin_x >> 3) << 3;// for Chroma blocks with size of 4
-        uint32_t                 round_origin_y = (origin_y >> 3) << 3;// for Chroma blocks with size of 4
-        predChromaOffset = (((predSamples->origin_y + round_origin_y) >> 1)           * predSamples->strideCb) + ((predSamples->origin_x + round_origin_x) >> 1);
+        const EbColorFormat             color_format = context_ptr->color_format;
+        const uint16_t ss_x = (color_format == EB_YUV444 ? 1 : 2) - 1;
+        const uint16_t ss_y = (color_format >= EB_YUV422 ? 1 : 2) - 1;
+
+        uint32_t  round_origin_x = (origin_x >> (2 + ss_x)) << (2 + ss_x);// for Chroma blocks with size of 4
+        uint32_t  round_origin_y = (origin_y >> (2 + ss_y)) << (2 + ss_y);// for Chroma blocks with size of 4
+        predChromaOffset = (((predSamples->origin_y + round_origin_y) >> ss_y) * predSamples->strideCb) + ((predSamples->origin_x + round_origin_x) >> ss_x);
 
         //**********************************
         // Cb
@@ -2172,7 +2188,7 @@ static void Av1EncodeGenerateRecon(
 
                 predBuffer,
                 predSamples->strideCb,
-                context_ptr->blk_geom->txsize_uv[context_ptr->txb_itr],
+                context_ptr->blk_geom->txsize_uv_ex[context_ptr->txb_itr],
                 txb_ptr->transform_type[PLANE_TYPE_UV],
                 PLANE_TYPE_UV,
                 eob[1]);
@@ -2182,7 +2198,7 @@ static void Av1EncodeGenerateRecon(
         //**********************************
         // Cr
         //**********************************
-        predChromaOffset = (((predSamples->origin_y + round_origin_y) >> 1)           * predSamples->strideCr) + ((predSamples->origin_x + round_origin_x) >> 1);
+        predChromaOffset = (((predSamples->origin_y + round_origin_y) >> ss_y) * predSamples->strideCr) + ((predSamples->origin_x + round_origin_x) >> ss_x);
 
         if (txb_ptr->v_has_coeff == EB_TRUE && cu_ptr->skip_flag == EB_FALSE) {
 
@@ -2192,7 +2208,7 @@ static void Av1EncodeGenerateRecon(
                 ((int32_t*)residual16bit->bufferCr) + context_ptr->coded_area_sb_uv,
                 predBuffer,
                 predSamples->strideCr,
-                context_ptr->blk_geom->txsize_uv[context_ptr->txb_itr],
+                context_ptr->blk_geom->txsize_uv_ex[context_ptr->txb_itr],
                 txb_ptr->transform_type[PLANE_TYPE_UV],
                 PLANE_TYPE_UV,
                 eob[2]);
@@ -4467,7 +4483,6 @@ EB_EXTERN void AV1EncodePass(
                     uint8_t   tuIt;
                     uint8_t    cbQp = cu_ptr->qp;
                     uint32_t  component_mask = context_ptr->blk_geom->has_uv_ex ? PICTURE_BUFFER_DESC_FULL_MASK : PICTURE_BUFFER_DESC_LUMA_MASK;
-
                     if (cu_ptr->prediction_unit_array[0].merge_flag == EB_FALSE) {
 
                         for (tuIt = 0; tuIt < totTu; tuIt++) {
@@ -4505,10 +4520,10 @@ EB_EXTERN void AV1EncodePass(
                                         int originX = txb_origin_x;
                                         int originY = txb_origin_y;
                                         //if (originX == 128 && originY == 320)// && plane > 0)
-                                        {   int plane = 0;
+                                        {   int plane = 1;
                                             printf("\nAbout to dump coeff for (%d, %d) at plane %d, tx size %d, txb_itr=%d\n",
                                                     originX, originY, plane, tx_size, context_ptr->txb_itr);
-                                            dump_coeff_block_from_desc(context_ptr->blk_geom->tx_width[context_ptr->txb_itr], context_ptr->blk_geom->tx_height[context_ptr->txb_itr], coeff_buffer_sb, originX, originY, plane, plane==0 ? context_ptr->coded_area_sb : context_ptr->coded_area_sb_uv);
+                                            dump_coeff_block_from_desc(plane ? context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_width[context_ptr->txb_itr], plane ? context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_height[context_ptr->txb_itr], coeff_buffer_sb, originX, originY, plane, plane==0 ? context_ptr->coded_area_sb : context_ptr->coded_area_sb_uv);
                                         }
                                     }
 #endif
@@ -4528,8 +4543,8 @@ EB_EXTERN void AV1EncodePass(
                                         0,
                                         blk_geom->tx_width[tuIt],
                                         blk_geom->tx_height[tuIt],
-                                        context_ptr->blk_geom->bwidth_uv,
-                                        context_ptr->blk_geom->bheight_uv,
+                                        context_ptr->blk_geom->bwidth_uv_ex,
+                                        context_ptr->blk_geom->bheight_uv_ex,
                                         yTuFullDistortion,
                                         yTuFullDistortion,
                                         yTuFullDistortion,
@@ -4577,7 +4592,7 @@ EB_EXTERN void AV1EncodePass(
                                         &cbTuCoeffBits,
                                         &crTuCoeffBits,
                                         context_ptr->blk_geom->txsize[context_ptr->txb_itr],
-                                        context_ptr->blk_geom->txsize_uv[context_ptr->txb_itr],
+                                        context_ptr->blk_geom->txsize_uv_ex[context_ptr->txb_itr],
                                         context_ptr->blk_geom->has_uv_ex ? COMPONENT_ALL : COMPONENT_LUMA,
                                         asm_type);
                                 }
@@ -4625,8 +4640,7 @@ EB_EXTERN void AV1EncodePass(
                             }
                             context_ptr->coded_area_sb += blk_geom->tx_width[tuIt] * blk_geom->tx_height[tuIt];
                             if (blk_geom->has_uv_ex)
-                                context_ptr->coded_area_sb_uv += blk_geom->tx_width_uv[tuIt] * blk_geom->tx_height_uv[tuIt];
-
+                                context_ptr->coded_area_sb_uv += blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt];
                         } // Transform Loop
 
                     }
@@ -4650,7 +4664,6 @@ EB_EXTERN void AV1EncodePass(
                     u_has_coeff = 0;
                     v_has_coeff = 0;
                     totTu = context_ptr->blk_geom->txb_count[0];
-
 
                     //reset coeff buffer offsets at the start of a new Tx loop
                     context_ptr->coded_area_sb = coded_area_org;
@@ -4731,9 +4744,9 @@ EB_EXTERN void AV1EncodePass(
                                  int originX = txb_origin_x;
                                  int originY = txb_origin_y;
                                  //if (originX == 0 && originY == 448 && plane == 1)
-                                 {   int plane = 0;
+                                 {   int plane = 1;
                                      printf("\nAbout to dump recon for (%d, %d) at plane %d\n", originX, originY, plane);
-                                     dump_block_from_desc(context_ptr->blk_geom->tx_width[context_ptr->txb_itr], context_ptr->blk_geom->tx_height[context_ptr->txb_itr], reconBuffer, originX, originY, plane);
+                                     dump_block_from_desc(plane ? context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_width[context_ptr->txb_itr], plane ? context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_height[context_ptr->txb_itr], reconBuffer, originX, originY, plane);
                                  }
                              }
 #endif
@@ -4747,9 +4760,10 @@ EB_EXTERN void AV1EncodePass(
                         }
 
 
+//printf("kelvin ---> inter loop, txb_origin_xy=%d, %d, coded_area_sb_uv=%d, tx wh uv_ex=%d %d\n", txb_origin_x, txb_origin_y, context_ptr->coded_area_sb_uv, blk_geom->tx_width_uv_ex[tuIt], blk_geom->tx_height_uv_ex[tuIt]);
                         context_ptr->coded_area_sb += blk_geom->tx_width[tuIt] * blk_geom->tx_height[tuIt];
                         if (blk_geom->has_uv_ex)
-                            context_ptr->coded_area_sb_uv += blk_geom->tx_width_uv[tuIt] * blk_geom->tx_height_uv[tuIt];
+                            context_ptr->coded_area_sb_uv += blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt];
 
 
                     } // Transform Loop
@@ -4801,6 +4815,7 @@ EB_EXTERN void AV1EncodePass(
 
                     if (doRecon)
                         EncodePassUpdateReconSampleNeighborArrays(
+                            context_ptr,
                             recon_neighbor_array[0],
                             recon_neighbor_array[1],
                             recon_neighbor_array[2],
@@ -4809,8 +4824,8 @@ EB_EXTERN void AV1EncodePass(
                             context_ptr->cu_origin_y,
                             context_ptr->blk_geom->bwidth,
                             context_ptr->blk_geom->bheight,
-                            context_ptr->blk_geom->bwidth_uv,
-                            context_ptr->blk_geom->bheight_uv,
+                            context_ptr->blk_geom->bwidth_uv_ex,
+                            context_ptr->blk_geom->bheight_uv_ex,
                             context_ptr->blk_geom->has_uv_ex ? PICTURE_BUFFER_DESC_FULL_MASK : PICTURE_BUFFER_DESC_LUMA_MASK,
                             is16bit);
 
