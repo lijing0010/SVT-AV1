@@ -108,6 +108,7 @@ extern "C" {
 
     EbErrorType warped_motion_prediction(
         MvUnit_t                               *mv_unit,
+        STAGE                                   stage,
         uint16_t                                pu_origin_x,
         uint16_t                                pu_origin_y,
         CodingUnit_t                           *cu_ptr,

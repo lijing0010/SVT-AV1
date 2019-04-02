@@ -4378,6 +4378,7 @@ EB_EXTERN void AV1EncodePass(
                                     if (is16bit) {
                                         warped_motion_prediction(
                                             &context_ptr->mv_unit,
+                                            ED_STAGE,
                                             context_ptr->cu_origin_x,
                                             context_ptr->cu_origin_y,
                                             cu_ptr,
@@ -4396,6 +4397,7 @@ EB_EXTERN void AV1EncodePass(
                                     } else {
                                         warped_motion_prediction(
                                             &context_ptr->mv_unit,
+                                            ED_STAGE,
                                             context_ptr->cu_origin_x,
                                             context_ptr->cu_origin_y,
                                             cu_ptr,
