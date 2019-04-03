@@ -1386,7 +1386,7 @@ void encode_pass_tx_search(
     TransformUnit_t       *txb_ptr = &cu_ptr->transform_unit_array[context_ptr->txb_itr];
     uint32_t               qp = cu_ptr->qp;
     const uint32_t         scratchLumaOffset = context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr] + context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr] * SB_STRIDE_Y;
-    const uint32_t         coeff1dOffset = context_ptr->coded_area_sb;
+    const uint32_t         coeff1dOffset = context_ptr->coded_area_sb[0];
 
     EbBool                 cleanSparseCoeffFlag = EB_FALSE;
     uint64_t               yTuCoeffBits;
@@ -1513,7 +1513,7 @@ void encode_pass_tx_search(
         candidateBuffer->candidate_ptr->type = cu_ptr->prediction_mode_flag;
         candidateBuffer->candidate_ptr->pred_mode = cu_ptr->pred_mode;
 
-        const uint32_t coeff1dOffset = context_ptr->coded_area_sb;
+        const uint32_t coeff1dOffset = context_ptr->coded_area_sb[0];
 
         Av1TuEstimateCoeffBits(
             picture_control_set_ptr,
@@ -1589,7 +1589,7 @@ void encode_pass_tx_search_hbd(
     TransformUnit_t *txb_ptr              = &cu_ptr->transform_unit_array[context_ptr->txb_itr];
     uint32_t         qp                   = cu_ptr->qp;
     const uint32_t   scratchLumaOffset    = context_ptr->blk_geom->origin_x + context_ptr->blk_geom->origin_y * SB_STRIDE_Y;
-    const uint32_t   coeff1dOffset        = context_ptr->coded_area_sb;
+    const uint32_t   coeff1dOffset        = context_ptr->coded_area_sb[0];
     EbBool           cleanSparseCoeffFlag = EB_FALSE;
 
     //Update QP for Quant
@@ -1725,7 +1725,7 @@ void encode_pass_tx_search_hbd(
         candidateBuffer->candidate_ptr->type = cu_ptr->prediction_mode_flag;
         candidateBuffer->candidate_ptr->pred_mode = cu_ptr->pred_mode;
 
-        const uint32_t coeff1dOffset = context_ptr->coded_area_sb;
+        const uint32_t coeff1dOffset = context_ptr->coded_area_sb[0];
 
         Av1TuEstimateCoeffBits(
             picture_control_set_ptr,
