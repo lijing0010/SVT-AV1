@@ -2898,7 +2898,8 @@ void md_encode_block(
     SsMeContext_t                    *ss_mecontext,
     uint32_t                          leaf_index,
     uint32_t                          lcuAddr,
-    ModeDecisionCandidateBuffer_t    *bestCandidateBuffers[5]){
+    ModeDecisionCandidateBuffer_t    *bestCandidateBuffers[5])
+{
 
     ModeDecisionCandidateBuffer_t         **candidateBufferPtrArrayBase = context_ptr->candidate_buffer_ptr_array;
     ModeDecisionCandidateBuffer_t         **candidate_buffer_ptr_array;
@@ -3279,6 +3280,11 @@ EB_EXTERN EbErrorType mode_decision_sb(
         blk_idx_mds = leaf_data_array[cuIdx].mds_idx;
 
         const BlockGeom * blk_geom = context_ptr->blk_geom = Get_blk_geom_mds(blk_idx_mds);
+        if (blk_geom->valid_block == 0) {
+            //Jing: for 422, not all split are valid
+            cuIdx++;
+            continue;
+        }
         CodingUnit_t *  cu_ptr = context_ptr->cu_ptr = &context_ptr->md_cu_arr_nsq[blk_idx_mds];
 
         context_ptr->cu_size_log2 = blk_geom->bwidth_log2;

@@ -1982,6 +1982,7 @@ extern "C" {
         //    flags = ~HAS_AVX2;
 
         //to use C: flags=0
+        //flags = 0 ;
 
         apply_selfguided_restoration = apply_selfguided_restoration_c;
         if (flags & HAS_AVX2) apply_selfguided_restoration = apply_selfguided_restoration_avx2;
@@ -2114,7 +2115,7 @@ extern "C" {
         av1_inv_txfm2d_add_16x8 = av1_inv_txfm2d_add_16x8_c;
         if (flags & HAS_AVX2) av1_inv_txfm2d_add_16x8 = av1_highbd_inv_txfm_add_avx2;
         av1_inv_txfm2d_add_16x32 = av1_inv_txfm2d_add_16x32_c;
-        if (flags & HAS_AVX2) av1_inv_txfm2d_add_16x32 = av1_highbd_inv_txfm_add_avx2;
+        //if (flags & HAS_AVX2) av1_inv_txfm2d_add_16x32 = av1_highbd_inv_txfm_add_avx2;
         av1_inv_txfm2d_add_32x16 = av1_inv_txfm2d_add_32x16_c;
         if (flags & HAS_AVX2) av1_inv_txfm2d_add_32x16 = av1_highbd_inv_txfm_add_avx2;
         av1_inv_txfm2d_add_32x8 = av1_inv_txfm2d_add_32x8_c;
@@ -2139,7 +2140,7 @@ extern "C" {
         if (flags & HAS_SSE4_1) av1_inv_txfm2d_add_16x4 = av1_inv_txfm2d_add_16x4_sse4_1;
 
         av1_inv_txfm_add = av1_inv_txfm_add_c;
-        if (flags & HAS_SSSE3) av1_inv_txfm_add = av1_inv_txfm_add_ssse3;
+        //if (flags & HAS_SSSE3) av1_inv_txfm_add = av1_inv_txfm_add_ssse3;
 
         highbd_variance64 = highbd_variance64_c;
         if (flags & HAS_AVX2) highbd_variance64 = highbd_variance64_avx2;

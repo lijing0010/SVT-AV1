@@ -1794,7 +1794,8 @@ void  inject_intra_candidates(
     const SequenceControlSet_t     *sequence_control_set_ptr,
     LargestCodingUnit_t            *sb_ptr,
     uint32_t                       *candidateTotalCnt,
-    const uint32_t                  leaf_index){
+    const uint32_t                  leaf_index)
+{
 
     (void)leaf_index;
     (void)sequence_control_set_ptr;
@@ -1901,7 +1902,7 @@ void  inject_intra_candidates(
                                 0,
                                 0,
                                 0,
-                                context_ptr->blk_geom->txsize_uv[0],
+                                context_ptr->blk_geom->txsize_uv_ex[0],//Jing: change to _ex so to make sure the transform in MD is the same as EncDec
                                 picture_control_set_ptr->parent_pcs_ptr->reduced_tx_set_used);
                         // candidateArray[canTotalCnt].transform_type[PLANE_TYPE_UV]            = context_ptr->blk_geom->bwidth_uv >= 32 || context_ptr->blk_geom->bheight_uv >= 32  ? DCT_DCT : chroma_transform_type[candidateArray[canTotalCnt].intra_chroma_mode];
                         candidateArray[canTotalCnt].mpm_flag = EB_FALSE;
@@ -1953,7 +1954,7 @@ void  inject_intra_candidates(
                     0,
                     0,
                     0,
-                    context_ptr->blk_geom->txsize_uv[0],
+                    context_ptr->blk_geom->txsize_uv_ex[0],
                     picture_control_set_ptr->parent_pcs_ptr->reduced_tx_set_used);
 
             candidateArray[canTotalCnt].mpm_flag = EB_FALSE;

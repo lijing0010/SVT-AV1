@@ -186,17 +186,24 @@ static void dump_block_from_desc(int txw, int txh, EbPictureBufferDesc_t *buf_tm
                     }
 
                     if (bitDepth == 8) {
-                        printf("%4u ", start_tmp[j]);
+                        printf("%3u ", start_tmp[j]);
                     } else if (bitDepth == 10 || bitDepth == 16) {
-                        printf("%4d ", *((int16_t*)start_tmp + j));
+                        printf("%3d ", *((int16_t*)start_tmp + j));
                     } else if (bitDepth == 32) {
-                        printf("%4d ", *((int32_t*)start_tmp + j));
+                        printf("%3d ", *((int32_t*)start_tmp + j));
                     } else {
                         printf("bitDepth is %d\n", bitDepth);
                         assert(0);
                     }
                 }
                 printf("\n");
+                if (i % 4 == 3) {
+                    for (int k=0;k<txw;k++) {
+                        printf("-");
+                    }
+                    printf("\n");
+                }
+                        
                 start_tmp += stride*val;
             }
     printf("------------------------\n");
@@ -238,50 +245,113 @@ static void dump_coeff_block_from_desc(int txw, int txh, EbPictureBufferDesc_t *
                         printf("|");
                     }
 
-                    printf("%4d ", start_tmp[j]);
+                    printf("%3d ", start_tmp[j]);
                 }
                 printf("\n");
+                if (i % 4 == 3) {
+                    for (int k=0;k<txw;k++) {
+                        printf("-");
+                    }
+                    printf("\n");
+                }
                 start_tmp += txw;
             }
     printf("------------------------\n");
 }
-
 #endif
 static const uint32_t me2Nx2NOffset[4] = { 0, 1, 5, 21 };
-extern void av1_predict_intra_block_new(
-#if TILES   
-    TileInfo                    *tile,
-#endif
-#if INTRA_CORE_OPT
-    ModeDecisionContext_t                  *md_context_ptr,
-#endif
-    STAGE       stage,
-    uint8_t                     intra_luma_left_mode,
-    uint8_t                     intra_luma_top_mode,
-    uint8_t                     intra_chroma_left_mode,
-    uint8_t                     intra_chroma_top_mode,
-    const BlockGeom            *blk_geom,
-    const Av1Common *cm,
-    int32_t wpx,
-    int32_t hpx,
+
+static INLINE PredictionMode get_uv_mode(UV_PredictionMode mode) {
+    assert(mode < UV_INTRA_MODES);
+    static const PredictionMode uv2y[] = {
+        DC_PRED,        // UV_DC_PRED
+        V_PRED,         // UV_V_PRED
+        H_PRED,         // UV_H_PRED
+        D45_PRED,       // UV_D45_PRED
+        D135_PRED,      // UV_D135_PRED
+        D113_PRED,      // UV_D113_PRED
+        D157_PRED,      // UV_D157_PRED
+        D203_PRED,      // UV_D203_PRED
+        D67_PRED,       // UV_D67_PRED
+        SMOOTH_PRED,    // UV_SMOOTH_PRED
+        SMOOTH_V_PRED,  // UV_SMOOTH_V_PRED
+        SMOOTH_H_PRED,  // UV_SMOOTH_H_PRED
+        PAETH_PRED,     // UV_PAETH_PRED
+        DC_PRED,        // UV_CFL_PRED
+        INTRA_INVALID,  // UV_INTRA_MODES
+        INTRA_INVALID,  // UV_MODE_INVALID
+    };
+    return uv2y[mode];
+}
+
+static TxType intra_mode_to_tx_type(const MbModeInfo *mbmi,
+    PLANE_TYPE plane_type) {
+    static const TxType _intra_mode_to_tx_type[INTRA_MODES] = {
+        DCT_DCT,    // DC
+        ADST_DCT,   // V
+        DCT_ADST,   // H
+        DCT_DCT,    // D45
+        ADST_ADST,  // D135
+        ADST_DCT,   // D117
+        DCT_ADST,   // D153
+        DCT_ADST,   // D207
+        ADST_DCT,   // D63
+        ADST_ADST,  // SMOOTH
+        ADST_DCT,   // SMOOTH_V
+        DCT_ADST,   // SMOOTH_H
+        ADST_ADST,  // PAETH
+    };
+    const PredictionMode mode =
+        (plane_type == PLANE_TYPE_Y) ? mbmi->mode : get_uv_mode(mbmi->uv_mode);
+    assert(mode < INTRA_MODES);
+    return _intra_mode_to_tx_type[mode];
+}
+
+static TxType av1_get_tx_type(
+    int32_t   is_inter,
+    PredictionMode pred_mode,
+    UV_PredictionMode pred_mode_uv,
+    PLANE_TYPE plane_type,
     TxSize tx_size,
-    PredictionMode mode,
-    int32_t angle_delta,
-    int32_t use_palette,
-    FILTER_INTRA_MODE filter_intra_mode,
-    uint8_t* topNeighArray,
-    uint8_t* leftNeighArray,
-    EbPictureBufferDesc_t  *reconBuffer,
-#if !INTRA_CORE_OPT
-    int32_t col_off,
-    int32_t row_off,
-#endif
-    int32_t plane,
-    BlockSize bsize,
-    uint32_t bl_org_x_pict,
-    uint32_t bl_org_y_pict,
-    uint32_t bl_org_x_mb,
-    uint32_t bl_org_y_mb);
+    int32_t reduced_tx_set)
+{
+    MbModeInfo  mbmi;
+    mbmi.mode = pred_mode;
+    mbmi.uv_mode = pred_mode_uv;
+
+    // const MbModeInfo *const mbmi = xd->mi[0];
+    // const struct MacroblockdPlane *const pd = &xd->plane[plane_type];
+    const TxSetType tx_set_type =
+        /*av1_*/get_ext_tx_set_type(tx_size, is_inter, reduced_tx_set);
+
+    TxType tx_type = DCT_DCT;
+    if ( /*xd->lossless[mbmi->segment_id] ||*/ txsize_sqr_up_map[tx_size] > TX_32X32) {
+        tx_type = DCT_DCT;
+    }
+    else {
+        if (plane_type == PLANE_TYPE_Y) {
+            //const int32_t txk_type_idx =
+            //    av1_get_txk_type_index(/*mbmi->*/sb_type, blk_row, blk_col);
+            //tx_type = mbmi->txk_type[txk_type_idx];
+        }
+        else if (is_inter /*is_inter_block(mbmi)*/) {
+            // scale back to y plane's coordinate
+            //blk_row <<= pd->subsampling_y;
+            //blk_col <<= pd->subsampling_x;
+            //const int32_t txk_type_idx =
+            //    av1_get_txk_type_index(mbmi->sb_type, blk_row, blk_col);
+            //tx_type = mbmi->txk_type[txk_type_idx];
+        }
+        else {
+            // In intra mode, uv planes don't share the same prediction mode as y
+            // plane, so the tx_type should not be shared
+            tx_type = intra_mode_to_tx_type(&mbmi, PLANE_TYPE_UV);
+        }
+    }
+    ASSERT(tx_type < TX_TYPES);
+    if (!av1_ext_tx_used[tx_set_type][tx_type]) return DCT_DCT;
+    return tx_type;
+}
 
 extern void av1_predict_intra_block(
 #if TILES   
@@ -1057,6 +1127,33 @@ static void Av1EncodeLoop(
             res_stride[plane],
             txw,
             txh);
+#ifdef DEBUG_REF_INFO
+        {
+            int originX = context_ptr->cu_origin_x;
+            int originY = context_ptr->cu_origin_y;
+            if (originX == 0 && originY == 448 && plane == 1)
+            {
+                printf("\nAbout to dump residual for (%d, %d) at plane %d, size %dx%d\n",
+                        originX, originY, plane, txw, txh);
+                dump_block_from_desc(txw, txh, residual16bit, originX, originY, plane);
+            }
+        }
+#endif
+        if (plane > 0) {
+            CodingUnit_t  *cu_ptr = context_ptr->cu_ptr;
+            PredictionUnit_t *pu_ptr = cu_ptr->prediction_unit_array;
+            PredictionMode mode = (pu_ptr->intra_chroma_mode == UV_CFL_PRED) ?
+                (PredictionMode)UV_DC_PRED : (PredictionMode)pu_ptr->intra_chroma_mode;
+            TxType new_tx_type = av1_get_tx_type(
+                    0,
+                    0,
+                    mode,
+                    PLANE_TYPE_UV,
+                    tx_size,
+                    picture_control_set_ptr->parent_pcs_ptr->reduced_tx_set_used);
+            //txb_ptr->transform_type[p_type] = new_tx_type;
+            assert(new_tx_type == txb_ptr->transform_type[p_type]);
+        }
 
         Av1EstimateTransform(
             res_ptr[plane],
@@ -1071,6 +1168,7 @@ static void Av1EncodeLoop(
             asm_type,
             p_type,
             trans_shape);
+        printf("About to do the transform, plane %d, tx_size %d, tx type %d\n", plane, tx_size, txb_ptr->transform_type[p_type]);
             
         Av1QuantizeInvQuantize(
             sb_ptr->picture_control_set_ptr,
@@ -1129,8 +1227,8 @@ static void Av1EncodeLoop(
         {
             int originX = origin_x; 
             int originY = origin_y; 
-            printf("\nAbout to dump coeff for (%d, %d) at plane %d, size %dx%d\n",
-                    originX, originY, plane, txw, txh);
+            //printf("\nAbout to dump coeff for (%d, %d) at plane %d, size %dx%d\n",
+            //        originX, originY, plane, txw, txh);
             //dump_block_from_desc(txw, txh, coeffSamplesTB, originX, originY, plane);
         }
     }
@@ -1651,6 +1749,7 @@ static void Av1EncodeGenerateRecon(
     uint16_t              *eob,
     EbAsm                  asm_type)
 {
+    (void)transformScratchBuffer;
     CodingUnit_t          *cu_ptr = context_ptr->cu_ptr;
     TransformUnit_t       *txb_ptr = &cu_ptr->transform_unit_array[txb_itr];
     PLANE_TYPE p_type = (plane == 0) ? PLANE_TYPE_Y : PLANE_TYPE_UV;
@@ -3282,22 +3381,20 @@ EB_EXTERN void AV1EncodePass(
         const BlockGeom * blk_geom = context_ptr->blk_geom = Get_blk_geom_mds(blk_it);
         UNUSED(blk_geom);
 
-        assert(blk_geom->valid_block == 1);
         sb_ptr->cu_partition_array[blk_it] = context_ptr->md_context->md_cu_arr_nsq[blk_it].part;
 
 
+        //printf("blk_it is %d, part is %d, bsize is %d\n", blk_it, part, blk_geom->bsize);
         //Jing:
         // Check for valid partition for 422!!!
         if (part != PARTITION_SPLIT) {
             int32_t offset_d1 = ns_blk_offset[(int32_t)part]; //cu_ptr->best_d1_blk; // TOCKECK
             int32_t num_d1_block = ns_blk_num[(int32_t)part]; // context_ptr->blk_geom->totns; // TOCKECK
-            assert(part == PARTITION_NONE);
 
             for (int32_t d1_itr = (int32_t)blk_it + offset_d1; d1_itr < (int32_t)blk_it + offset_d1 + num_d1_block; d1_itr++) {
 
                 const BlockGeom * blk_geom = context_ptr->blk_geom = Get_blk_geom_mds(d1_itr);
                 assert(blk_geom->valid_block == 1);
-                assert(blk_geom->bwidth == blk_geom->bheight);
 
                 // PU Stack variables
                 PredictionUnit_t        *pu_ptr = (PredictionUnit_t *)EB_NULL; //  done
@@ -3311,6 +3408,8 @@ EB_EXTERN void AV1EncodePass(
 
                 context_ptr->cu_origin_x = (uint16_t)(sb_origin_x + blk_geom->origin_x);
                 context_ptr->cu_origin_y = (uint16_t)(sb_origin_y + blk_geom->origin_y);
+                printf("Processing cu (%d, %d), block size %d, luma tx size %d\n",
+                        context_ptr->cu_origin_x, context_ptr->cu_origin_y, blk_geom->bsize, blk_geom->txsize[0]);
                 cu_ptr->delta_qp = 0;
                 cu_ptr->block_has_coeff = 0;
 
@@ -3502,14 +3601,15 @@ EB_EXTERN void AV1EncodePass(
                                             row);
 #ifdef DEBUG_REF_INFO1
                                     {
-                                        int originX = context_ptr->cu_origin_x;
-                                        int originY = context_ptr->cu_origin_y;
-                                        if (originX == 0 && originY == 448 && plane == 1)
-                                        {
-                                            printf("\nAbout to dump pred for (%d, %d) at plane %d, size %dx%d, pu offset (%d, %d)\n",
-                                                    originX, originY, plane, txw, txh, col, row);
-                                            dump_block_from_desc(txw, txh, reconBuffer, originX, originY, plane);
-                                        }
+                                        //int originX = context_ptr->cu_origin_x;
+                                        //int originY = context_ptr->cu_origin_y;
+                                        ////if (originX == 0 && originY == 448 && plane == 1)
+                                        //{
+                                        //    printf("\nAbout to dump pred for (%d, %d) at plane %d, size %dx%d, pu offset (%d, %d)\n",
+                                        //            originX, originY, plane, txw, txh, col, row);
+                                        //    dump_block_from_desc(txw, txh, reconBuffer, originX, originY, plane);
+                                        //}
+                                        printf("plane %d, tx_size %d, pred mode %d\n", plane, tx_size, mode);
                                     }
 #endif
                                 }
@@ -3545,13 +3645,22 @@ EB_EXTERN void AV1EncodePass(
 
 #ifdef DEBUG_REF_INFO1
                                     {
-                                        int originX = context_ptr->cu_origin_x;
-                                        int originY = context_ptr->cu_origin_y;
-                                        if (originX == 128 && originY == 320)// && plane > 0)
+                                        int cu_originX = context_ptr->cu_origin_x;
+                                        int cu_originY = context_ptr->cu_origin_y;
+                                        int plane_originX = pu_block_origin_x;
+                                        int plane_originY = pu_block_origin_y;
+                                        //if (originX == 128 && originY == 320)// && plane > 0)
                                         {
-                                            printf("\nAbout to dump coeff for (%d, %d) at plane %d, tx size %d\n",
-                                                    originX, originY, plane, tx_size);
-                                            dump_block_from_desc(txw, txh, coeff_buffer_sb, originX, originY, plane);
+                                            printf("\nAbout to dump pred for (%d, %d) at plane %d, size %dx%d, pu offset (%d, %d)\n",
+                                                    cu_originX, cu_originY, plane, txw, txh, col, row);
+                                            dump_block_from_desc(txw, txh, reconBuffer, cu_originX, cu_originY, plane);
+
+                                            printf("\nAbout to dump inverse quant for CU (%d, %d) at plane %d offset (%d, %d), tx size %d\n",
+                                                    cu_originX, cu_originY, plane, plane_originX, plane_originY, tx_size);
+                                            dump_coeff_block_from_desc(txw, txh, inverse_quant_buffer, cu_originX, cu_originY, plane, context_ptr->coded_area_sb[plane]);
+                                            printf("\nAbout to dump coeff for CU (%d, %d) at plane %d offset (%d, %d), tx size %d\n",
+                                                    cu_originX, cu_originY, plane, plane_originX, plane_originY, tx_size);
+                                            dump_coeff_block_from_desc(txw, txh, coeff_buffer_sb, cu_originX, cu_originY, plane, context_ptr->coded_area_sb[plane]);
                                         }
                                     }
 #endif
@@ -3572,12 +3681,15 @@ EB_EXTERN void AV1EncodePass(
                                     asm_type);
 #ifdef DEBUG_REF_INFO1
                                     {
-                                        int originX = pu_block_origin_x;
-                                        int originY = pu_block_origin_y;
-                                        if (originX == 0 && originY == 448 && plane == 1)
+                                        int cu_originX = context_ptr->cu_origin_x;
+                                        int cu_originY = context_ptr->cu_origin_y;
+                                        int plane_originX = pu_block_origin_x;
+                                        int plane_originY = pu_block_origin_y;
+                                        //if (originX == 0 && originY == 448 && plane == 1)
                                         {
-                                            printf("\nAbout to dump recon for (%d, %d) at plane %d\n", originX, originY, plane);
-                                            dump_block_from_desc(txw, txh, reconBuffer, originX, originY, plane);
+                                            printf("\nAbout to dump recon for CU (%d, %d) at plane %d,(%d, %d)\n",
+                                                    cu_originX, cu_originY, plane, plane_originX, plane_originY);
+                                            dump_block_from_desc(txw, txh, reconBuffer, cu_originX, cu_originY, plane);
                                         }
                                     }
 #endif
@@ -4337,7 +4449,7 @@ EB_EXTERN void AV1EncodePass(
 #ifdef DEBUG_REF_INFO
     static int sb_index = 0;
     if (sb_index == sequence_control_set_ptr->sb_tot_cnt - 1) {
-        //dump_buf_desc_to_file(reconBuffer, "internal_recon.yuv", 0);
+        dump_buf_desc_to_file(reconBuffer, "internal_recon.yuv", 0);
     } else {
         sb_index++;
     }

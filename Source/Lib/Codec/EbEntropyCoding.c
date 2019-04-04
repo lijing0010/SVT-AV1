@@ -1029,7 +1029,7 @@ static void EncodePartitionAv1(
         return;
     }
 
-    assert(p == PARTITION_SPLIT || p == PARTITION_NONE);
+    //assert(p == PARTITION_SPLIT || p == PARTITION_NONE);
     if (hasRows && hasCols) {
         //printf("--Encode partition size %d, pos (%d, %d), ctx is %d\n",
         //        bsize, cu_origin_x, cu_origin_y, contextIndex - bsl * PARTITION_PLOFFSET);
@@ -5756,7 +5756,6 @@ EB_EXTERN EbErrorType write_sb(
                 break;
 
             case PARTITION_HORZ:
-                assert(0);
                 write_modes_b(
                     picture_control_set_ptr,
                     context_ptr,
@@ -5779,7 +5778,6 @@ EB_EXTERN EbErrorType write_sb(
                 break;
 
             case PARTITION_VERT:
-                assert(0);
                 write_modes_b(
                     picture_control_set_ptr,
                     context_ptr,
@@ -5802,7 +5800,6 @@ EB_EXTERN EbErrorType write_sb(
             case PARTITION_SPLIT:
                 break;
             case PARTITION_HORZ_A:
-                assert(0);
                 write_modes_b(
                     picture_control_set_ptr,
                     context_ptr,
@@ -5833,7 +5830,6 @@ EB_EXTERN EbErrorType write_sb(
 
                 break;
             case PARTITION_HORZ_B:
-                assert(0);
                 write_modes_b(
                     picture_control_set_ptr,
                     context_ptr,
@@ -5864,7 +5860,6 @@ EB_EXTERN EbErrorType write_sb(
 
                 break;
             case PARTITION_VERT_A:
-                assert(0);
                 write_modes_b(
                     picture_control_set_ptr,
                     context_ptr,
@@ -5895,7 +5890,6 @@ EB_EXTERN EbErrorType write_sb(
 
                 break;
             case PARTITION_VERT_B:
-                assert(0);
                 write_modes_b(
                     picture_control_set_ptr,
                     context_ptr,
@@ -5926,7 +5920,6 @@ EB_EXTERN EbErrorType write_sb(
 
                 break;
             case PARTITION_HORZ_4:
-                assert(0);
                 for (int32_t i = 0; i < 4; ++i) {
                     int32_t this_mi_row = mi_row + i * quarter_step;
                     if (i > 0 && this_mi_row >= cm->mi_rows) break;
@@ -5945,7 +5938,6 @@ EB_EXTERN EbErrorType write_sb(
                 }
                 break;
             case PARTITION_VERT_4:
-                assert(0);
                 for (int32_t i = 0; i < 4; ++i) {
                     int32_t this_mi_col = mi_col + i * quarter_step;
                     if (i > 0 && this_mi_col >= cm->mi_cols) break;

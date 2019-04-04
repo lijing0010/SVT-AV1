@@ -729,8 +729,10 @@ static void md_scan_all_blks(uint32_t *idx_mds, uint32_t sq_size, uint32_t x, ui
             part_it < 3 ? 2 :
             part_it < 7 ? 3 : 4;
 
-        for (nsq_it = 0; nsq_it < tot_num_ns_per_part; nsq_it++)
-        {
+        uint8_t valid_partition = 1;
+        uint32_t start_idx_mds = *idx_mds;
+
+        for (nsq_it = 0; nsq_it < tot_num_ns_per_part; nsq_it++) {
             blk_geom_mds[*idx_mds].depth = sq_size == max_sb / 1 ? 0 :
                 sq_size == max_sb / 2 ? 1 :
                 sq_size == max_sb / 4 ? 2 :
@@ -801,11 +803,12 @@ static void md_scan_all_blks(uint32_t *idx_mds, uint32_t sq_size, uint32_t x, ui
             blk_geom_mds[*idx_mds].bsize_uv = get_plane_block_size(blk_geom_mds[*idx_mds].bsize, 1, 1);
             blk_geom_mds[*idx_mds].bsize_uv_ex = get_plane_block_size(blk_geom_mds[*idx_mds].bsize, subsampling_x, subsampling_y);
             if (blk_geom_mds[*idx_mds].bsize_uv_ex == BLOCK_INVALID) {
-                blk_geom_mds[*idx_mds].valid_block =  0;
+                blk_geom_mds[*idx_mds].valid_block = 0;
                 
                 //Jing: Decide whether put it here, if MD stage can loop over valid mds
                 blk_geom_mds[*idx_mds].blkidx_mds = (*idx_mds);
                 (*idx_mds) = (*idx_mds) + 1;
+                valid_partition = 0;
                 continue;
             } else {
                 blk_geom_mds[*idx_mds].valid_block =  1;
@@ -907,7 +910,16 @@ static void md_scan_all_blks(uint32_t *idx_mds, uint32_t sq_size, uint32_t x, ui
 
             blk_geom_mds[*idx_mds].blkidx_mds = (*idx_mds);
             (*idx_mds) = (*idx_mds) + 1;
+        }
 
+        //Jing: Check valid partition here 
+        if (valid_partition == 0) {
+            *idx_mds = start_idx_mds;
+            for (nsq_it = 0; nsq_it < tot_num_ns_per_part; nsq_it++) {
+                blk_geom_mds[*idx_mds].valid_block = 0;
+                blk_geom_mds[*idx_mds].blkidx_mds = (*idx_mds);
+                (*idx_mds) = (*idx_mds) + 1;
+            }
         }
     }
 
