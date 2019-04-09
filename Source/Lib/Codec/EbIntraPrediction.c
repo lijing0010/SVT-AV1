@@ -5225,6 +5225,24 @@ void cfl_luma_subsampling_420_lbd_c(
         output_q3 += CFL_BUF_LINE;
     }
 }
+
+void cfl_luma_subsampling_422_lbd_c(
+    uint8_t *input,
+    int32_t input_stride, int16_t *output_q3,
+    int32_t width, int32_t height)
+{
+  assert((height - 1) * CFL_BUF_LINE + width <= CFL_BUF_SQUARE);
+  for (int j = 0; j < height; j++) {
+    for (int i = 0; i < width; i += 2) {
+      output_q3[i >> 1] = (input[i] + input[i + 1]) << 2;
+    }
+    input += input_stride;
+    output_q3 += CFL_BUF_LINE;
+  }
+}
+
+
+
 void cfl_luma_subsampling_420_hbd_c(
     const uint16_t *input,
     int32_t input_stride, int16_t *output_q3,

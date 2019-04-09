@@ -1097,7 +1097,9 @@ static void Av1EncodeLoop(
     EbByte coeff_ptr[3];
     EbByte inverse_ptr[3];
 
-    for (int p = 0; p < 3; p++) {
+    uint8_t p = plane;
+    //for (int p = 0; p < 3; p++) {
+    {
         uint32_t sb_plane_origin_x = (p == 0) ? sb_origin_x : sb_origin_x >> subsampling_x;
         uint32_t sb_plane_origin_y = (p == 0) ? sb_origin_y : sb_origin_y >> subsampling_y;
         Get2dOrigin(origin_x, origin_y, input_samples, p, &input_ptr[p], &input_stride[p]);
@@ -1113,12 +1115,29 @@ static void Av1EncodeLoop(
 
     context_ptr->three_quad_energy = 0;
 
-    {
-        PLANE_TYPE p_type = (plane == 0) ? PLANE_TYPE_Y : PLANE_TYPE_UV;
-        COMPONENT_TYPE c_type = (plane == 0) ? COMPONENT_LUMA : (plane == 1) ? COMPONENT_CHROMA_CB: COMPONENT_CHROMA_CR;
-        EB_TRANS_COEFF_SHAPE trans_shape = (plane == 0) ? context_ptr->trans_coeff_shape_luma : context_ptr->trans_coeff_shape_chroma;
+    PLANE_TYPE p_type = (plane == 0) ? PLANE_TYPE_Y : PLANE_TYPE_UV;
+    COMPONENT_TYPE c_type = (plane == 0) ? COMPONENT_LUMA : (plane == 1) ? COMPONENT_CHROMA_CB: COMPONENT_CHROMA_CR;
+    EB_TRANS_COEFF_SHAPE trans_shape = (plane == 0) ? context_ptr->trans_coeff_shape_luma : context_ptr->trans_coeff_shape_chroma;
 
-        ResidualKernel(
+    if (plane && cu_ptr->prediction_unit_array->intra_chroma_mode == UV_CFL_PRED) {
+        //Jing: CFL case
+        CFL_PRED_TYPE pred_type = (plane == 1 ? CFL_PRED_U : CFL_PRED_V);
+        int32_t alpha_q3 =
+            cfl_idx_to_alpha(cu_ptr->prediction_unit_array->cfl_alpha_idx, cu_ptr->prediction_unit_array->cfl_alpha_signs, pred_type);
+
+        cfl_predict_lbd(
+                context_ptr->md_context->pred_buf_q3,
+                pred_ptr[plane],
+                pred_stride[plane],
+                pred_ptr[plane],
+                pred_stride[plane],
+                alpha_q3,
+                8,
+                context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr],
+                context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr]);
+    }
+
+    ResidualKernel(
             input_ptr[plane],
             input_stride[plane],
             pred_ptr[plane],
@@ -1128,34 +1147,35 @@ static void Av1EncodeLoop(
             txw,
             txh);
 #ifdef DEBUG_REF_INFO
+    {
+        int originX = context_ptr->cu_origin_x;
+        int originY = context_ptr->cu_origin_y;
+        if (originX == 0 && originY == 448 && plane == 1)
         {
-            int originX = context_ptr->cu_origin_x;
-            int originY = context_ptr->cu_origin_y;
-            if (originX == 0 && originY == 448 && plane == 1)
-            {
-                printf("\nAbout to dump residual for (%d, %d) at plane %d, size %dx%d\n",
-                        originX, originY, plane, txw, txh);
-                dump_block_from_desc(txw, txh, residual16bit, originX, originY, plane);
-            }
+            printf("\nAbout to dump residual for (%d, %d) at plane %d, size %dx%d\n",
+                    originX, originY, plane, txw, txh);
+            dump_block_from_desc(txw, txh, residual16bit, originX, originY, plane);
         }
-#endif
-        if (plane > 0) {
-            CodingUnit_t  *cu_ptr = context_ptr->cu_ptr;
-            PredictionUnit_t *pu_ptr = cu_ptr->prediction_unit_array;
-            PredictionMode mode = (pu_ptr->intra_chroma_mode == UV_CFL_PRED) ?
-                (PredictionMode)UV_DC_PRED : (PredictionMode)pu_ptr->intra_chroma_mode;
-            TxType new_tx_type = av1_get_tx_type(
-                    0,
-                    0,
-                    mode,
-                    PLANE_TYPE_UV,
-                    tx_size,
-                    picture_control_set_ptr->parent_pcs_ptr->reduced_tx_set_used);
-            //txb_ptr->transform_type[p_type] = new_tx_type;
-            assert(new_tx_type == txb_ptr->transform_type[p_type]);
-        }
+    }
 
-        Av1EstimateTransform(
+    if (plane > 0) {
+        CodingUnit_t  *cu_ptr = context_ptr->cu_ptr;
+        PredictionUnit_t *pu_ptr = cu_ptr->prediction_unit_array;
+        PredictionMode mode = (pu_ptr->intra_chroma_mode == UV_CFL_PRED) ?
+            (PredictionMode)UV_DC_PRED : (PredictionMode)pu_ptr->intra_chroma_mode;
+        TxType new_tx_type = av1_get_tx_type(
+                0,
+                0,
+                mode,
+                PLANE_TYPE_UV,
+                tx_size,
+                picture_control_set_ptr->parent_pcs_ptr->reduced_tx_set_used);
+        //txb_ptr->transform_type[p_type] = new_tx_type;
+        assert(new_tx_type == txb_ptr->transform_type[p_type]);
+    }
+#endif
+
+    Av1EstimateTransform(
             res_ptr[plane],
             res_stride[plane],
             trans_ptr[plane],
@@ -1168,9 +1188,9 @@ static void Av1EncodeLoop(
             asm_type,
             p_type,
             trans_shape);
-        printf("About to do the transform, plane %d, tx_size %d, tx type %d\n", plane, tx_size, txb_ptr->transform_type[p_type]);
-            
-        Av1QuantizeInvQuantize(
+    //printf("About to do the transform, plane %d, tx_size %d, tx type %d\n", plane, tx_size, txb_ptr->transform_type[p_type]);
+
+    Av1QuantizeInvQuantize(
             sb_ptr->picture_control_set_ptr,
             trans_ptr[plane],
             NOT_USED_VALUE,
@@ -1189,32 +1209,35 @@ static void Av1EncodeLoop(
             txb_ptr->transform_type[p_type],
             cleanSparseCoeffFlag);
 
-        {
-            //debug code
-            //uint32_t coeff_num = txw * txh;
-            //uint32_t nz_count = 0;
-            //for (int i=0; i < coeff_num; i++) {
-            //    uint32_t* ptr = (uint32_t*)(coeff_ptr[plane]);
-            //    if (ptr[i] != 0) {
-            //        nz_count++;
-            //    }
-            //}
-            //assert(nz_count == count_non_zero_coeffs[plane]);
+    if (plane == 0) {
+        if (count_non_zero_coeffs[0] == 0) {
+            // INTER. Chroma follows Luma in transform type
+            if (cu_ptr->prediction_mode_flag == INTER_MODE) {
+                txb_ptr->transform_type[PLANE_TYPE_Y] = DCT_DCT;
+                txb_ptr->transform_type[PLANE_TYPE_UV] = DCT_DCT;
+            } else { // INTRA
+                txb_ptr->transform_type[PLANE_TYPE_Y] = DCT_DCT;
+            }
         }
 
-        //Jing: TODO double check here
-        if (plane == 0) {
-            txb_ptr->y_has_coeff = count_non_zero_coeffs[0] ? EB_TRUE : EB_FALSE;
-            txb_ptr->trans_coeff_shape_luma = context_ptr->trans_coeff_shape_luma;
-        } else if (plane == 1) {
-            txb_ptr->u_has_coeff = count_non_zero_coeffs[1] ? EB_TRUE : EB_FALSE;
-            txb_ptr->trans_coeff_shape_chroma = context_ptr->trans_coeff_shape_chroma;
-        } else {
-            txb_ptr->v_has_coeff = count_non_zero_coeffs[2] ? EB_TRUE : EB_FALSE;
-            txb_ptr->trans_coeff_shape_chroma = context_ptr->trans_coeff_shape_chroma;
+        txb_ptr->y_has_coeff = count_non_zero_coeffs[0] ? EB_TRUE : EB_FALSE;
+        txb_ptr->trans_coeff_shape_luma = context_ptr->trans_coeff_shape_luma;
+    } else if (plane == 1) {
+        txb_ptr->u_has_coeff = count_non_zero_coeffs[1] ? EB_TRUE : EB_FALSE;
+        txb_ptr->trans_coeff_shape_chroma = context_ptr->trans_coeff_shape_chroma;
+
+        if (cu_ptr->prediction_mode_flag == INTRA_MODE &&
+                (context_ptr->evaluate_cfl_ep || cu_ptr->prediction_unit_array->intra_chroma_mode == UV_CFL_PRED)) {
+            //TODO:
+            //Jing: Enable evaluate_cfl_ep later, may need to put it somewhere else
+            if (context_ptr->evaluate_cfl_ep) {
+            }
         }
-        txb_ptr->nz_coef_count[plane] = (uint16_t)count_non_zero_coeffs[plane];
+    } else {
+        txb_ptr->v_has_coeff = count_non_zero_coeffs[2] ? EB_TRUE : EB_FALSE;
+        txb_ptr->trans_coeff_shape_chroma = context_ptr->trans_coeff_shape_chroma;
     }
+    txb_ptr->nz_coef_count[plane] = (uint16_t)count_non_zero_coeffs[plane];
 
 #ifdef DEBUG_REF_INFO1
     if (sb_origin_x == 0 && sb_origin_y == 1) {
@@ -1749,6 +1772,9 @@ static void Av1EncodeGenerateRecon(
     uint16_t              *eob,
     EbAsm                  asm_type)
 {
+    const EbColorFormat             color_format = context_ptr->color_format;
+    const uint16_t subsampling_x = (color_format == EB_YUV444 ? 1 : 2) - 1;
+    const uint16_t subsampling_y = (color_format >= EB_YUV422 ? 1 : 2) - 1;
     (void)transformScratchBuffer;
     CodingUnit_t          *cu_ptr = context_ptr->cu_ptr;
     TransformUnit_t       *txb_ptr = &cu_ptr->transform_unit_array[txb_itr];
@@ -1769,7 +1795,8 @@ static void Av1EncodeGenerateRecon(
     Get1dOrigin(offset1d, inverse_quant_buffer, plane, &inverse_ptr);
     Get2dOrigin(origin_x, origin_y, predSamples, plane, &pred_ptr, &pred_stride);
 
-    if (plane || (plane == 0 && (cu_ptr->prediction_mode_flag != INTRA_MODE || (cu_ptr->prediction_unit_array->intra_chroma_mode != UV_CFL_PRED && context_ptr->evaluate_cfl_ep == EB_FALSE)))) { 
+    //if (plane || (plane == 0 && (cu_ptr->prediction_mode_flag != INTRA_MODE || (cu_ptr->prediction_unit_array->intra_chroma_mode != UV_CFL_PRED && context_ptr->evaluate_cfl_ep == EB_FALSE))))
+    { 
         if (has_coeff && cu_ptr->skip_flag == EB_FALSE) {
             Av1InvTransformRecon8bit(
                     inverse_ptr,
@@ -1780,6 +1807,46 @@ static void Av1EncodeGenerateRecon(
                     p_type,
                     eob[plane]);
         }
+    }
+
+    if (plane == 0 && cu_ptr->prediction_mode_flag == INTRA_MODE &&
+            (context_ptr->evaluate_cfl_ep || cu_ptr->prediction_unit_array->intra_chroma_mode == UV_CFL_PRED)) {
+        // Jing: Prepare luma for CFL
+
+        assert(context_ptr->cu_origin_x == origin_x);
+        assert(context_ptr->cu_origin_y == origin_y);
+
+        if (subsampling_x == 1) {
+            if (subsampling_y == 1) {
+                cfl_luma_subsampling_420_lbd_c(
+                        pred_ptr, pred_stride,
+                        context_ptr->md_context->pred_buf_q3,
+                        context_ptr->blk_geom->tx_width[context_ptr->txb_itr],
+                        context_ptr->blk_geom->tx_height[context_ptr->txb_itr]);
+            } else {
+                cfl_luma_subsampling_422_lbd_c(
+                        pred_ptr, pred_stride,
+                        context_ptr->md_context->pred_buf_q3,
+                        context_ptr->blk_geom->tx_width[context_ptr->txb_itr],
+                        context_ptr->blk_geom->tx_height[context_ptr->txb_itr]);
+            }
+        } else {
+            //cfl_luma_subsampling_444_lbd_c(
+            //        pred_ptr, pred_stride,
+            //        context_ptr->md_context->pred_buf_q3,
+            //        context_ptr->blk_geom->tx_width[context_ptr->txb_itr],
+            //        context_ptr->blk_geom->tx_height[context_ptr->txb_itr]);
+        }
+
+        int32_t round_offset = ((context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr])*(context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr])) / 2;
+
+        subtract_average(
+                context_ptr->md_context->pred_buf_q3,
+                context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr],
+                context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr],
+                round_offset,
+                LOG2F(context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr]) + LOG2F(context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr])
+                );
     }
     return;
 }
@@ -3432,8 +3499,9 @@ EB_EXTERN void AV1EncodePass(
                     context_ptr->blk_geom->bheight == 4) ? EB_TRUE : EB_FALSE;
                 // Evaluate cfl @ EP if applicable, and not done @ MD 
                 context_ptr->evaluate_cfl_ep = (disable_cfl_flag == EB_FALSE && context_ptr->md_context->chroma_level == CHROMA_MODE_1);
-                //Jing: Disable cfl first
-                context_ptr->evaluate_cfl_ep = 0;
+                ////Jing: Disable cfl first
+                //assert(context_ptr->evaluate_cfl_ep == 0);
+                //context_ptr->evaluate_cfl_ep = 0;
 #endif
 
 #if ADD_DELTA_QP_SUPPORT
@@ -3732,6 +3800,8 @@ EB_EXTERN void AV1EncodePass(
                                 }
 #else
 #endif
+                                //Jing: TODO
+                                //move this later for CFL
                                 context_ptr->coded_area_sb[plane] += txw * txh;
                                 txb_itr[plane] += 1;
                             }
@@ -4446,14 +4516,14 @@ EB_EXTERN void AV1EncodePass(
 
     sb_ptr->tot_final_cu = final_cu_itr;
 
-#ifdef DEBUG_REF_INFO
-    static int sb_index = 0;
-    if (sb_index == sequence_control_set_ptr->sb_tot_cnt - 1) {
-        dump_buf_desc_to_file(reconBuffer, "internal_recon.yuv", 0);
-    } else {
-        sb_index++;
-    }
-#endif
+//#ifdef DEBUG_REF_INFO
+//    static int sb_index = 0;
+//    if (sb_index == sequence_control_set_ptr->sb_tot_cnt - 1) {
+//        dump_buf_desc_to_file(reconBuffer, "internal_recon.yuv", 0);
+//    } else {
+//        sb_index++;
+//    }
+//#endif
 #if AV1_LF
     // First Pass Deblocking
     if (dlfEnableFlag && picture_control_set_ptr->parent_pcs_ptr->loop_filter_mode == 1) {
