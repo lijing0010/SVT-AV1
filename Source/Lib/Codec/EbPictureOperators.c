@@ -547,6 +547,73 @@ EbErrorType PictureFullDistortion32Bits(
     return return_error;
 }
 
+EbErrorType PicturePlaneDistortion32Bits(
+    EbPictureBufferDesc_t     *coeff,
+    uint32_t                   coeffOriginIndex,
+    EbPictureBufferDesc_t     *reconCoeff,
+    uint32_t                   reconCoeffOriginIndex,
+    uint32_t                   bwidth,
+    uint32_t                   bheight,
+    uint64_t                   distortion[DIST_CALC_TOTAL],
+    uint32_t                   count_non_zero_coeffs,
+    uint32_t                   plane,
+    EbAsm                      asm_type)
+{
+    EbErrorType return_error = EB_ErrorNone;
+    int32_t *coeffBuffer;
+    int32_t *reconBuffer;
+
+    //TODO due to a change in full kernel distortion , ASM has to be updated to not accumulate the input distortion by the output
+
+    distortion[0] = 0;
+    distortion[1] = 0;
+
+    if(plane == 0)
+    {
+        bwidth = bwidth < 64 ? bwidth : 32;
+        bheight = bheight < 64 ? bheight : 32;
+        coeffBuffer = (int32_t*)coeff->bufferY;
+        reconBuffer = (int32_t*)reconCoeff->bufferY;
+    }
+    else if (plane == 1)
+    {
+        coeffBuffer = (int32_t*)coeff->bufferCb;
+        reconBuffer = (int32_t*)reconCoeff->bufferCb;
+    }
+    else if (plane == 2)
+    {
+        coeffBuffer = (int32_t*)coeff->bufferCr;
+        reconBuffer = (int32_t*)reconCoeff->bufferCr;
+    }
+    else
+    {
+        assert(0);
+    }
+
+    if (count_non_zero_coeffs) {
+        FullDistortionKernel32Bits_funcPtrArray[asm_type](
+                &(coeffBuffer[coeffOriginIndex]),
+                    bwidth,
+                    &(reconBuffer[reconCoeffOriginIndex]),
+                    bwidth,
+                    distortion,
+                    bwidth,
+                    bheight);
+    }
+    else {
+        FullDistortionKernelCbfZero32Bits_funcPtrArray[asm_type](
+                    &(coeffBuffer[coeffOriginIndex]),
+                    bwidth,
+                    &(reconBuffer[reconCoeffOriginIndex]),
+                    bwidth,
+                    distortion,
+                    bwidth,
+                    bheight);
+    }
+
+    return return_error;
+}
+
 void extract_8bit_data(
     uint16_t      *in16BitBuffer,
     uint32_t       inStride,

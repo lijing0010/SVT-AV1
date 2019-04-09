@@ -91,6 +91,19 @@ extern "C" {
         COMPONENT_TYPE                          componentType,
         EbAsm                                  asm_type);
 
+    extern EbErrorType Av1TuPlaneEstimateCoeffBits(
+        PictureControlSet_t                    *picture_control_set_ptr,
+        struct ModeDecisionCandidateBuffer_s   *candidate_buffer_ptr,
+        CodingUnit_t                           *cu_ptr,
+        uint32_t                                tuOriginIndex,
+        EntropyCoder_t                         *entropy_coder_ptr,
+        EbPictureBufferDesc_t                  *coeff_buffer_sb,
+        uint32_t                                eob,
+        uint64_t                               *yTuCoeffBits,
+        TxSize                                  txsize,
+        uint32_t                                plane,
+        EbAsm                                   asm_type);
+
     extern EbErrorType CopyRbspBitstreamToPayload(
         Bitstream_t *bitstreamPtr,
         EbByte      outputBuffer,
