@@ -1005,10 +1005,14 @@ EbErrorType av1_inter_prediction(
     const BlockGeom * blk_geom = Get_blk_geom_mds(cu_ptr->mds_idx);
     int32_t ss_x = 1;
     int32_t ss_y = 1;
+    int32_t bw = blk_geom->bwidth_uv;
+    int32_t bh = blk_geom->bheight_uv;
     if(stage == ED_STAGE)
     {
         ss_x = picture_control_set_ptr->parent_pcs_ptr->av1_cm->subsampling_x;
         ss_y = picture_control_set_ptr->parent_pcs_ptr->av1_cm->subsampling_y;
+        bw = blk_geom->bwidth_uv_ex;
+        bh = blk_geom->bheight_uv_ex;
     }
 
 
@@ -1027,11 +1031,6 @@ EbErrorType av1_inter_prediction(
     {
 
         //CHKN setup input param
-
-        int32_t bw = blk_geom->bwidth_uv_ex;
-        int32_t bh = blk_geom->bheight_uv_ex;
-        UNUSED_VARIABLE(bw);
-        UNUSED_VARIABLE(bh);
 
         uint32_t mi_x = pu_origin_x;       //these are luma picture wise
         uint32_t mi_y = pu_origin_y;
@@ -1155,13 +1154,13 @@ EbErrorType av1_inter_prediction(
                     dstPtr = dstPtr + x + y * prediction_ptr->strideCb;
 
                     const MV mv = this_mbmi->mv[0].as_mv;
-                    mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, blk_geom->bwidth_uv_ex, blk_geom->bheight_uv_ex, ss_x, ss_y);
+                    mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, bw, bh, ss_x, ss_y);
                     subpel_x = mv_q4.col & SUBPEL_MASK;
                     subpel_y = mv_q4.row & SUBPEL_MASK;
                     srcPtr = srcPtr + (mv_q4.row >> SUBPEL_BITS) * src_stride + (mv_q4.col >> SUBPEL_BITS);
 
                     av1_get_convolve_filter_params(interp_filters, &filter_params_x,
-                        &filter_params_y, blk_geom->bwidth_uv_ex, blk_geom->bheight_uv_ex);
+                        &filter_params_y, bw, bh);
 
 
                     convolve[subpel_x != 0][subpel_y != 0][is_compound](
@@ -1190,13 +1189,13 @@ EbErrorType av1_inter_prediction(
                     dstPtr = dstPtr + x + y * prediction_ptr->strideCr;
 
                     // const MV mv = this_mbmi->mv[0].as_mv;
-                    mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, blk_geom->bwidth_uv_ex, blk_geom->bheight_uv_ex, ss_x, ss_y);
+                    mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, bw, bh, ss_x, ss_y);
                     subpel_x = mv_q4.col & SUBPEL_MASK;
                     subpel_y = mv_q4.row & SUBPEL_MASK;
                     srcPtr = srcPtr + (mv_q4.row >> SUBPEL_BITS) * src_stride + (mv_q4.col >> SUBPEL_BITS);
 
                     av1_get_convolve_filter_params(interp_filters, &filter_params_x,
-                        &filter_params_y, blk_geom->bwidth_uv_ex, blk_geom->bheight_uv_ex);
+                        &filter_params_y, bw, bh);
 
                     convolve[subpel_x != 0][subpel_y != 0][is_compound](
                         srcPtr,
@@ -1268,7 +1267,7 @@ EbErrorType av1_inter_prediction(
             src_stride = ref_pic_list0->strideCb;
             dst_stride = prediction_ptr->strideCb;
 
-            mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, blk_geom->bwidth_uv_ex, blk_geom->bheight_uv_ex, ss_x, ss_y);
+            mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, bw, bh, ss_x, ss_y);
             subpel_x = mv_q4.col & SUBPEL_MASK;
             subpel_y = mv_q4.row & SUBPEL_MASK;
             srcPtr = srcPtr + (mv_q4.row >> SUBPEL_BITS) * src_stride + (mv_q4.col >> SUBPEL_BITS);
@@ -1276,15 +1275,14 @@ EbErrorType av1_inter_prediction(
 
 
             av1_get_convolve_filter_params(interp_filters, &filter_params_x,
-                &filter_params_y, blk_geom->bwidth_uv_ex, blk_geom->bheight_uv_ex);
+                &filter_params_y, bw, bh);
 
             convolve[subpel_x != 0][subpel_y != 0][is_compound](
                 srcPtr,
                 src_stride,
                 dstPtr,
                 dst_stride,
-                blk_geom->bwidth_uv_ex,
-                blk_geom->bheight_uv_ex,
+                bw, bh,
                 &filter_params_x,//puSize > 8 ? &av1RegularFilter : &av1RegularFilterW4,
                 &filter_params_y,//puSize > 8 ? &av1RegularFilter : &av1RegularFilterW4,
 
@@ -1298,7 +1296,7 @@ EbErrorType av1_inter_prediction(
             src_stride = ref_pic_list0->strideCr;
             dst_stride = prediction_ptr->strideCr;
 
-            mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, blk_geom->bwidth_uv_ex, blk_geom->bheight_uv_ex, ss_x, ss_y);
+            mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, bw, bh, ss_x, ss_y);
             subpel_x = mv_q4.col & SUBPEL_MASK;
             subpel_y = mv_q4.row & SUBPEL_MASK;
             srcPtr = srcPtr + (mv_q4.row >> SUBPEL_BITS) * src_stride + (mv_q4.col >> SUBPEL_BITS);
@@ -1308,8 +1306,7 @@ EbErrorType av1_inter_prediction(
                 src_stride,
                 dstPtr,
                 dst_stride,
-                blk_geom->bwidth_uv_ex,
-                blk_geom->bheight_uv_ex,
+                bw, bh,
                 &filter_params_x,//puSize > 8 ? &av1RegularFilter : &av1RegularFilterW4,
                 &filter_params_y,//puSize > 8 ? &av1RegularFilter : &av1RegularFilterW4,
                 subpel_x,
@@ -1362,14 +1359,14 @@ EbErrorType av1_inter_prediction(
             src_stride = ref_pic_list1->strideCb;
             dst_stride = prediction_ptr->strideCb;
 
-            mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, blk_geom->bwidth_uv_ex, blk_geom->bheight_uv_ex, ss_x, ss_y);
+            mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, bw, bh, ss_x, ss_y);
             subpel_x = mv_q4.col & SUBPEL_MASK;
             subpel_y = mv_q4.row & SUBPEL_MASK;
             srcPtr = srcPtr + (mv_q4.row >> SUBPEL_BITS) * src_stride + (mv_q4.col >> SUBPEL_BITS);
             conv_params = get_conv_params_no_round(0, (mv_unit->predDirection == BI_PRED) ? 1 : 0, 0, tmp_dstCb, 64, is_compound, EB_8BIT);
 
             av1_get_convolve_filter_params(interp_filters, &filter_params_x,
-                &filter_params_y, blk_geom->bwidth_uv_ex, blk_geom->bheight_uv_ex);
+                &filter_params_y, bw, bh);
 
 
             convolve[subpel_x != 0][subpel_y != 0][is_compound](
@@ -1377,8 +1374,7 @@ EbErrorType av1_inter_prediction(
                 src_stride,
                 dstPtr,
                 dst_stride,
-                blk_geom->bwidth_uv_ex,
-                blk_geom->bheight_uv_ex,
+                bw, bh,
                 &filter_params_x,//puSize > 8 ? &av1RegularFilter : &av1RegularFilterW4,
                 &filter_params_y,//puSize > 8 ? &av1RegularFilter : &av1RegularFilterW4,
                 subpel_x,
@@ -1391,7 +1387,7 @@ EbErrorType av1_inter_prediction(
             src_stride = ref_pic_list1->strideCr;
             dst_stride = prediction_ptr->strideCr;
 
-            mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, blk_geom->bwidth_uv_ex, blk_geom->bheight_uv_ex, ss_x, ss_y);
+            mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, bw, bh, ss_x, ss_y);
             subpel_x = mv_q4.col & SUBPEL_MASK;
             subpel_y = mv_q4.row & SUBPEL_MASK;
             srcPtr = srcPtr + (mv_q4.row >> SUBPEL_BITS) * src_stride + (mv_q4.col >> SUBPEL_BITS);
@@ -1401,8 +1397,7 @@ EbErrorType av1_inter_prediction(
                 src_stride,
                 dstPtr,
                 dst_stride,
-                blk_geom->bwidth_uv_ex,
-                blk_geom->bheight_uv_ex,
+                bw, bh,
                 &filter_params_x,//puSize > 8 ? &av1RegularFilter : &av1RegularFilterW4,
                 &filter_params_y,//puSize > 8 ? &av1RegularFilter : &av1RegularFilterW4,
                 subpel_x,
@@ -2550,10 +2545,14 @@ EbErrorType warped_motion_prediction(
     ConvolveParams conv_params;
     int32_t ss_x = 1; // subsamplings
     int32_t ss_y = 1;
+    int32_t bw = blk_geom->bwidth_uv;
+    int32_t bh = blk_geom->bheight_uv;
 
     if(stage == ED_STAGE && cm) {
         ss_x = cm->subsampling_x;
         ss_y = cm->subsampling_y;
+        bw = blk_geom->bwidth_uv_ex;
+        bh = blk_geom->bheight_uv_ex;
     }
     if (!is16bit) {
         uint8_t *srcPtr;
@@ -2664,22 +2663,21 @@ EbErrorType warped_motion_prediction(
                 src_stride = ref_pic_list0->strideCb;
                 dst_stride = prediction_ptr->strideCb;
 
-                mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, blk_geom->bwidth_uv_ex, blk_geom->bheight_uv_ex, ss_x, ss_y);
+                mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, bw, bh, ss_x, ss_y);
                 subpel_x = mv_q4.col & SUBPEL_MASK;
                 subpel_y = mv_q4.row & SUBPEL_MASK;
                 srcPtr = srcPtr + (mv_q4.row >> SUBPEL_BITS) * src_stride + (mv_q4.col >> SUBPEL_BITS);
                 conv_params = get_conv_params_no_round(0, 0, 0, tmp_dstCb, 64, is_compound, EB_8BIT);
 
                 av1_get_convolve_filter_params(interp_filters, &filter_params_x,
-                    &filter_params_y, blk_geom->bwidth_uv_ex, blk_geom->bheight_uv_ex);
+                    &filter_params_y, bw, bh);
 
                 convolve[subpel_x != 0][subpel_y != 0][is_compound](
                     srcPtr,
                     src_stride,
                     dstPtr,
                     dst_stride,
-                    blk_geom->bwidth_uv_ex,
-                    blk_geom->bheight_uv_ex,
+                    bw, bh,
                     &filter_params_x,
                     &filter_params_y,
                     subpel_x,
@@ -2692,7 +2690,7 @@ EbErrorType warped_motion_prediction(
                 src_stride = ref_pic_list0->strideCr;
                 dst_stride = prediction_ptr->strideCr;
 
-                mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, blk_geom->bwidth_uv_ex, blk_geom->bheight_uv_ex, ss_x, ss_y);
+                mv_q4 = clamp_mv_to_umv_border_sb(cu_ptr->av1xd, &mv, bw, bh, ss_x, ss_y);
                 subpel_x = mv_q4.col & SUBPEL_MASK;
                 subpel_y = mv_q4.row & SUBPEL_MASK;
                 srcPtr = srcPtr + (mv_q4.row >> SUBPEL_BITS) * src_stride + (mv_q4.col >> SUBPEL_BITS);
@@ -2702,8 +2700,7 @@ EbErrorType warped_motion_prediction(
                     src_stride,
                     dstPtr,
                     dst_stride,
-                    blk_geom->bwidth_uv_ex,
-                    blk_geom->bheight_uv_ex,
+                    bw, bh,
                     &filter_params_x,
                     &filter_params_y,
                     subpel_x,

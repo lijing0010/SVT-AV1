@@ -754,7 +754,7 @@ static EbErrorType Av1EncodeCoeff1D(
             int16_t txbSkipCtx = 0;
             int16_t dcSignCtx = 0;
 
-            assert(txsize_to_bsize[tx_size] == plane_bsize);
+            //assert(txsize_to_bsize[tx_size] == plane_bsize);
             GetTxbCtx(
                 COMPONENT_LUMA,
                 luma_dc_sign_level_coeff_neighbor_array,
@@ -764,9 +764,9 @@ static EbErrorType Av1EncodeCoeff1D(
                 tx_size,
                 &txbSkipCtx,
                 &dcSignCtx);
-            assert(blk_geom->tx_org_x[txb_itr] - blk_geom->origin_x == 0);
-            assert(blk_geom->tx_org_x[txb_itr] - blk_geom->origin_x == blk_geom->tx_boff_x[txb_itr]);
-            assert(blk_geom->tx_org_y[txb_itr] - blk_geom->origin_y == blk_geom->tx_boff_y[txb_itr]);
+            //assert(blk_geom->tx_org_x[txb_itr] - blk_geom->origin_x == 0);
+            //assert(blk_geom->tx_org_x[txb_itr] - blk_geom->origin_x == blk_geom->tx_boff_x[txb_itr]);
+            //assert(blk_geom->tx_org_y[txb_itr] - blk_geom->origin_y == blk_geom->tx_boff_y[txb_itr]);
 
 #ifdef DUMP_ENTROPY
             printf("write luma, txb_itr %d, nz_coeff %d, txb is %dx%d\n",
