@@ -33,7 +33,7 @@
 #include "EbCodingLoop.h"
 #endif
 
-#define DEBUG_REF_INFO
+//#define DEBUG_REF_INFO
 #ifdef DEBUG_REF_INFO
 static void dump_buf_desc_to_file(EbPictureBufferDesc_t* reconBuffer, const char* filename, int POC)
 {
@@ -3872,7 +3872,6 @@ EB_EXTERN void AV1EncodePass(
                         !oneSegment &&
                         (context_ptr->cu_origin_x == 0 && context_ptr->cu_origin_y == sb_origin_y) ? EB_TRUE : EB_FALSE;
                     zeroLumaCbfMD = (EbBool)(checkZeroLumaCbf && ((&cu_ptr->prediction_unit_array[0])->merge_flag == EB_FALSE && cu_ptr->block_has_coeff == 0 && isFirstCUinRow == EB_FALSE));
-                    zeroLumaCbfMD = EB_FALSE;
 
 
                     //Motion Compensation could be avoided in the case below
@@ -4099,10 +4098,8 @@ EB_EXTERN void AV1EncodePass(
                     uint32_t component_mask = context_ptr->blk_geom->has_uv_ex ? PICTURE_BUFFER_DESC_FULL_MASK : PICTURE_BUFFER_DESC_LUMA_MASK;
                     if (cu_ptr->prediction_unit_array[0].merge_flag == EB_FALSE)
                     {
-                        int32_t plane_end = blk_geom->has_uv_ex ? 2 : 0;
-                        for (uint32_t plane = 0; plane <= plane_end; ++plane)
+                        for (int32_t plane = 0; plane <= blk_geom->has_uv_ex; ++plane)
                         {
-                            uint16_t txb_itr[3] = {0};
                             totTu = plane == 0 ? totLumaTu : totChromaTu;
                             uint8_t subsampling_x = 0;
                             uint8_t subsampling_y = 0;
@@ -4155,18 +4152,21 @@ EB_EXTERN void AV1EncodePass(
                                         plane,
                                         useDeltaQpSegments,
                                         cu_ptr->delta_qp > 0 ? 0 : dZoffset,
-                                        tuIt,//txb_itr[plane],
-                                        eobs[tuIt],//eobs[txb_itr[plane]],
+                                        tuIt,
+                                        eobs[tuIt],
                                         cuPlane);
 #ifdef DEBUG_REF_INFO
+
+                                for (int i=0; i<=plane; i++)
                                 {
+                                    int p = i + plane;
                                     int originX = txb_origin_x;
                                     int originY = txb_origin_y;
-                                    if (/*originX == 128 && originY == 320) &&*/ plane == 1)
+                                    if (/*originX == 128 && originY == 320) &&*/ p == 1)
                                     {
                                         printf("\nAbout to dump coeff for (%d, %d) at plane %d, tx size %d, txb_itr=%d\n",
                                                 originX, originY, plane, tx_size, context_ptr->txb_itr);
-                                        dump_coeff_block_from_desc(plane ? context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_width[context_ptr->txb_itr], plane ? context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_height[context_ptr->txb_itr], coeff_buffer_sb, originX, originY, plane, context_ptr->coded_area_sb[plane]);
+                                        dump_coeff_block_from_desc(p ? context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_width[context_ptr->txb_itr], p ? context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_height[context_ptr->txb_itr], coeff_buffer_sb, originX, originY, p, context_ptr->coded_area_sb[p]);
                                     }
                                 }
 #endif
@@ -4213,18 +4213,22 @@ EB_EXTERN void AV1EncodePass(
                                             candidateBuffer->candidate_ptr->transform_type[PLANE_TYPE_UV] = cu_ptr->transform_unit_array[tuIt].transform_type[PLANE_TYPE_UV];
                                         candidateBuffer->candidate_ptr->type = cu_ptr->prediction_mode_flag;
 
-                                        Av1TuPlaneEstimateCoeffBits(
-                                            picture_control_set_ptr,
-                                            candidateBuffer,
-                                            cu_ptr,
-                                            context_ptr->coded_area_sb[plane],
-                                            coeff_est_entropy_coder_ptr,
-                                            coeff_buffer_sb,
-                                            eobs[context_ptr->txb_itr][plane],
-                                            &tuCoeffBits,
-                                            plane ? context_ptr->blk_geom->txsize_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->txsize[context_ptr->txb_itr],
-                                            plane,
-                                            asm_type);
+                                        for (int i=0; i<=plane; i++)
+                                        {
+                                            int p = i + plane;
+                                            Av1TuPlaneEstimateCoeffBits(
+                                                picture_control_set_ptr,
+                                                candidateBuffer,
+                                                cu_ptr,
+                                                context_ptr->coded_area_sb[p],
+                                                coeff_est_entropy_coder_ptr,
+                                                coeff_buffer_sb,
+                                                eobs[context_ptr->txb_itr][p],
+                                                &tuCoeffBits,
+                                                p ? context_ptr->blk_geom->txsize_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->txsize[context_ptr->txb_itr],
+                                                p,
+                                                asm_type);
+                                        }
                                     }
 
                                     // CBF Tu decision
@@ -4237,28 +4241,32 @@ EB_EXTERN void AV1EncodePass(
                                                 &yTuCoeffBits,
                                                 component_mask);
                                         else if (plane == 1)
+                                        {
                                             cu_ptr->transform_unit_array[context_ptr->txb_itr].u_has_coeff = count_non_zero_coeffs[1] != 0;
-                                        else
                                             cu_ptr->transform_unit_array[context_ptr->txb_itr].v_has_coeff = count_non_zero_coeffs[2] != 0;
+                                        }
                                     } else
                                     {
                                         if (plane == 0)
                                             cu_ptr->transform_unit_array[context_ptr->txb_itr].y_has_coeff = 0;
                                         else if (plane == 1)
+                                        {
                                             cu_ptr->transform_unit_array[context_ptr->txb_itr].u_has_coeff = 0;
-                                        else
                                             cu_ptr->transform_unit_array[context_ptr->txb_itr].v_has_coeff = 0;
+                                        }
                                     }
                                     // Update count_non_zero_coeffs after CBF decision
                                     if (plane == 0 && cu_ptr->transform_unit_array[context_ptr->txb_itr].y_has_coeff == EB_FALSE)
                                         count_non_zero_coeffs[0] = 0;
                                     if (plane == 1 && cu_ptr->transform_unit_array[context_ptr->txb_itr].u_has_coeff == EB_FALSE)
                                         count_non_zero_coeffs[1] = 0;
-                                    if (plane == 2 && cu_ptr->transform_unit_array[context_ptr->txb_itr].v_has_coeff == EB_FALSE)
+                                    if (plane == 1 && cu_ptr->transform_unit_array[context_ptr->txb_itr].v_has_coeff == EB_FALSE)
                                         count_non_zero_coeffs[2] = 0;
 
                                     // Update TU count_non_zero_coeffs
                                     cu_ptr->transform_unit_array[context_ptr->txb_itr].nz_coef_count[plane] = (uint16_t)count_non_zero_coeffs[plane];
+                                    if (plane == 1)
+                                        cu_ptr->transform_unit_array[context_ptr->txb_itr].nz_coef_count[2] = (uint16_t)count_non_zero_coeffs[2];
                                     coeff_bits += tuCoeffBits;
 
                                     if (plane == 0)
@@ -4268,6 +4276,8 @@ EB_EXTERN void AV1EncodePass(
                                     }
                                 }
                                 context_ptr->coded_area_sb[plane] += (plane ? blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt] : blk_geom->tx_width[tuIt] * blk_geom->tx_height[tuIt]);
+                                if(plane == 1)
+                                    context_ptr->coded_area_sb[2] += blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt];
                             } // Transform Loop
                         }
 
@@ -4296,8 +4306,7 @@ EB_EXTERN void AV1EncodePass(
                     context_ptr->coded_area_sb[2] = coded_area_org_v;
                     totLumaTu   = context_ptr->blk_geom->txb_count[0];
                     totChromaTu = context_ptr->blk_geom->txb_count[1];
-                    int32_t plane_end = blk_geom->has_uv_ex ? 2 : 0;
-                    for (uint32_t plane = 0; plane <= plane_end; ++plane)
+                    for (int32_t plane = 0; plane <= blk_geom->has_uv_ex; ++plane)
                     {
                         totTu = plane == 0 ? totLumaTu : totChromaTu;
                         uint8_t subsampling_x = 0;
@@ -4323,9 +4332,10 @@ EB_EXTERN void AV1EncodePass(
                                 if (plane == 0)
                                     cu_ptr->transform_unit_array[context_ptr->txb_itr].y_has_coeff = EB_FALSE;
                                 else if (plane == 1)
+                                {
                                     cu_ptr->transform_unit_array[context_ptr->txb_itr].u_has_coeff = EB_FALSE;
-                                else
                                     cu_ptr->transform_unit_array[context_ptr->txb_itr].v_has_coeff = EB_FALSE;
+                                }
                             }
                             else if ((&cu_ptr->prediction_unit_array[0])->merge_flag == EB_TRUE) {
                                 //assert(0);
@@ -4362,9 +4372,8 @@ EB_EXTERN void AV1EncodePass(
                             if (context_ptr->blk_geom->has_uv_ex) {
                                 cu_ptr->block_has_coeff = cu_ptr->block_has_coeff |
                                    (plane == 0 ? cu_ptr->transform_unit_array[context_ptr->txb_itr].y_has_coeff :
-                                   (plane == 1 ? cu_ptr->transform_unit_array[context_ptr->txb_itr].u_has_coeff :
+                                                (cu_ptr->transform_unit_array[context_ptr->txb_itr].u_has_coeff |
                                                  cu_ptr->transform_unit_array[context_ptr->txb_itr].v_has_coeff));
-
                             }
                             else {
                                 cu_ptr->block_has_coeff = cu_ptr->block_has_coeff | cu_ptr->transform_unit_array[context_ptr->txb_itr].y_has_coeff;
@@ -4372,27 +4381,35 @@ EB_EXTERN void AV1EncodePass(
 
                             //inter mode
                             if (doRecon)
-                                Av1EncodeGenerateRecon(
-                                //Av1EncodeGenerateReconFunctionPtr[is16bit](
-                                    context_ptr,
-                                    txb_origin_x,  //pic offset
-                                    txb_origin_y,
-                                    tx_size,
-                                    reconBuffer,
-                                    inverse_quant_buffer,
-                                    transform_inner_array_ptr,
-                                    plane,
-                                    context_ptr->txb_itr,
-                                    eobs[context_ptr->txb_itr],
-                                    asm_type);
-#ifdef DEBUG_REF_INFO
                             {
+                                for (int i=0; i<=plane; i++) 
+                                {
+                                    int p = i + plane;
+                                    Av1EncodeGenerateRecon(
+                                    //Av1EncodeGenerateReconFunctionPtr[is16bit](
+                                        context_ptr,
+                                        txb_origin_x,  //pic offset
+                                        txb_origin_y,
+                                        tx_size,
+                                        reconBuffer,
+                                        inverse_quant_buffer,
+                                        transform_inner_array_ptr,
+                                        plane,
+                                        context_ptr->txb_itr,
+                                        eobs[context_ptr->txb_itr],
+                                        asm_type);
+                                }
+                            }
+#ifdef DEBUG_REF_INFO
+                            for (int i=0; i<=plane; i++) 
+                            {
+                                int p = i + plane;
                                 int originX = txb_origin_x;
                                 int originY = txb_origin_y;
-                                //if (originX == 0 && originY == 448 && plane == 0)
-                                {   int plane = 1;
-                                    printf("\nAbout to dump recon for (%d, %d) at plane %d, coded_area_sb[plane]=%d\n", originX, originY, plane, context_ptr->coded_area_sb[plane]);
-                                    dump_block_from_desc(plane ? context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_width[context_ptr->txb_itr], plane ? context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_height[context_ptr->txb_itr], reconBuffer, originX, originY, plane);
+                                //if (originX == 0 && originY == 448 && p == 0)
+                                {   p = 1;
+                                    printf("\nAbout to dump recon for (%d, %d) at plane %d, coded_area_sb[plane]=%d\n", originX, originY, p, context_ptr->coded_area_sb[p]);
+                                    dump_block_from_desc(p ? context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_width[context_ptr->txb_itr], p ? context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_height[context_ptr->txb_itr], reconBuffer, originX, originY, p);
                                 }
                             }
 #endif
@@ -4400,9 +4417,10 @@ EB_EXTERN void AV1EncodePass(
                                 if(plane == 0)
                                     y_has_coeff |= cu_ptr->transform_unit_array[context_ptr->txb_itr].y_has_coeff;
                                 else if (plane == 1)
+                                {
                                     u_has_coeff |= cu_ptr->transform_unit_array[context_ptr->txb_itr].u_has_coeff;
-                                else
                                     v_has_coeff |= cu_ptr->transform_unit_array[context_ptr->txb_itr].v_has_coeff;
+                                }
                             }
                             else {
                                 y_has_coeff |= cu_ptr->transform_unit_array[context_ptr->txb_itr].y_has_coeff;
@@ -4411,7 +4429,8 @@ EB_EXTERN void AV1EncodePass(
                             if (plane == 0)
                                 context_ptr->coded_area_sb[plane] += blk_geom->tx_width[tuIt] * blk_geom->tx_height[tuIt];
                             if (plane > 0 && blk_geom->has_uv_ex) {
-                                context_ptr->coded_area_sb[plane] += blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt];
+                                context_ptr->coded_area_sb[1] += blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt];
+                                context_ptr->coded_area_sb[2] += blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt];
                             }
 
                         } // Transform Loop
