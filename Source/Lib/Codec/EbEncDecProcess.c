@@ -294,8 +294,7 @@ EbErrorType enc_dec_context_ctor(
 static void ResetEncodePassNeighborArrays(PictureControlSet_t *picture_control_set_ptr)
 {
     NeighborArrayUnitReset(picture_control_set_ptr->ep_intra_luma_mode_neighbor_array);
-    NeighborArrayUnitReset(picture_control_set_ptr->ep_intra_chroma_mode_neighbor_array_cb);
-    NeighborArrayUnitReset(picture_control_set_ptr->ep_intra_chroma_mode_neighbor_array_cr);
+    NeighborArrayUnitReset(picture_control_set_ptr->ep_intra_chroma_mode_neighbor_array);
     NeighborArrayUnitReset(picture_control_set_ptr->ep_mv_neighbor_array);
     NeighborArrayUnitReset(picture_control_set_ptr->ep_skip_flag_neighbor_array);
     NeighborArrayUnitReset(picture_control_set_ptr->ep_mode_type_neighbor_array);

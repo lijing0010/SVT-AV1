@@ -308,6 +308,7 @@ extern "C" {
 #if CHROMA_BLIND 
     extern void cfl_rd_pick_alpha(
         PictureControlSet_t             *picture_control_set_ptr,
+        STAGE       stage,
         ModeDecisionCandidateBuffer_t   *candidateBuffer,
         LargestCodingUnit_t             *sb_ptr,
         ModeDecisionContext_t           *context_ptr,

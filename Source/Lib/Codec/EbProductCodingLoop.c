@@ -1591,6 +1591,9 @@ void ProductDerivePartialFrequencyN2Flag(
 
 void AV1CostCalcCfl(
     PictureControlSet_t                *picture_control_set_ptr,
+#if CHROMA_BLIND 
+    STAGE       stage,
+#endif
     ModeDecisionCandidateBuffer_t      *candidateBuffer,
     LargestCodingUnit_t                *sb_ptr,
     ModeDecisionContext_t              *context_ptr,
@@ -1600,7 +1603,8 @@ void AV1CostCalcCfl(
     uint32_t                            cuChromaOriginIndex,
     uint64_t                            full_distortion[DIST_CALC_TOTAL],
     uint64_t                           *coeffBits,
-    EbAsm                               asm_type) {
+    EbAsm                               asm_type)
+{
 
     ModeDecisionCandidate_t            *candidate_ptr = candidateBuffer->candidate_ptr;
     uint32_t                            count_non_zero_coeffs[3][MAX_NUM_OF_TU_PER_CU];
@@ -1610,6 +1614,14 @@ void AV1CostCalcCfl(
     uint64_t                            cr_coeff_bits = 0;
     uint32_t                            chroma_width = context_ptr->blk_geom->bwidth_uv;
     uint32_t                            chroma_height = context_ptr->blk_geom->bheight_uv;
+#if CHROMA_BLIND
+    if (stage == ED_STAGE) {
+        //Jing: Need to change here for 422 for evaluate_cfl_ep
+        //      Works for 422, double check with 444
+        chroma_width = context_ptr->blk_geom->bwidth_uv_ex;
+        chroma_height = context_ptr->blk_geom->bheight_uv_ex;
+    }
+#endif
     // FullLoop and TU search
     int32_t                             alpha_q3;
     uint8_t                             cbQp = context_ptr->qp;
@@ -1777,6 +1789,9 @@ void cfl_rd_pick_alpha(
 static void cfl_rd_pick_alpha(
 #endif
     PictureControlSet_t     *picture_control_set_ptr,
+#if CHROMA_BLIND 
+    STAGE       stage,
+#endif
     ModeDecisionCandidateBuffer_t  *candidateBuffer,
     LargestCodingUnit_t     *sb_ptr,
     ModeDecisionContext_t   *context_ptr,
@@ -1813,6 +1828,9 @@ static void cfl_rd_pick_alpha(
 
                 AV1CostCalcCfl(
                     picture_control_set_ptr,
+#if CHROMA_BLIND 
+                    stage,
+#endif
                     candidateBuffer,
                     sb_ptr,
                     context_ptr,
@@ -1852,6 +1870,9 @@ static void cfl_rd_pick_alpha(
 
                         AV1CostCalcCfl(
                             picture_control_set_ptr,
+#if CHROMA_BLIND 
+                            stage,
+#endif
                             candidateBuffer,
                             sb_ptr,
                             context_ptr,
@@ -1899,6 +1920,9 @@ static void cfl_rd_pick_alpha(
 
     AV1CostCalcCfl(
         picture_control_set_ptr,
+#if CHROMA_BLIND 
+        stage,
+#endif
         candidateBuffer,
         sb_ptr,
         context_ptr,
@@ -1995,6 +2019,9 @@ static void CflPrediction(
     // 3: Loop over alphas and find the best or choose DC
     cfl_rd_pick_alpha(
         picture_control_set_ptr,
+#if CHROMA_BLIND 
+        MD_STAGE,
+#endif
         candidateBuffer,
         sb_ptr,
         context_ptr,

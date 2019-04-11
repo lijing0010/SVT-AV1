@@ -13798,8 +13798,7 @@ extern "C" {
 
         // Encode Pass Neighbor Arrays
         NeighborArrayUnit_t                  *ep_intra_luma_mode_neighbor_array;
-        NeighborArrayUnit_t                  *ep_intra_chroma_mode_neighbor_array_cb;
-        NeighborArrayUnit_t                  *ep_intra_chroma_mode_neighbor_array_cr;
+        NeighborArrayUnit_t                  *ep_intra_chroma_mode_neighbor_array;
         NeighborArrayUnit_t                  *ep_mv_neighbor_array;
         NeighborArrayUnit_t                  *ep_skip_flag_neighbor_array;
         NeighborArrayUnit_t                  *ep_mode_type_neighbor_array;
