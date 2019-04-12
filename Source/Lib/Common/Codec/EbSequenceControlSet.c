@@ -89,10 +89,6 @@ EbErrorType eb_sequence_control_set_ctor(
     sequence_control_set_ptr->frame_rate = 0;
     sequence_control_set_ptr->encoder_bit_depth = 8;
 
-    // Bitdepth
-    //sequence_control_set_ptr->input_bitdepth = EB_8BIT;
-    //sequence_control_set_ptr->output_bitdepth = EB_8BIT;
-
     // GOP Structure
     sequence_control_set_ptr->max_ref_count = 1;
     sequence_control_set_ptr->intra_period_length = 0;

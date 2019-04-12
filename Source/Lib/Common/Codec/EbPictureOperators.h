@@ -63,6 +63,19 @@ extern "C" {
         COMPONENT_TYPE          component_type,
         EbAsm                   asm_type);
 
+    extern EbErrorType picture_plane_distortion32_bits(
+        EbPictureBufferDesc_t     *coeff,
+        uint32_t                   coeffOriginIndex,
+        EbPictureBufferDesc_t     *reconCoeff,
+        uint32_t                   reconCoeffOriginIndex,
+        uint32_t                   bwidth,
+        uint32_t                   bheight,
+        uint64_t                   distortion[DIST_CALC_TOTAL],
+        uint32_t                   count_non_zero_coeffs,
+        uint32_t                   plane,
+        EbAsm                      asm_type);
+
+
     extern uint64_t compute_nx_m_satd_sad_lcu(
         uint8_t  *src,        // input parameter, source samples Ptr
         uint32_t  src_stride,  // input parameter, source stride

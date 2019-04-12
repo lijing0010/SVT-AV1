@@ -420,6 +420,8 @@ void* resource_coordination_kernel(void *input_ptr)
 
     uint32_t                         input_size = 0;
     EbObjectWrapper               *prevPictureControlSetWrapperPtr = 0;
+    uint32_t                         subsampling_x = 1;
+    uint32_t                         subsampling_y = 1;
     
     for (;;) {
 
@@ -432,6 +434,8 @@ void* resource_coordination_kernel(void *input_ptr)
             &ebInputWrapperPtr);
         ebInputPtr = (EbBufferHeaderType*)ebInputWrapperPtr->object_ptr;
         sequence_control_set_ptr = context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr;
+        subsampling_x = sequence_control_set_ptr->chroma_format_idc == EB_YUV444 ? 0 : 1;
+        subsampling_y = sequence_control_set_ptr->chroma_format_idc >= EB_YUV422 ? 0 : 1;
 
         // If config changes occured since the last picture began encoding, then
         //   prepare a new sequence_control_set_ptr containing the new changes and update the state
@@ -445,8 +449,8 @@ void* resource_coordination_kernel(void *input_ptr)
             {
                 context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->luma_width = context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->max_input_luma_width;
                 context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->luma_height = context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->max_input_luma_height;
-                context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->chroma_width = (context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->max_input_luma_width >> 1);
-                context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->chroma_height = (context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->max_input_luma_height >> 1);
+                context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->chroma_width = (context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->max_input_luma_width >> subsampling_x);
+                context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->chroma_height = (context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->max_input_luma_height >> subsampling_y);
 
                 context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->pad_right = context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->max_input_pad_right;
                 context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->cropping_right_offset = context_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->pad_right;

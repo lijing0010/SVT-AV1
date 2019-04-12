@@ -15,7 +15,7 @@ extern "C" {
      * UTILITY FUNCTIONS
      ****************************/
 
-    void build_blk_geom();
+    void build_blk_geom(int32_t use_128x128, EbColorFormat color_format);
     typedef struct BlockGeom
     {
         uint8_t    depth;                       // depth of the block
@@ -33,26 +33,43 @@ extern "C" {
         uint8_t    bheight;                     // block height
         uint8_t    bwidth_uv;                   // block width for Chroma 4:2:0
         uint8_t    bheight_uv;                  // block height for Chroma 4:2:0
+        uint8_t    bwidth_uv_ex;                // block width for Chroma in coding loop
+        uint8_t    bheight_uv_ex;               // block height for Chroma in coding loop
         uint8_t    bwidth_log2;                 // block width log2
         uint8_t    bheight_log2;                // block height log2
         block_size bsize;                       // bloc size
         block_size bsize_uv;                    // bloc size for Chroma 4:2:0
-        uint16_t   txb_count;                   //4-2-1
+        block_size bsize_uv_ex;                 // bloc size for Chroma in coding loop
+        uint8_t    valid_block;                 // whether this partition is valid, useful for 422 case.
+
+        uint16_t   txb_count[2];                   //4-2-1
         TxSize     txsize[MAX_TXB_COUNT];
         TxSize     txsize_uv[MAX_TXB_COUNT];
+        TxSize     txsize_uv_ex[MAX_TXB_COUNT];
         uint16_t   tx_org_x[MAX_TXB_COUNT];     //orgin is SB
         uint16_t   tx_org_y[MAX_TXB_COUNT];     //origin is SB
         uint16_t   tx_boff_x[MAX_TXB_COUNT];    //block offset , origin is block
         uint16_t   tx_boff_y[MAX_TXB_COUNT];    //block offset , origin is block
+
+        //for 422/444 chroma
+        uint16_t   tx_org_x_uv_ex[MAX_TXB_COUNT];    //orgin is SB
+        uint16_t   tx_org_y_uv_ex[MAX_TXB_COUNT];    //origin is SB
+        uint16_t   tx_boff_x_uv_ex[MAX_TXB_COUNT];    //block offset , origin is block
+        uint16_t   tx_boff_y_uv_ex[MAX_TXB_COUNT];    //block offset , origin is block
+
         uint8_t    tx_width[MAX_TXB_COUNT];     //tx_size_wide
         uint8_t    tx_height[MAX_TXB_COUNT];    //tx_size_wide
         uint8_t    tx_width_uv[MAX_TXB_COUNT];  //tx_size_wide
         uint8_t    tx_height_uv[MAX_TXB_COUNT]; //tx_size_wide
+        uint8_t    tx_width_uv_ex[MAX_TXB_COUNT];//tx_size_wide
+        uint8_t    tx_height_uv_ex[MAX_TXB_COUNT];//tx_size_wide
+
                    
                    
         uint16_t   blkidx_mds;                  // block index in md scan
         uint16_t   blkidx_dps;                  // block index in depth scan
         int32_t    has_uv;
+        int32_t    has_uv_ex;
         int32_t    sq_size;
         int32_t    is_last_quadrant;            // only for square bloks, is this the fourth quadrant block?
 
@@ -63,23 +80,23 @@ extern "C" {
         //  ss_x == 0    ss_x == 0        ss_x == 1      ss_x == 1
         //  ss_y == 0    ss_y == 1        ss_y == 0      ss_y == 1
         { { BLOCK_4X4, BLOCK_4X4 }, { BLOCK_4X4, BLOCK_4X4 } },
-        { { BLOCK_4X8, BLOCK_4X4 }, { BLOCK_4X4, BLOCK_4X4 } },
-        { { BLOCK_8X4, BLOCK_4X4 }, { BLOCK_4X4, BLOCK_4X4 } },
+        { { BLOCK_4X8, BLOCK_4X4 }, { BLOCK_INVALID, BLOCK_4X4 } },
+        { { BLOCK_8X4, BLOCK_INVALID}, { BLOCK_4X4, BLOCK_4X4 } },
         { { BLOCK_8X8, BLOCK_8X4 }, { BLOCK_4X8, BLOCK_4X4 } },
-        { { BLOCK_8X16, BLOCK_8X8 }, { BLOCK_4X16, BLOCK_4X8 } },
-        { { BLOCK_16X8, BLOCK_16X4 }, { BLOCK_8X8, BLOCK_8X4 } },
+        { { BLOCK_8X16, BLOCK_8X8 }, { BLOCK_INVALID, BLOCK_4X8 } },
+        { { BLOCK_16X8, BLOCK_INVALID}, { BLOCK_8X8, BLOCK_8X4 } },
         { { BLOCK_16X16, BLOCK_16X8 }, { BLOCK_8X16, BLOCK_8X8 } },
-        { { BLOCK_16X32, BLOCK_16X16 }, { BLOCK_8X32, BLOCK_8X16 } },
-        { { BLOCK_32X16, BLOCK_32X8 }, { BLOCK_16X16, BLOCK_16X8 } },
+        { { BLOCK_16X32, BLOCK_16X16 }, { BLOCK_INVALID, BLOCK_8X16 } },
+        { { BLOCK_32X16, BLOCK_INVALID}, { BLOCK_16X16, BLOCK_16X8 } },
         { { BLOCK_32X32, BLOCK_32X16 }, { BLOCK_16X32, BLOCK_16X16 } },
-        { { BLOCK_32X64, BLOCK_32X32 }, { BLOCK_16X64, BLOCK_16X32 } },
-        { { BLOCK_64X32, BLOCK_64X16 }, { BLOCK_32X32, BLOCK_32X16 } },
+        { { BLOCK_32X64, BLOCK_32X32 }, { BLOCK_INVALID, BLOCK_16X32 } },
+        { { BLOCK_64X32, BLOCK_INVALID}, { BLOCK_32X32, BLOCK_32X16 } },
         { { BLOCK_64X64, BLOCK_64X32 }, { BLOCK_32X64, BLOCK_32X32 } },
         { { BLOCK_64X128, BLOCK_64X64 }, { BLOCK_INVALID, BLOCK_32X64 } },
         { { BLOCK_128X64, BLOCK_INVALID }, { BLOCK_64X64, BLOCK_64X32 } },
         { { BLOCK_128X128, BLOCK_128X64 }, { BLOCK_64X128, BLOCK_64X64 } },
-        { { BLOCK_4X16, BLOCK_4X8 }, { BLOCK_4X16, BLOCK_4X8 } },
-        { { BLOCK_16X4, BLOCK_16X4 }, { BLOCK_8X4, BLOCK_8X4 } },
+        { { BLOCK_4X16, BLOCK_4X8 }, { BLOCK_INVALID, BLOCK_4X8 } },
+        { { BLOCK_16X4, BLOCK_INVALID}, { BLOCK_8X4, BLOCK_8X4 } },
         { { BLOCK_8X32, BLOCK_8X16 }, { BLOCK_INVALID, BLOCK_4X16 } },
         { { BLOCK_32X8, BLOCK_INVALID }, { BLOCK_16X8, BLOCK_16X4 } },
         { { BLOCK_16X64, BLOCK_16X32 }, { BLOCK_INVALID, BLOCK_8X32 } },

@@ -1438,6 +1438,78 @@ EbErrorType Av1TuEstimateCoeffBits(
 
     return return_error;
 }
+
+EbErrorType Av1TuPlaneEstimateCoeffBits(
+    PictureControlSet_t                    *picture_control_set_ptr,
+    struct ModeDecisionCandidateBuffer_s   *candidate_buffer_ptr,
+    CodingUnit_t                           *cu_ptr,
+    uint32_t                                tuOriginIndex,
+    EntropyCoder_t                         *entropy_coder_ptr,
+    EbPictureBufferDesc_t                  *coeff_buffer_sb,
+    uint32_t                                eob,
+    uint64_t                               *yTuCoeffBits,
+    TxSize                                  txsize,
+    uint32_t                                plane,
+    EbAsm                                   asm_type)
+{
+    (void)asm_type;
+    (void)entropy_coder_ptr;
+    EbErrorType return_error = EB_ErrorNone;
+
+    int32_t *coeffBuffer;
+    int16_t  txb_skip_context;
+    int16_t  dc_sign_context;
+    if(plane == 0)
+    {
+        txb_skip_context = cu_ptr->luma_txb_skip_context;
+        dc_sign_context  = cu_ptr->luma_dc_sign_context;
+        coeffBuffer = (int32_t*)&coeff_buffer_sb->buffer_y[tuOriginIndex * sizeof(int32_t)];
+    }
+    else if (plane == 1)
+    {
+        txb_skip_context = cu_ptr->cb_txb_skip_context;
+        dc_sign_context  = cu_ptr->cb_dc_sign_context;
+        coeffBuffer = (int32_t*)&coeff_buffer_sb->bufferCb[tuOriginIndex * sizeof(int32_t)];
+    }
+    else if (plane == 2)
+    {
+        txb_skip_context = cu_ptr->cr_txb_skip_context;
+        dc_sign_context  = cu_ptr->cr_dc_sign_context;
+        coeffBuffer = (int32_t*)&coeff_buffer_sb->bufferCr[tuOriginIndex * sizeof(int32_t)];
+    }
+    else
+    {
+        assert(0);
+    }
+
+    EbBool reducedTransformSetFlag = picture_control_set_ptr->parent_pcs_ptr->reduced_tx_set_used ? EB_TRUE : EB_FALSE;
+
+    //Estimate the rate of the transform type and coefficient for Luma
+    if (eob) {
+
+        *yTuCoeffBits = av1_cost_coeffs_txb(
+            candidate_buffer_ptr,
+            coeffBuffer,
+            (uint16_t)eob,
+            plane == 0 ? PLANE_TYPE_Y : PLANE_TYPE_UV,
+            txsize,
+            txb_skip_context,
+            dc_sign_context,
+            reducedTransformSetFlag);
+    }
+    else {
+        *yTuCoeffBits = av1_cost_skip_txb(
+            candidate_buffer_ptr,
+            txsize,
+            plane == 0 ? PLANE_TYPE_Y : PLANE_TYPE_UV,
+            txb_skip_context);
+    }
+
+    return return_error;
+}
+
+
+
 /*********************************************************************************
 * av1_intra_full_cost function is used to estimate the cost of an intra candidate mode
 * for full mode decisoion module.
@@ -1952,7 +2024,7 @@ void coding_loop_context_generation(
     cu_ptr->cr_txb_skip_context = 0;
     cu_ptr->cr_dc_sign_context = 0;
 
-    int32_t txb_count = context_ptr->blk_geom->txb_count;
+    int32_t txb_count = context_ptr->blk_geom->txb_count[0];
     int32_t txb_itr = 0;
     for (txb_itr = 0; txb_itr < txb_count; txb_itr++) {
 

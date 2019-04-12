@@ -486,6 +486,10 @@ extern "C" {
         uint8_t *input, // AMIR-> Changed to 8 bit
         int32_t input_stride, int16_t *output_q3,
         int32_t width, int32_t height);
+    extern void cfl_luma_subsampling_422_lbd_c(
+        uint8_t *input,
+        int32_t input_stride, int16_t *output_q3,
+        int32_t width, int32_t height);
     extern void cfl_luma_subsampling_420_hbd_c(
         const uint16_t *input,
         int32_t input_stride, int16_t *output_q3,

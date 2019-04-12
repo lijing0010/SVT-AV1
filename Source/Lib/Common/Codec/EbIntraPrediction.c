@@ -1315,6 +1315,7 @@ void cfl_luma_subsampling_420_lbd_c(
         output_q3 += CFL_BUF_LINE;
     }
 }
+
 void cfl_luma_subsampling_420_hbd_c(
     const uint16_t *input,
     int32_t input_stride, int16_t *output_q3,
@@ -1330,6 +1331,22 @@ void cfl_luma_subsampling_420_hbd_c(
         output_q3 += CFL_BUF_LINE;
     }
 }
+
+void cfl_luma_subsampling_422_lbd_c(
+    uint8_t *input,
+    int32_t input_stride, int16_t *output_q3,
+    int32_t width, int32_t height)
+{
+  assert((height - 1) * CFL_BUF_LINE + width <= CFL_BUF_SQUARE);
+  for (int j = 0; j < height; j++) {
+    for (int i = 0; i < width; i += 2) {
+      output_q3[i >> 1] = (input[i] + input[i + 1]) << 2;
+    }
+    input += input_stride;
+    output_q3 += CFL_BUF_LINE;
+  }
+}
+
 void subtract_average_c(
     int16_t *pred_buf_q3,
     int32_t width,
@@ -4106,16 +4123,24 @@ extern void av1_predict_intra_block(
 
     uint32_t  pred_buf_x_offest;
     uint32_t  pred_buf_y_offest;
+    uint32_t  recon_origin_x;
+    uint32_t  recon_origin_y;
 
     if (stage == ED_STAGE) { // EncDec
-        pred_buf_x_offest = plane ? ((bl_org_x_pict >> 3) << 3) >> 1 : bl_org_x_pict;
-        pred_buf_y_offest = plane ? ((bl_org_y_pict >> 3) << 3) >> 1 : bl_org_y_pict;
+        pred_buf_x_offest = plane ? ROUND_UV_EX(bl_org_x_pict, cm->subsampling_x) + (col_off << tx_size_wide_log2[0]) :
+            (bl_org_x_pict + (col_off << tx_size_wide_log2[0]));
+        pred_buf_y_offest = plane ? ROUND_UV_EX(bl_org_y_pict, cm->subsampling_y) + (row_off << tx_size_high_log2[0]) :
+            (bl_org_y_pict + (row_off << tx_size_high_log2[0]));
 
+        recon_origin_x = plane ? (recon_buffer->origin_x >> cm->subsampling_x) : recon_buffer->origin_x;
+        recon_origin_y = plane ? (recon_buffer->origin_y >> cm->subsampling_y) : recon_buffer->origin_y;
     }
     else { // MD
         pred_buf_x_offest = bl_org_x_mb;
         pred_buf_y_offest = bl_org_y_mb;
 
+        recon_origin_x = plane ? (recon_buffer->origin_x >> 1) : recon_buffer->origin_x; //420 for MD
+        recon_origin_y = plane ? (recon_buffer->origin_y >> 1) : recon_buffer->origin_y;
     }
 
     // Adjust mirow , micol ;
@@ -4151,15 +4176,15 @@ extern void av1_predict_intra_block(
     uint8_t  *dst;
     int32_t dst_stride;
     if (plane == 0) {
-        dst = recon_buffer->buffer_y + pred_buf_x_offest + recon_buffer->origin_x + (pred_buf_y_offest + recon_buffer->origin_y)*recon_buffer->stride_y;
+        dst = recon_buffer->buffer_y + pred_buf_x_offest + recon_origin_x + (pred_buf_y_offest + recon_origin_y) * recon_buffer->stride_y;
         dst_stride = recon_buffer->stride_y;
     }
     else if (plane == 1) {
-        dst = recon_buffer->bufferCb + (pred_buf_x_offest + recon_buffer->origin_x / 2 + (pred_buf_y_offest + recon_buffer->origin_y / 2)*recon_buffer->strideCb);
+        dst = recon_buffer->bufferCb + (pred_buf_x_offest + recon_origin_x + (pred_buf_y_offest + recon_origin_y) * recon_buffer->strideCb);
         dst_stride = recon_buffer->strideCb;
     }
     else {
-        dst = recon_buffer->bufferCr + (pred_buf_x_offest + recon_buffer->origin_x / 2 + (pred_buf_y_offest + recon_buffer->origin_y / 2)*recon_buffer->strideCr);
+        dst = recon_buffer->bufferCr + (pred_buf_x_offest + recon_origin_x + (pred_buf_y_offest + recon_origin_y) * recon_buffer->strideCr);
         dst_stride = recon_buffer->strideCr;
 
     }
@@ -4167,14 +4192,13 @@ extern void av1_predict_intra_block(
 
     int32_t chroma_up_available = xd->up_available;
     int32_t chroma_left_available = xd->left_available;
-    const int32_t ss_x = plane == 0 ? 0 : 1; //CHKN
-    const int32_t ss_y = plane == 0 ? 0 : 1;
+    const int32_t ss_x = plane == 0 ? 0 : cm->subsampling_x; //CHKN
+    const int32_t ss_y = plane == 0 ? 0 : cm->subsampling_y;
 
     if (ss_x && bw < mi_size_wide[BLOCK_8X8])
         chroma_left_available = (micol - 1) > tile->mi_col_start;
     if (ss_y && bh < mi_size_high[BLOCK_8X8])
         chroma_up_available = (mirow - 1) > tile->mi_row_start;
-
    
     int mi_stride = cm->mi_stride;
     const int32_t offset = mirow * mi_stride + micol;
@@ -4184,19 +4208,16 @@ extern void av1_predict_intra_block(
     if (xd->up_available) {
        // xd->above_mbmi = xd->mi[-xd->mi_stride].mbmi;
         xd->above_mbmi = &miPtr[-mi_stride].mbmi;
-    }
-    else {
+    } else {
         xd->above_mbmi = NULL;
     }
 
     if (xd->left_available) {
         //xd->left_mbmi = xd->mi[-1].mbmi;
         xd->left_mbmi = &miPtr[-1].mbmi;
-    }
-    else {
+    } else {
         xd->left_mbmi = NULL;
     }
-
 
     const int chroma_ref = ((mirow & 0x01) || !(bh & 0x01) || !ss_y) &&
         ((micol & 0x01) || !(bw & 0x01) || !ss_x);
@@ -4220,7 +4241,6 @@ extern void av1_predict_intra_block(
             chroma_left_available ? &miPtr[ss_y * mi_stride - 1].mbmi : NULL;
         xd->chroma_left_mbmi = chroma_left_mi;
     }
-
 
     //CHKN  const MbModeInfo *const mbmi = xd->mi[0];
     const int32_t txwpx = tx_size_wide[tx_size];
@@ -4257,9 +4277,9 @@ extern void av1_predict_intra_block(
     struct MacroblockdPlane * pd = &pd_s;
     if (plane == 0) {
         pd->subsampling_x = pd->subsampling_y = 0;
-    }
-    else {
-        pd->subsampling_x = pd->subsampling_y = 1;
+    } else {
+        pd->subsampling_x = cm->subsampling_x;
+        pd->subsampling_y = cm->subsampling_y;
     }
 
     const int32_t txw = tx_size_wide_unit[tx_size];
@@ -4320,7 +4340,6 @@ extern void av1_predict_intra_block(
 
     build_intra_predictors(
         xd,
-
         topNeighArray,
         leftNeighArray,
         // ref, ref_stride,

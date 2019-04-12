@@ -809,7 +809,7 @@ void AV1PerformInverseTransformReconLuma(
     uint32_t                              txb_itr;
 
     if (picture_control_set_ptr->intra_md_open_loop_flag == EB_FALSE) {
-        tuTotalCount = blk_geom->txb_count;
+        tuTotalCount = blk_geom->txb_count[0];
         txb_itr = 0;
         uint32_t txb_1d_offset = 0;
         uint32_t recLumaOffset = (blk_geom->origin_y) * candidateBuffer->recon_ptr->stride_y +
@@ -868,7 +868,8 @@ void AV1PerformInverseTransformReconLuma(
         } while (txb_itr < tuTotalCount);
     }
 }
-void AV1PerformInverseTransformRecon(
+
+static void AV1PerformInverseTransformRecon(
     PictureControlSet_t               *picture_control_set_ptr,
     ModeDecisionContext_t             *context_ptr,
     ModeDecisionCandidateBuffer_t     *candidateBuffer,
@@ -889,7 +890,7 @@ void AV1PerformInverseTransformRecon(
     UNUSED(blk_geom);
 
     if (picture_control_set_ptr->intra_md_open_loop_flag == EB_FALSE) {
-        tuTotalCount = context_ptr->blk_geom->txb_count;
+        tuTotalCount = context_ptr->blk_geom->txb_count[0];
         tu_index = 0;
         txb_itr = 0;
         uint32_t txb_1d_offset = 0, txb_1d_offset_uv = 0;
@@ -1394,6 +1395,7 @@ void ProductDerivePartialFrequencyN2Flag(
 #endif
 void AV1CostCalcCfl(
     PictureControlSet_t                *picture_control_set_ptr,
+    STAGE                               stage,
     ModeDecisionCandidateBuffer_t      *candidateBuffer,
     LargestCodingUnit_t                *sb_ptr,
     ModeDecisionContext_t              *context_ptr,
@@ -1413,6 +1415,7 @@ void AV1CostCalcCfl(
     uint64_t                            cr_coeff_bits = 0;
     uint32_t                            chroma_width = context_ptr->blk_geom->bwidth_uv;
     uint32_t                            chroma_height = context_ptr->blk_geom->bheight_uv;
+
     // FullLoop and TU search
     int32_t                             alpha_q3;
     uint8_t                             cbQp = context_ptr->qp;
@@ -1421,6 +1424,14 @@ void AV1CostCalcCfl(
     full_distortion[DIST_CALC_RESIDUAL] = 0;
     full_distortion[DIST_CALC_PREDICTION] = 0;
     *coeffBits = 0;
+
+    if (stage == ED_STAGE) {
+        //Jing: Need to change here for 422 for evaluate_cfl_ep
+        //      Works for 422, double check with 444
+        chroma_width = context_ptr->blk_geom->bwidth_uv_ex;
+        chroma_height = context_ptr->blk_geom->bheight_uv_ex;
+    }
+
     
     // Loop over alphas and find the best
     if (component_mask == COMPONENT_CHROMA_CB || component_mask == COMPONENT_CHROMA || component_mask == COMPONENT_ALL) {
@@ -1576,6 +1587,7 @@ void AV1CostCalcCfl(
 /*************************Pick the best alpha for cfl mode  or Choose DC******************************************************/
 void cfl_rd_pick_alpha(
     PictureControlSet_t     *picture_control_set_ptr,
+    STAGE                    stage,
     ModeDecisionCandidateBuffer_t  *candidateBuffer,
     LargestCodingUnit_t     *sb_ptr,
     ModeDecisionContext_t   *context_ptr,
@@ -1612,6 +1624,7 @@ void cfl_rd_pick_alpha(
 
                 AV1CostCalcCfl(
                     picture_control_set_ptr,
+                    stage,
                     candidateBuffer,
                     sb_ptr,
                     context_ptr,
@@ -1651,6 +1664,7 @@ void cfl_rd_pick_alpha(
 
                         AV1CostCalcCfl(
                             picture_control_set_ptr,
+                            stage,
                             candidateBuffer,
                             sb_ptr,
                             context_ptr,
@@ -1698,6 +1712,7 @@ void cfl_rd_pick_alpha(
 
     AV1CostCalcCfl(
         picture_control_set_ptr,
+        stage,
         candidateBuffer,
         sb_ptr,
         context_ptr,
@@ -1792,6 +1807,7 @@ static void CflPrediction(
     // 3: Loop over alphas and find the best or choose DC
     cfl_rd_pick_alpha(
         picture_control_set_ptr,
+        MD_STAGE,
         candidateBuffer,
         sb_ptr,
         context_ptr,
@@ -2518,7 +2534,7 @@ void inter_depth_tx_search(
         uint32_t                tu_index;
         uint32_t                tuTotalCount;
 
-        tuTotalCount = context_ptr->blk_geom->txb_count;
+        tuTotalCount = context_ptr->blk_geom->txb_count[0];
         tu_index = 0;
         txb_itr = 0;
         
@@ -2959,7 +2975,8 @@ void md_encode_block(
     EbAsm                                     asm_type = sequence_control_set_ptr->encode_context_ptr->asm_type;
     uint32_t                                  best_intra_mode = EB_INTRA_MODE_INVALID;
 
-    EbPictureBufferDesc_t                    *input_picture_ptr = picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr;
+    EbPictureBufferDesc_t                    *input_picture_ptr = picture_control_set_ptr->parent_pcs_ptr->chroma_downsampled_picture_ptr;
+
     const uint32_t                            inputOriginIndex = (context_ptr->cu_origin_y + input_picture_ptr->origin_y) * input_picture_ptr->stride_y + (context_ptr->cu_origin_x + input_picture_ptr->origin_x);
 
     const uint32_t inputCbOriginIndex = ((context_ptr->round_origin_y >> 1) + (input_picture_ptr->origin_y >> 1)) * input_picture_ptr->strideCb + ((context_ptr->round_origin_x >> 1) + (input_picture_ptr->origin_x >> 1));
@@ -3380,6 +3397,13 @@ EB_EXTERN EbErrorType mode_decision_sb(
         blk_idx_mds = leaf_data_array[cuIdx].mds_idx;
 
         const BlockGeom * blk_geom = context_ptr->blk_geom = get_blk_geom_mds(blk_idx_mds);
+        if (blk_geom->valid_block == 0) {
+            //printf("blk %dX%d is invalid for 422\n", blk_geom->bwidth, blk_geom->bheight);
+            //Jing: for 422, not all split are valid
+            cuIdx++;
+            continue;
+        }
+
         CodingUnit_t *  cu_ptr = context_ptr->cu_ptr = &context_ptr->md_cu_arr_nsq[blk_idx_mds];
 
         context_ptr->cu_size_log2 = blk_geom->bwidth_log2;

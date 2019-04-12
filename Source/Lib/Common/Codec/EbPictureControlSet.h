@@ -14313,7 +14313,6 @@ extern "C" {
         uint32_t                           sb_size_pix;   //since we still have lot of code assuming 64x64 LCU, we add a new paramter supporting both128x128 and 64x64, 
                                                           //ultimately the fixed code supporting 64x64 should be upgraded to use 128x128 and the above could be removed.
         uint32_t                           max_depth;
-        //EbBool                             is16bit;
         uint32_t                           ten_bit_format;
         uint32_t                           compressed_ten_bit_format;
         uint16_t                           enc_dec_segment_col;
@@ -14321,7 +14320,6 @@ extern "C" {
         EbEncMode                          enc_mode;
         uint8_t                            speed_control;
         uint16_t                           film_grain_noise_level;
-        //uint32_t                           encoder_bit_depth;
         EbBool                             ext_block_flag;
         EbBool                             in_loop_me_flag;
 

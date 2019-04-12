@@ -561,7 +561,8 @@ EbErrorType LoadDefaultBufferConfigurationSettings(
     //#====================== Processes number ======================
     sequence_control_set_ptr->total_process_init_count                    = 0;
 
-#if ONE_SEG
+//#if ONE_SEG
+#if 1 
     sequence_control_set_ptr->total_process_init_count += sequence_control_set_ptr->picture_analysis_process_init_count = 1;//MAX(15, coreCount / 6);
     sequence_control_set_ptr->total_process_init_count += sequence_control_set_ptr->motion_estimation_process_init_count = 1;//MAX(20, coreCount / 3);
     sequence_control_set_ptr->total_process_init_count += sequence_control_set_ptr->source_based_operations_process_init_count = 1;//MAX(3, coreCount / 12);
@@ -925,7 +926,7 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
     EbSequenceControlSetInitData scs_init;
     scs_init.sb_size = encHandlePtr->sequence_control_set_instance_array[0]->sequence_control_set_ptr->static_config.super_block_size;
 
-    build_blk_geom(scs_init.sb_size == 128);
+    build_blk_geom(scs_init.sb_size == 128, color_format);
 
     av1_init_me_luts();
     init_fn_ptr();
@@ -1035,6 +1036,7 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
         inputData.top_padding = encHandlePtr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->top_padding;
         inputData.bot_padding = encHandlePtr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->bot_padding;
         inputData.bit_depth = encHandlePtr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->encoder_bit_depth;
+        inputData.color_format = color_format;
         inputData.sb_sz = encHandlePtr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->sb_sz;
         inputData.sb_size_pix = scs_init.sb_size;
         inputData.max_depth = encHandlePtr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->max_sb_depth;
@@ -2990,16 +2992,19 @@ static EbErrorType CopyFrameBuffer(
     uint16_t                         inputRowIndex;
     EbBool                           is16BitInput = (EbBool)(config->encoder_bit_depth > EB_8BIT);
 
+    uint16_t subsampling_x = sequence_control_set_ptr->subsampling_x;
+    uint16_t subsampling_y = sequence_control_set_ptr->subsampling_y;
+
     // Need to include for Interlacing on the fly with pictureScanType = 1
 
     if (!is16BitInput) {
 
         uint32_t     lumaBufferOffset = (input_picture_ptr->stride_y*sequence_control_set_ptr->top_padding + sequence_control_set_ptr->left_padding) << is16BitInput;
-        uint32_t     chromaBufferOffset = (input_picture_ptr->strideCr*(sequence_control_set_ptr->top_padding >> 1) + (sequence_control_set_ptr->left_padding >> 1)) << is16BitInput;
+        uint32_t     chromaBufferOffset = (input_picture_ptr->strideCr*(sequence_control_set_ptr->top_padding >> subsampling_y) + (sequence_control_set_ptr->left_padding >> subsampling_x)) << is16BitInput;
         uint16_t     lumaStride = input_picture_ptr->stride_y << is16BitInput;
         uint16_t     chromaStride = input_picture_ptr->strideCb << is16BitInput;
         uint16_t     lumaWidth = (uint16_t)(input_picture_ptr->width - sequence_control_set_ptr->max_input_pad_right) << is16BitInput;
-        uint16_t     chromaWidth = (lumaWidth >> 1) << is16BitInput;
+        uint16_t     chromaWidth = (lumaWidth >> subsampling_x) << is16BitInput;
         uint16_t     lumaHeight = (uint16_t)(input_picture_ptr->height - sequence_control_set_ptr->max_input_pad_bottom);
 
         uint16_t     sourceLumaStride = (uint16_t)(inputPtr->y_stride);
@@ -3016,14 +3021,14 @@ static EbErrorType CopyFrameBuffer(
         }
 
         // U
-        for (inputRowIndex = 0; inputRowIndex < lumaHeight >> 1; inputRowIndex++) {
+        for (inputRowIndex = 0; inputRowIndex < lumaHeight >> subsampling_y; inputRowIndex++) {
             EB_MEMCPY((input_picture_ptr->bufferCb + chromaBufferOffset + chromaStride * inputRowIndex),
                 (inputPtr->cb + (sourceCbStride*inputRowIndex)),
                 chromaWidth);
         }
 
         // V
-        for (inputRowIndex = 0; inputRowIndex < lumaHeight >> 1; inputRowIndex++) {
+        for (inputRowIndex = 0; inputRowIndex < lumaHeight >> subsampling_y; inputRowIndex++) {
             EB_MEMCPY((input_picture_ptr->bufferCr + chromaBufferOffset + chromaStride * inputRowIndex),
                 (inputPtr->cr + (sourceCrStride*inputRowIndex)),
                 chromaWidth);
@@ -3034,11 +3039,11 @@ static EbErrorType CopyFrameBuffer(
     {
         {
             uint32_t  lumaBufferOffset = (input_picture_ptr->stride_y*sequence_control_set_ptr->top_padding + sequence_control_set_ptr->left_padding);
-            uint32_t  chromaBufferOffset = (input_picture_ptr->strideCr*(sequence_control_set_ptr->top_padding >> 1) + (sequence_control_set_ptr->left_padding >> 1));
+            uint32_t  chromaBufferOffset = (input_picture_ptr->strideCr*(sequence_control_set_ptr->top_padding >> subsampling_y) + (sequence_control_set_ptr->left_padding >> subsampling_x));
             uint16_t  lumaStride = input_picture_ptr->stride_y;
             uint16_t  chromaStride = input_picture_ptr->strideCb;
             uint16_t  lumaWidth = (uint16_t)(input_picture_ptr->width - sequence_control_set_ptr->max_input_pad_right);
-            uint16_t  chromaWidth = (lumaWidth >> 1);
+            uint16_t  chromaWidth = (lumaWidth >> subsampling_x);
             uint16_t  lumaHeight = (uint16_t)(input_picture_ptr->height - sequence_control_set_ptr->max_input_pad_bottom);
 
             uint16_t  sourceLumaStride = (uint16_t)(inputPtr->y_stride);
@@ -3054,7 +3059,7 @@ static EbErrorType CopyFrameBuffer(
             }
 
             // U 8bit
-            for (inputRowIndex = 0; inputRowIndex < lumaHeight >> 1; inputRowIndex++) {
+            for (inputRowIndex = 0; inputRowIndex < lumaHeight >> subsampling_y; inputRowIndex++) {
 
                 EB_MEMCPY((input_picture_ptr->bufferCb + chromaBufferOffset + chromaStride * inputRowIndex),
                     (inputPtr->cb + (sourceCbStride*inputRowIndex)),
@@ -3062,7 +3067,7 @@ static EbErrorType CopyFrameBuffer(
             }
 
             // V 8bit
-            for (inputRowIndex = 0; inputRowIndex < lumaHeight >> 1; inputRowIndex++) {
+            for (inputRowIndex = 0; inputRowIndex < lumaHeight >> subsampling_y; inputRowIndex++) {
 
                 EB_MEMCPY((input_picture_ptr->bufferCr + chromaBufferOffset + chromaStride * inputRowIndex),
                     (inputPtr->cr + (sourceCrStride*inputRowIndex)),
@@ -3081,10 +3086,10 @@ static EbErrorType CopyFrameBuffer(
                 for (inputRowIndex = 0; inputRowIndex < lumaHeight; inputRowIndex++) {
                     EB_MEMCPY(input_picture_ptr->bufferBitIncY + luma2BitWidth * inputRowIndex, inputPtr->luma_ext + sourceLuma2BitStride * inputRowIndex, luma2BitWidth);
                 }
-                for (inputRowIndex = 0; inputRowIndex < lumaHeight >> 1; inputRowIndex++) {
+                for (inputRowIndex = 0; inputRowIndex < lumaHeight >> subsampling_y; inputRowIndex++) {
                     EB_MEMCPY(input_picture_ptr->bufferBitIncCb + (luma2BitWidth >> 1)*inputRowIndex, inputPtr->cb_ext + sourceChroma2BitStride * inputRowIndex, luma2BitWidth >> 1);
                 }
-                for (inputRowIndex = 0; inputRowIndex < lumaHeight >> 1; inputRowIndex++) {
+                for (inputRowIndex = 0; inputRowIndex < lumaHeight >> subsampling_y; inputRowIndex++) {
                     EB_MEMCPY(input_picture_ptr->bufferBitIncCr + (luma2BitWidth >> 1)*inputRowIndex, inputPtr->cr_ext + sourceChroma2BitStride * inputRowIndex, luma2BitWidth >> 1);
                 }
             }
@@ -3096,9 +3101,9 @@ static EbErrorType CopyFrameBuffer(
 
         uint32_t lumaOffset = 0, chromaOffset = 0;
         uint32_t lumaBufferOffset = (input_picture_ptr->stride_y*sequence_control_set_ptr->top_padding + sequence_control_set_ptr->left_padding);
-        uint32_t chromaBufferOffset = (input_picture_ptr->strideCr*(sequence_control_set_ptr->top_padding >> 1) + (sequence_control_set_ptr->left_padding >> 1));
+        uint32_t chromaBufferOffset = (input_picture_ptr->strideCr*(sequence_control_set_ptr->top_padding >> subsampling_y) + (sequence_control_set_ptr->left_padding >> subsampling_x));
         uint16_t lumaWidth = (uint16_t)(input_picture_ptr->width - sequence_control_set_ptr->max_input_pad_right);
-        uint16_t chromaWidth = (lumaWidth >> 1);
+        uint16_t chromaWidth = (lumaWidth >> subsampling_x);
         uint16_t lumaHeight = (uint16_t)(input_picture_ptr->height - sequence_control_set_ptr->max_input_pad_bottom);
 
         uint16_t sourceLumaStride = (uint16_t)(inputPtr->y_stride);
@@ -3124,7 +3129,7 @@ static EbErrorType CopyFrameBuffer(
             input_picture_ptr->bufferBitIncCb + chromaBufferOffset,
             input_picture_ptr->strideBitIncCb,
             chromaWidth,
-            (lumaHeight >> 1),
+            (lumaHeight >> subsampling_y),
             config->asm_type);
 
         un_pack2d(
@@ -3135,7 +3140,7 @@ static EbErrorType CopyFrameBuffer(
             input_picture_ptr->bufferBitIncCr + chromaBufferOffset,
             input_picture_ptr->strideBitIncCr,
             chromaWidth,
-            (lumaHeight >> 1),
+            (lumaHeight >> subsampling_y),
             config->asm_type);
     }
     return return_error;
@@ -3488,13 +3493,12 @@ EbErrorType EbOutputReconBufferHeaderCtor(
 {
     EbBufferHeaderType         *recon_buffer;
     SequenceControlSet        *sequence_control_set_ptr = (SequenceControlSet*)objectInitDataPtr;
-    const uint32_t lumaSize =
-        sequence_control_set_ptr->luma_width    *
-        sequence_control_set_ptr->luma_height;
+    const EbColorFormat color_format = (EbColorFormat)sequence_control_set_ptr->chroma_format_idc;
+    const uint32_t lumaSize = sequence_control_set_ptr->luma_width * sequence_control_set_ptr->luma_height;
     // both u and v
-    const uint32_t chromaSize = lumaSize >> 1;
+    const uint32_t chromaSize = lumaSize >> (3 - color_format);
     const uint32_t tenBit = (sequence_control_set_ptr->static_config.encoder_bit_depth > 8);
-    const uint32_t frameSize = (lumaSize + chromaSize) << tenBit;
+    const uint32_t frameSize = (lumaSize + 2 * chromaSize) << tenBit;
 
     EB_MALLOC(EbBufferHeaderType*, recon_buffer, sizeof(EbBufferHeaderType), EB_N_PTR);
     *objectDblPtr = (EbPtr)recon_buffer;

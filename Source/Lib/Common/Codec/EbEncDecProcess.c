@@ -529,6 +529,10 @@ void ReconOutput(
     EbBufferHeaderType           *outputReconPtr;
     EncodeContext_t               *encode_context_ptr = sequence_control_set_ptr->encode_context_ptr;
     EbBool is16bit = (sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
+    const EbColorFormat color_format = (EbColorFormat)sequence_control_set_ptr->chroma_format_idc;
+    Av1Common  *cm  = picture_control_set_ptr->parent_pcs_ptr->av1_cm;
+    uint8_t subsampling_x = cm->subsampling_x;
+    uint8_t subsampling_y = cm->subsampling_y;
     // The totalNumberOfReconFrames counter has to be write/read protected as
     //   it is used to determine the end of the stream.  If it is not protected
     //   the encoder might not properly terminate.
@@ -618,8 +622,9 @@ void ReconOutput(
         outputReconPtr->n_filled_len += sampleTotalCount;
 
         // U Recon Samples
-        sampleTotalCount = ((recon_ptr->maxWidth - sequence_control_set_ptr->max_input_pad_right) * (recon_ptr->maxHeight - sequence_control_set_ptr->max_input_pad_bottom) >> 2) << is16bit;
-        reconReadPtr = recon_ptr->bufferCb + ((recon_ptr->origin_y << is16bit) >> 1) * recon_ptr->strideCb + ((recon_ptr->origin_x << is16bit) >> 1);
+        sampleTotalCount = ((recon_ptr->maxWidth - sequence_control_set_ptr->max_input_pad_right) * (recon_ptr->maxHeight - sequence_control_set_ptr->max_input_pad_bottom) >> (3 - color_format)) << is16bit;
+        reconReadPtr = recon_ptr->bufferCb + ((recon_ptr->origin_x << is16bit) >> subsampling_x) +
+            ((recon_ptr->origin_y << is16bit) >> subsampling_y) * recon_ptr->strideCb;
         reconWritePtr = &(outputReconPtr->p_buffer[outputReconPtr->n_filled_len]);
 
         CHECK_REPORT_ERROR(
@@ -632,15 +637,16 @@ void ReconOutput(
             reconReadPtr,
             recon_ptr->strideCb,
             reconWritePtr,
-            (recon_ptr->maxWidth - sequence_control_set_ptr->max_input_pad_right) >> 1,
-            (recon_ptr->width - sequence_control_set_ptr->pad_right) >> 1,
-            (recon_ptr->height - sequence_control_set_ptr->pad_bottom) >> 1,
+            (recon_ptr->maxWidth - sequence_control_set_ptr->max_input_pad_right) >> subsampling_x,
+            (recon_ptr->width - sequence_control_set_ptr->pad_right) >> subsampling_x,
+            (recon_ptr->height - sequence_control_set_ptr->pad_bottom) >> subsampling_y,
             1 << is16bit);
         outputReconPtr->n_filled_len += sampleTotalCount;
 
         // V Recon Samples
         sampleTotalCount = ((recon_ptr->maxWidth - sequence_control_set_ptr->max_input_pad_right) * (recon_ptr->maxHeight - sequence_control_set_ptr->max_input_pad_bottom) >> 2) << is16bit;
-        reconReadPtr = recon_ptr->bufferCr + ((recon_ptr->origin_y << is16bit) >> 1) * recon_ptr->strideCr + ((recon_ptr->origin_x << is16bit) >> 1);
+        reconReadPtr = recon_ptr->bufferCr + ((recon_ptr->origin_x << is16bit) >> subsampling_x) +
+            ((recon_ptr->origin_y << is16bit) >> subsampling_y) * recon_ptr->strideCr;
         reconWritePtr = &(outputReconPtr->p_buffer[outputReconPtr->n_filled_len]);
 
         CHECK_REPORT_ERROR(
@@ -654,9 +660,9 @@ void ReconOutput(
             reconReadPtr,
             recon_ptr->strideCr,
             reconWritePtr,
-            (recon_ptr->maxWidth - sequence_control_set_ptr->max_input_pad_right) >> 1,
-            (recon_ptr->width - sequence_control_set_ptr->pad_right) >> 1,
-            (recon_ptr->height - sequence_control_set_ptr->pad_bottom) >> 1,
+            (recon_ptr->maxWidth - sequence_control_set_ptr->max_input_pad_right) >> subsampling_x,
+            (recon_ptr->width - sequence_control_set_ptr->pad_right) >> subsampling_x,
+            (recon_ptr->height - sequence_control_set_ptr->pad_bottom) >> subsampling_y,
             1 << is16bit);
         outputReconPtr->n_filled_len += sampleTotalCount;
         outputReconPtr->pts = picture_control_set_ptr->picture_number;
@@ -1037,6 +1043,9 @@ void PadRefAndSetFlags(
     EbPictureBufferDesc_t *refPicPtr = (EbPictureBufferDesc_t*)referenceObject->reference_picture;
     EbPictureBufferDesc_t *refPic16BitPtr = (EbPictureBufferDesc_t*)referenceObject->reference_picture16bit;
     EbBool                is16bit = (sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
+    uint16_t subsampling_x = sequence_control_set_ptr->subsampling_x;
+    uint16_t subsampling_y = sequence_control_set_ptr->subsampling_y;
+
 
     if (!is16bit) {
         // Y samples
@@ -1052,19 +1061,19 @@ void PadRefAndSetFlags(
         generate_padding(
             refPicPtr->bufferCb,
             refPicPtr->strideCb,
-            refPicPtr->width >> 1,
-            refPicPtr->height >> 1,
-            refPicPtr->origin_x >> 1,
-            refPicPtr->origin_y >> 1);
+            refPicPtr->width >> subsampling_x,
+            refPicPtr->height >> subsampling_y,
+            refPicPtr->origin_x >> subsampling_x,
+            refPicPtr->origin_y >> subsampling_y);
 
         // Cr samples
         generate_padding(
             refPicPtr->bufferCr,
             refPicPtr->strideCr,
-            refPicPtr->width >> 1,
-            refPicPtr->height >> 1,
-            refPicPtr->origin_x >> 1,
-            refPicPtr->origin_y >> 1);
+            refPicPtr->width >> subsampling_x,
+            refPicPtr->height >> subsampling_y,
+            refPicPtr->origin_x >> subsampling_x,
+            refPicPtr->origin_y >> subsampling_y);
     }
 
     //We need this for MCP
@@ -1082,19 +1091,19 @@ void PadRefAndSetFlags(
         generate_padding16_bit(
             refPic16BitPtr->bufferCb,
             refPic16BitPtr->strideCb << 1,
-            refPic16BitPtr->width,
-            refPic16BitPtr->height >> 1,
-            refPic16BitPtr->origin_x,
-            refPic16BitPtr->origin_y >> 1);
+            refPic16BitPtr->width << (1 - subsampling_x),
+            refPic16BitPtr->height >> subsampling_y,
+            refPic16BitPtr->origin_x << (1 - subsampling_x),
+            refPic16BitPtr->origin_y >> subsampling_y);
 
         // Cr samples
         generate_padding16_bit(
             refPic16BitPtr->bufferCr,
             refPic16BitPtr->strideCr << 1,
-            refPic16BitPtr->width,
-            refPic16BitPtr->height >> 1,
-            refPic16BitPtr->origin_x,
-            refPic16BitPtr->origin_y >> 1);
+            refPic16BitPtr->width << (1 - subsampling_x),
+            refPic16BitPtr->height >> subsampling_y,
+            refPic16BitPtr->origin_x << (1 - subsampling_x),
+            refPic16BitPtr->origin_y >> subsampling_y);
 
     }
 

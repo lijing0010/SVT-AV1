@@ -86,6 +86,8 @@ extern "C" {
         const CodedUnitStats                *cu_stats;
         uint16_t                               cu_origin_x; // within the picture
         uint16_t                               cu_origin_y; // within the picture
+        EB_MODETYPE                            cu_left_mode_type; //Jing: Save the neighbor mode type(intra/inter)
+        EB_MODETYPE                            cu_top_mode_type;
         uint8_t                                sb_sz;
         uint32_t                               sb_index;
         MvUnit_t                               mv_unit;
@@ -125,8 +127,7 @@ extern "C" {
         uint8_t                                upsample_left_chroma;
         uint8_t                                upsample_above_chroma; 
 
-        uint16_t                               coded_area_sb;
-        uint16_t                               coded_area_sb_uv;
+        uint16_t                               coded_area_sb[2];
 
 #if ENCDEC_TX_SEARCH
         uint8_t                                is_inter;

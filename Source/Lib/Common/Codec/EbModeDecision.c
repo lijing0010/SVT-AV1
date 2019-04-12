@@ -1986,7 +1986,7 @@ void  inject_intra_candidates_ois(
                     0,
                     0,
                     0,
-                    context_ptr->blk_geom->txsize_uv[0],
+                    context_ptr->blk_geom->txsize_uv_ex[0],//Jing: change to _ex so to make sure the transform in MD is the same as EncDec
                     picture_control_set_ptr->parent_pcs_ptr->reduced_tx_set_used);
             candidate_array[can_total_cnt].ref_frame_type = INTRA_FRAME;
             candidate_array[can_total_cnt].pred_mode = (PredictionMode)intra_mode;
@@ -2025,7 +2025,7 @@ void  inject_intra_candidates_ois(
                     0,
                     0,
                     0,
-                    context_ptr->blk_geom->txsize_uv[0],
+                    context_ptr->blk_geom->txsize_uv_ex[0],
                     picture_control_set_ptr->parent_pcs_ptr->reduced_tx_set_used);
             candidate_array[can_total_cnt].ref_frame_type = INTRA_FRAME;
             candidate_array[can_total_cnt].pred_mode = (PredictionMode)intra_mode;
@@ -2370,7 +2370,7 @@ void  inject_intra_candidates(
     uint32_t                       *candidateTotalCnt){
 #else
     uint32_t                       *candidateTotalCnt,
-    const uint32_t                  leaf_index){
+    const uint32_t                  leaf_index) {
 
     (void)leaf_index;
 #endif
@@ -2471,7 +2471,7 @@ void  inject_intra_candidates(
                                 0,
                                 0,
                                 0,
-                                context_ptr->blk_geom->txsize_uv[0],
+                                context_ptr->blk_geom->txsize_uv_ex[0],
                                 picture_control_set_ptr->parent_pcs_ptr->reduced_tx_set_used);
                         candidateArray[canTotalCnt].ref_frame_type = INTRA_FRAME;
                         candidateArray[canTotalCnt].pred_mode = (PredictionMode)openLoopIntraCandidate;
@@ -2518,7 +2518,7 @@ void  inject_intra_candidates(
                     0,
                     0,
                     0,
-                    context_ptr->blk_geom->txsize_uv[0],
+                    context_ptr->blk_geom->txsize_uv_ex[0],
                     picture_control_set_ptr->parent_pcs_ptr->reduced_tx_set_used);
             candidateArray[canTotalCnt].ref_frame_type = INTRA_FRAME;
             candidateArray[canTotalCnt].pred_mode = (PredictionMode)openLoopIntraCandidate;
@@ -2810,7 +2810,7 @@ uint8_t product_full_mode_decision(
     uint32_t  cu_size_log2 = context_ptr->cu_size_log2;
 
     {
-        tuTotalCount = context_ptr->blk_geom->txb_count;
+        tuTotalCount = context_ptr->blk_geom->txb_count[0];
         tu_index = 0;
         txb_itr = 0;
     }

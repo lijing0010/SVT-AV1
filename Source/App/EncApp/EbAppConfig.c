@@ -799,7 +799,7 @@ static EbErrorType VerifySettings(EbConfig *config, uint32_t channelNumber)
         return_error = EB_ErrorBadParameter;
     }
 
-    if (config->encoder_color_format != 1) {
+    if (config->encoder_color_format > 2) {
         fprintf(config->error_log_file, "Error instance %u: Only support 420 now \n", channelNumber + 1);
         return_error = EB_ErrorBadParameter;
     }

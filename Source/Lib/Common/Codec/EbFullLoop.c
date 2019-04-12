@@ -743,7 +743,7 @@ void ProductFullLoop(
     context_ptr->three_quad_energy = 0;
     uint32_t  txb_1d_offset = 0;
     uint32_t txb_itr = 0;
-    for (txb_itr = 0; txb_itr < context_ptr->blk_geom->txb_count; txb_itr++)
+    for (txb_itr = 0; txb_itr < context_ptr->blk_geom->txb_count[0]; txb_itr++)
     {
         uint16_t tx_org_x = context_ptr->blk_geom->tx_org_x[txb_itr];
         uint16_t tx_org_y = context_ptr->blk_geom->tx_org_y[txb_itr];
@@ -981,7 +981,7 @@ void ProductFullLoopTxSearch(
 
         context_ptr->three_quad_energy = 0;
         uint32_t txb_itr = 0;
-        for (txb_itr = 0; txb_itr < context_ptr->blk_geom->txb_count; txb_itr++)
+        for (txb_itr = 0; txb_itr < context_ptr->blk_geom->txb_count[0]; txb_itr++)
 
 
         {
@@ -1152,7 +1152,7 @@ void encode_pass_tx_search(
     TransformUnit       *txb_ptr = &cu_ptr->transform_unit_array[context_ptr->txb_itr];
     uint32_t               qp = cu_ptr->qp;
     const uint32_t         scratchLumaOffset = context_ptr->blk_geom->tx_org_x[context_ptr->txb_itr] + context_ptr->blk_geom->tx_org_y[context_ptr->txb_itr] * SB_STRIDE_Y;
-    const uint32_t         coeff1dOffset = context_ptr->coded_area_sb;
+    const uint32_t         coeff1dOffset = context_ptr->coded_area_sb[0];
 
     EbBool                 clean_sparse_coeff_flag = EB_FALSE;
     uint64_t               y_tu_coeff_bits;
@@ -1274,7 +1274,7 @@ void encode_pass_tx_search(
         candidateBuffer->candidate_ptr->type = cu_ptr->prediction_mode_flag;
         candidateBuffer->candidate_ptr->pred_mode = cu_ptr->pred_mode;
 
-        const uint32_t coeff1dOffset = context_ptr->coded_area_sb;
+        const uint32_t coeff1dOffset = context_ptr->coded_area_sb[0];
 
         Av1TuEstimateCoeffBits(
             picture_control_set_ptr,
@@ -1350,7 +1350,7 @@ void encode_pass_tx_search_hbd(
     TransformUnit *txb_ptr              = &cu_ptr->transform_unit_array[context_ptr->txb_itr];
     uint32_t         qp                   = cu_ptr->qp;
     const uint32_t   scratchLumaOffset    = context_ptr->blk_geom->origin_x + context_ptr->blk_geom->origin_y * SB_STRIDE_Y;
-    const uint32_t   coeff1dOffset        = context_ptr->coded_area_sb;
+    const uint32_t   coeff1dOffset        = context_ptr->coded_area_sb[0];
     EbBool           clean_sparse_coeff_flag = EB_FALSE;
 
     //Update QP for Quant
@@ -1474,7 +1474,7 @@ void encode_pass_tx_search_hbd(
         candidateBuffer->candidate_ptr->type = cu_ptr->prediction_mode_flag;
         candidateBuffer->candidate_ptr->pred_mode = cu_ptr->pred_mode;
 
-        const uint32_t coeff1dOffset = context_ptr->coded_area_sb;
+        const uint32_t coeff1dOffset = context_ptr->coded_area_sb[0];
 
         Av1TuEstimateCoeffBits(
             picture_control_set_ptr,
@@ -1560,7 +1560,7 @@ void FullLoop_R(
     EbBool clean_sparse_coeff_flag = EB_FALSE;
     context_ptr->three_quad_energy = 0;
 
-    tuCount = context_ptr->blk_geom->txb_count;
+    tuCount = context_ptr->blk_geom->txb_count[0];
     uint32_t  txb_1d_offset = 0;
 
     txb_itr = 0;
@@ -1743,7 +1743,7 @@ void CuFullDistortionFastTuMode_R(
     uint32_t                          txb_itr = 0;
     //    SequenceControlSet           *sequence_control_set_ptr=((SequenceControlSet*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr);
 
-    tuTotalCount = context_ptr->blk_geom->txb_count;
+    tuTotalCount = context_ptr->blk_geom->txb_count[0];
     currentTuIndex = 0;
     transform_buffer = context_ptr->trans_quant_buffers_ptr->tu_trans_coeff2_nx2_n_ptr;
 
