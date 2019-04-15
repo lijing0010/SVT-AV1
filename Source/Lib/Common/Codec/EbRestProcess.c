@@ -147,6 +147,7 @@ void   get_own_recon(
     RestContext                            *context_ptr,
     EbBool  is16bit)
 {
+    Av1Common* cm = picture_control_set_ptr->parent_pcs_ptr->av1_cm;
     EbPictureBufferDesc_t  * recon_picture_ptr;
     if (is16bit) {
         if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE)
@@ -155,21 +156,21 @@ void   get_own_recon(
             recon_picture_ptr = picture_control_set_ptr->recon_picture16bit_ptr;
 
         uint16_t*  rec_ptr = (uint16_t*)recon_picture_ptr->buffer_y + recon_picture_ptr->origin_x + recon_picture_ptr->origin_y     * recon_picture_ptr->stride_y;
-        uint16_t*  rec_ptr_cb = (uint16_t*)recon_picture_ptr->bufferCb + recon_picture_ptr->origin_x / 2 + recon_picture_ptr->origin_y / 2 * recon_picture_ptr->strideCb;
-        uint16_t*  rec_ptr_cr = (uint16_t*)recon_picture_ptr->bufferCr + recon_picture_ptr->origin_x / 2 + recon_picture_ptr->origin_y / 2 * recon_picture_ptr->strideCr;
+        uint16_t*  rec_ptr_cb = (uint16_t*)recon_picture_ptr->bufferCb + (recon_picture_ptr->origin_x >> cm->subsampling_x) + (recon_picture_ptr->origin_y >> cm->subsampling_y) * recon_picture_ptr->strideCb;
+        uint16_t*  rec_ptr_cr = (uint16_t*)recon_picture_ptr->bufferCr + (recon_picture_ptr->origin_x >> cm->subsampling_x) + (recon_picture_ptr->origin_y >> cm->subsampling_y) * recon_picture_ptr->strideCr;
 
         EbPictureBufferDesc_t *org_rec = context_ptr->org_rec_frame;
         uint16_t*  org_ptr = (uint16_t*)org_rec->buffer_y + org_rec->origin_x + org_rec->origin_y     * org_rec->stride_y;
-        uint16_t*  org_ptr_cb = (uint16_t*)org_rec->bufferCb + org_rec->origin_x / 2 + org_rec->origin_y / 2 * org_rec->strideCb;
-        uint16_t*  org_ptr_cr = (uint16_t*)org_rec->bufferCr + org_rec->origin_x / 2 + org_rec->origin_y / 2 * org_rec->strideCr;
+        uint16_t*  org_ptr_cb = (uint16_t*)org_rec->bufferCb + (org_rec->origin_x >> cm->subsampling_x) + (org_rec->origin_y >> cm->subsampling_y) * org_rec->strideCb;
+        uint16_t*  org_ptr_cr = (uint16_t*)org_rec->bufferCr + (org_rec->origin_x >> cm->subsampling_x) + (org_rec->origin_y >> cm->subsampling_y) * org_rec->strideCr;
 
         for (int r = 0; r < sequence_control_set_ptr->luma_height; ++r) {
             memcpy(org_ptr + r * org_rec->stride_y, rec_ptr + r * recon_picture_ptr->stride_y, sequence_control_set_ptr->luma_width << 1);
         }
 
-        for (int r = 0; r < sequence_control_set_ptr->luma_height / 2; ++r) {
-            memcpy(org_ptr_cb + r * org_rec->strideCb, rec_ptr_cb + r * recon_picture_ptr->strideCb, (sequence_control_set_ptr->luma_width / 2) << 1);
-            memcpy(org_ptr_cr + r * org_rec->strideCr, rec_ptr_cr + r * recon_picture_ptr->strideCr, (sequence_control_set_ptr->luma_width / 2) << 1);
+        for (int r = 0; r < sequence_control_set_ptr->luma_height >> cm->subsampling_y; ++r) {
+            memcpy(org_ptr_cb + r * org_rec->strideCb, rec_ptr_cb + r * recon_picture_ptr->strideCb, (sequence_control_set_ptr->luma_width >> cm->subsampling_x) << 1);
+            memcpy(org_ptr_cr + r * org_rec->strideCr, rec_ptr_cr + r * recon_picture_ptr->strideCr, (sequence_control_set_ptr->luma_width >> cm->subsampling_x) << 1);
         }
     }
     else {
@@ -179,21 +180,21 @@ void   get_own_recon(
             recon_picture_ptr = picture_control_set_ptr->recon_picture_ptr;
 
         uint8_t * rec_ptr = &((recon_picture_ptr->buffer_y)[recon_picture_ptr->origin_x + recon_picture_ptr->origin_y * recon_picture_ptr->stride_y]);
-        uint8_t *  rec_ptr_cb = &((recon_picture_ptr->bufferCb)[recon_picture_ptr->origin_x / 2 + recon_picture_ptr->origin_y / 2 * recon_picture_ptr->strideCb]);
-        uint8_t *  rec_ptr_cr = &((recon_picture_ptr->bufferCr)[recon_picture_ptr->origin_x / 2 + recon_picture_ptr->origin_y / 2 * recon_picture_ptr->strideCr]);
+        uint8_t *  rec_ptr_cb = &((recon_picture_ptr->bufferCb)[(recon_picture_ptr->origin_x >> cm->subsampling_x) + (recon_picture_ptr->origin_y >> cm->subsampling_y) * recon_picture_ptr->strideCb]);
+        uint8_t *  rec_ptr_cr = &((recon_picture_ptr->bufferCr)[(recon_picture_ptr->origin_x >> cm->subsampling_x) + (recon_picture_ptr->origin_y >> cm->subsampling_y) * recon_picture_ptr->strideCr]);
 
         EbPictureBufferDesc_t *org_rec = context_ptr->org_rec_frame;
         uint8_t *  org_ptr = &((org_rec->buffer_y)[org_rec->origin_x + org_rec->origin_y * org_rec->stride_y]);
-        uint8_t *  org_ptr_cb = &((org_rec->bufferCb)[org_rec->origin_x / 2 + org_rec->origin_y / 2 * org_rec->strideCb]);
-        uint8_t *  org_ptr_cr = &((org_rec->bufferCr)[org_rec->origin_x / 2 + org_rec->origin_y / 2 * org_rec->strideCr]);
+        uint8_t *  org_ptr_cb = &((org_rec->bufferCb)[(org_rec->origin_x >> cm->subsampling_x) + (org_rec->origin_y >> cm->subsampling_y) * org_rec->strideCb]);
+        uint8_t *  org_ptr_cr = &((org_rec->bufferCr)[(org_rec->origin_x >> cm->subsampling_x) + (org_rec->origin_y >> cm->subsampling_y) * org_rec->strideCr]);
 
         for (int r = 0; r < sequence_control_set_ptr->luma_height; ++r) {
             memcpy(org_ptr + r * org_rec->stride_y, rec_ptr + r * recon_picture_ptr->stride_y, sequence_control_set_ptr->luma_width);
         }
 
-        for (int r = 0; r < sequence_control_set_ptr->luma_height / 2; ++r) {
-            memcpy(org_ptr_cb + r * org_rec->strideCb, rec_ptr_cb + r * recon_picture_ptr->strideCb, (sequence_control_set_ptr->luma_width / 2));
-            memcpy(org_ptr_cr + r * org_rec->strideCr, rec_ptr_cr + r * recon_picture_ptr->strideCr, (sequence_control_set_ptr->luma_width / 2));
+        for (int r = 0; r < sequence_control_set_ptr->luma_height >> cm->subsampling_y; ++r) {
+            memcpy(org_ptr_cb + r * org_rec->strideCb, rec_ptr_cb + r * recon_picture_ptr->strideCb, (sequence_control_set_ptr->luma_width >> cm->subsampling_x));
+            memcpy(org_ptr_cr + r * org_rec->strideCr, rec_ptr_cr + r * recon_picture_ptr->strideCr, (sequence_control_set_ptr->luma_width >> cm->subsampling_x));
         }
     }
 }
@@ -326,14 +327,14 @@ void* rest_kernel(void *input_ptr)
             {
                 EbPictureBufferDesc_t *input_picture_ptr = (EbPictureBufferDesc_t*)picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr;
                 const uint32_t  SrclumaOffSet = input_picture_ptr->origin_x + input_picture_ptr->origin_y    *input_picture_ptr->stride_y;
-                const uint32_t  SrccbOffset = (input_picture_ptr->origin_x >> 1) + (input_picture_ptr->origin_y >> 1)*input_picture_ptr->strideCb;
-                const uint32_t  SrccrOffset = (input_picture_ptr->origin_x >> 1) + (input_picture_ptr->origin_y >> 1)*input_picture_ptr->strideCr;
+                const uint32_t  SrccbOffset = (input_picture_ptr->origin_x >> cm->subsampling_x) + (input_picture_ptr->origin_y >> cm->subsampling_y)*input_picture_ptr->strideCb;
+                const uint32_t  SrccrOffset = (input_picture_ptr->origin_x >> cm->subsampling_x) + (input_picture_ptr->origin_y >> cm->subsampling_y)*input_picture_ptr->strideCr;
 
                 EbReferenceObject   *referenceObject = (EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr;
                 EbPictureBufferDesc_t *refDenPic = referenceObject->ref_den_src_picture;
                 const uint32_t           ReflumaOffSet = refDenPic->origin_x + refDenPic->origin_y    *refDenPic->stride_y;
-                const uint32_t           RefcbOffset = (refDenPic->origin_x >> 1) + (refDenPic->origin_y >> 1)*refDenPic->strideCb;
-                const uint32_t           RefcrOffset = (refDenPic->origin_x >> 1) + (refDenPic->origin_y >> 1)*refDenPic->strideCr;
+                const uint32_t           RefcbOffset = (refDenPic->origin_x >> cm->subsampling_x) + (refDenPic->origin_y >> cm->subsampling_y)*refDenPic->strideCb;
+                const uint32_t           RefcrOffset = (refDenPic->origin_x >> cm->subsampling_x) + (refDenPic->origin_y >> cm->subsampling_y)*refDenPic->strideCr;
 
                 uint16_t  verticalIdx;
 
@@ -344,15 +345,15 @@ void* rest_kernel(void *input_ptr)
                         input_picture_ptr->width);
                 }
 
-                for (verticalIdx = 0; verticalIdx < input_picture_ptr->height / 2; ++verticalIdx)
+                for (verticalIdx = 0; verticalIdx < input_picture_ptr->height >> cm->subsampling_y; ++verticalIdx)
                 {
                     EB_MEMCPY(refDenPic->bufferCb + RefcbOffset + verticalIdx * refDenPic->strideCb,
                         input_picture_ptr->bufferCb + SrccbOffset + verticalIdx * input_picture_ptr->strideCb,
-                        input_picture_ptr->width / 2);
+                        input_picture_ptr->width >> cm->subsampling_x);
 
                     EB_MEMCPY(refDenPic->bufferCr + RefcrOffset + verticalIdx * refDenPic->strideCr,
                         input_picture_ptr->bufferCr + SrccrOffset + verticalIdx * input_picture_ptr->strideCr,
-                        input_picture_ptr->width / 2);
+                        input_picture_ptr->width >> cm->subsampling_x);
                 }
 
                 generate_padding(
@@ -366,18 +367,18 @@ void* rest_kernel(void *input_ptr)
                 generate_padding(
                     refDenPic->bufferCb,
                     refDenPic->strideCb,
-                    refDenPic->width >> 1,
-                    refDenPic->height >> 1,
-                    refDenPic->origin_x >> 1,
-                    refDenPic->origin_y >> 1);
+                    refDenPic->width >> cm->subsampling_x,
+                    refDenPic->height >> cm->subsampling_y,
+                    refDenPic->origin_x >> cm->subsampling_x,
+                    refDenPic->origin_y >> cm->subsampling_y);
 
                 generate_padding(
                     refDenPic->bufferCr,
                     refDenPic->strideCr,
-                    refDenPic->width >> 1,
-                    refDenPic->height >> 1,
-                    refDenPic->origin_x >> 1,
-                    refDenPic->origin_y >> 1);
+                    refDenPic->width >> cm->subsampling_x,
+                    refDenPic->height >> cm->subsampling_y,
+                    refDenPic->origin_x >> cm->subsampling_x,
+                    refDenPic->origin_y >> cm->subsampling_y);
             }
             if (sequence_control_set_ptr->static_config.recon_enabled) {
                 ReconOutput(

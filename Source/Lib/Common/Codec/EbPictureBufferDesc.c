@@ -244,20 +244,22 @@ void LinkEbToAomBufferDesc(
     Yv12BufferConfig             *aomBuffDsc
 )
 {
+    const uint16_t subsampling_x = (picBuffDsc->color_format == EB_YUV444 ? 1 : 2) - 1;
+    const uint16_t subsampling_y = (picBuffDsc->color_format >= EB_YUV422 ? 1 : 2) - 1;
 
     //NOTe:  Not all fileds are connected. add more connections as needed.
     if (picBuffDsc->bit_depth == EB_8BIT) {
 
         aomBuffDsc->y_buffer = picBuffDsc->buffer_y + picBuffDsc->origin_x + (picBuffDsc->origin_y     * picBuffDsc->stride_y);
-        aomBuffDsc->u_buffer = picBuffDsc->bufferCb + picBuffDsc->origin_x / 2 + (picBuffDsc->origin_y / 2 * picBuffDsc->strideCb);
-        aomBuffDsc->v_buffer = picBuffDsc->bufferCr + picBuffDsc->origin_x / 2 + (picBuffDsc->origin_y / 2 * picBuffDsc->strideCb);
+        aomBuffDsc->u_buffer = picBuffDsc->bufferCb + (picBuffDsc->origin_x >> subsampling_x) + ((picBuffDsc->origin_y >> subsampling_y) * picBuffDsc->strideCb);
+        aomBuffDsc->v_buffer = picBuffDsc->bufferCr + (picBuffDsc->origin_x >> subsampling_x) + ((picBuffDsc->origin_y >> subsampling_y) * picBuffDsc->strideCb);
 
 
         aomBuffDsc->y_width = picBuffDsc->width;
-        aomBuffDsc->uv_width = picBuffDsc->width / 2;
+        aomBuffDsc->uv_width = picBuffDsc->width >> subsampling_x;
 
         aomBuffDsc->y_height = picBuffDsc->height;
-        aomBuffDsc->uv_height = picBuffDsc->height / 2;
+        aomBuffDsc->uv_height = picBuffDsc->height >> subsampling_y;
 
 
         aomBuffDsc->y_stride = picBuffDsc->stride_y;
@@ -265,8 +267,8 @@ void LinkEbToAomBufferDesc(
 
         aomBuffDsc->border = picBuffDsc->origin_x;
 
-        aomBuffDsc->subsampling_x = 1;
-        aomBuffDsc->subsampling_y = 1;
+        aomBuffDsc->subsampling_x = subsampling_x;
+        aomBuffDsc->subsampling_y = subsampling_y;
 
         aomBuffDsc->y_crop_width = aomBuffDsc->y_width;
         aomBuffDsc->uv_crop_width = aomBuffDsc->uv_width;
@@ -275,8 +277,7 @@ void LinkEbToAomBufferDesc(
 
 
         aomBuffDsc->flags = 0;
-    }
-    else {
+    } else {
 
         /*
         Moving within a 16bit memory area: 2 possible mecanisms:
@@ -309,15 +310,15 @@ void LinkEbToAomBufferDesc(
         aomBuffDsc->v_buffer = CONVERT_TO_BYTEPTR(picBuffDsc->bufferCr);
 
         aomBuffDsc->y_buffer += picBuffDsc->origin_x + (picBuffDsc->origin_y     * picBuffDsc->stride_y);
-        aomBuffDsc->u_buffer += picBuffDsc->origin_x / 2 + (picBuffDsc->origin_y / 2 * picBuffDsc->strideCb);
-        aomBuffDsc->v_buffer += picBuffDsc->origin_x / 2 + (picBuffDsc->origin_y / 2 * picBuffDsc->strideCb);
+        aomBuffDsc->u_buffer += (picBuffDsc->origin_x >> subsampling_x) + ((picBuffDsc->origin_y >> subsampling_y) * picBuffDsc->strideCb);
+        aomBuffDsc->v_buffer += (picBuffDsc->origin_x >> subsampling_x) + ((picBuffDsc->origin_y >> subsampling_y) * picBuffDsc->strideCb);
 
 
         aomBuffDsc->y_width = picBuffDsc->width;
-        aomBuffDsc->uv_width = picBuffDsc->width / 2;
+        aomBuffDsc->uv_width = picBuffDsc->width >> subsampling_x;
 
         aomBuffDsc->y_height = picBuffDsc->height;
-        aomBuffDsc->uv_height = picBuffDsc->height / 2;
+        aomBuffDsc->uv_height = picBuffDsc->height >> subsampling_y;
 
 
         aomBuffDsc->y_stride = picBuffDsc->stride_y;
@@ -325,8 +326,8 @@ void LinkEbToAomBufferDesc(
 
         aomBuffDsc->border = picBuffDsc->origin_x;
 
-        aomBuffDsc->subsampling_x = 1;
-        aomBuffDsc->subsampling_y = 1;
+        aomBuffDsc->subsampling_x = subsampling_x;
+        aomBuffDsc->subsampling_y = subsampling_y;
 
         aomBuffDsc->y_crop_width = aomBuffDsc->y_width;
         aomBuffDsc->uv_crop_width = aomBuffDsc->uv_width;

@@ -1061,7 +1061,6 @@ static void Av1EncodeLoop(
 
 
         if (cu_ptr->prediction_mode_flag == INTRA_MODE && p && cu_ptr->prediction_unit_array->intra_chroma_mode == UV_CFL_PRED) {
-            assert(0);
             //Jing: CFL case
             CFL_PRED_TYPE pred_type = (p == 1 ? CFL_PRED_U : CFL_PRED_V);
             int32_t alpha_q3 =
