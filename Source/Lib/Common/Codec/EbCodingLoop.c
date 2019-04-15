@@ -31,6 +31,219 @@
 #include "aom_dsp_rtcd.h"
 #include "EbCodingLoop.h"
 
+#define DEBUG_REF_INFO
+#ifdef DEBUG_REF_INFO
+static void dump_buf_desc_to_file(EbPictureBufferDesc_t* reconBuffer, const char* filename, int POC)
+{
+    const int bitDepth = reconBuffer->bit_depth;
+    const int unitSize = ((bitDepth == 8) ? 1 : 2);
+    const int colorFormat = reconBuffer->color_format;    // Chroma format
+    const int subWidthCMinus1 = (colorFormat == EB_YUV444 ? 1 : 2) - 1;
+    const int subHeightCMinus1 = (colorFormat >= EB_YUV422 ? 1 : 2) - 1;
+
+    if (POC == 0) {
+        FILE* tmp=fopen(filename, "w");
+        fclose(tmp);
+    }
+    FILE* fp = fopen(filename, "r+");
+    assert(fp);
+    long descSize = reconBuffer->height * reconBuffer->width; //Luma
+    descSize += 2 * ((reconBuffer->height * reconBuffer->width) >> (3 - reconBuffer->color_format)); //Chroma
+    descSize = descSize * unitSize;
+    long offset = descSize * POC;
+    fseek(fp, 0, SEEK_END);
+    long fileSize = ftell(fp);
+    if (offset > fileSize) {
+        int count = (offset - fileSize) / descSize;
+        char *tmpBuf = (char*)malloc(descSize);
+        for (int i=0;i<count;i++) {
+            fwrite(tmpBuf, 1, descSize, fp);
+        }
+        free(tmpBuf);
+    }
+    fseek(fp, offset, SEEK_SET);
+    assert(ftell(fp) == offset);
+
+
+    unsigned char* luma_ptr = reconBuffer->buffer_y +
+        ((reconBuffer->stride_y * (reconBuffer->origin_y) + reconBuffer->origin_x) * unitSize);
+    unsigned char* cb_ptr = reconBuffer->bufferCb +
+        ((reconBuffer->strideCb * (reconBuffer->origin_y >> subHeightCMinus1) + (reconBuffer->origin_x>>subWidthCMinus1)) * unitSize);
+    unsigned char* cr_ptr = reconBuffer->bufferCr +
+        ((reconBuffer->strideCr * (reconBuffer->origin_y >> subHeightCMinus1) + (reconBuffer->origin_x>>subWidthCMinus1)) * unitSize);
+
+    for (int i=0; i<reconBuffer->height; i++) {
+        fwrite(luma_ptr, 1, reconBuffer->width * unitSize, fp);
+        luma_ptr += reconBuffer->stride_y * unitSize;
+    }
+
+    for (int i=0; i<reconBuffer->height >> subHeightCMinus1 ;i++) {
+        fwrite(cb_ptr, 1, (reconBuffer->width >> subWidthCMinus1) * unitSize, fp);
+        cb_ptr += reconBuffer->strideCb * unitSize;
+    }
+
+    for (int i=0;i<reconBuffer->height>>subHeightCMinus1;i++) {
+        fwrite(cr_ptr, 1, (reconBuffer->width >> subWidthCMinus1) * unitSize, fp);
+        cr_ptr += reconBuffer->strideCr * unitSize;
+    }
+    fseek(fp, 0, SEEK_END);
+    //printf("After write POC %d, filesize %d\n", POC, ftell(fp));
+    fclose(fp);
+}
+
+static void dump_intra_ref(void* ref, int size, int mask, EbBool is16bit)
+{
+    
+    unsigned char* ptr = NULL;
+    unsigned int unitSize = is16bit ? 2 : 1;
+    if (mask==0) {
+        if (!is16bit) {
+            ptr = ((IntraReferenceSamples_t*)ref)->y_intra_reference_array;
+        } else {
+            ptr = ((IntraReference16bitSamples_t*)ref)->y_intra_reference_array;
+        }
+    } else if (mask == 1) {
+        if (!is16bit) {
+            ptr = ((IntraReferenceSamples_t*)ref)->cbIntraReferenceArray;
+        } else {
+            ptr = ((IntraReference16bitSamples_t*)ref)->cbIntraReferenceArray;
+        }
+    } else if (mask ==2) {
+        if (!is16bit) {
+            ptr = ((IntraReferenceSamples_t*)ref)->crIntraReferenceArray;
+        } else {
+            ptr = ((IntraReference16bitSamples_t*)ref)->crIntraReferenceArray;
+        }
+    } else {
+        assert(0);
+    }
+
+    printf("*Dumping intra reference array for component %d\n", mask);
+    for (int i=0; i<size; i++) {
+        if (is16bit) {
+            printf("%3u ", *((uint16_t*)(ptr+i*unitSize)));
+        } else {
+            printf("%3u ", ptr[i]);
+        }
+    }
+    printf("\n----------------------\n");
+}
+
+static void dump_block_from_desc(int txw, int txh, EbPictureBufferDesc_t *buf_tmp, int startX, int startY, int componentMask)
+{
+    unsigned char* buf=NULL;
+    int stride=0;
+    int bitDepth = buf_tmp->bit_depth;
+    int val=(bitDepth==8)?1:2;
+    EbColorFormat colorFormat = buf_tmp->color_format;    // Chroma format
+    uint16_t subWidthCMinus1 = (colorFormat==EB_YUV444?1:2)-1;
+    uint16_t subHeightCMinus1 = (colorFormat>=EB_YUV422?1:2)-1;
+    if (componentMask ==0) {
+        buf=buf_tmp->buffer_y;
+        stride=buf_tmp->stride_y;
+        subWidthCMinus1=0;
+        subHeightCMinus1=0;
+    } else if (componentMask == 1) {
+        buf=buf_tmp->bufferCb;
+        stride=buf_tmp->strideCb;
+        startX=ROUND_UV_EX(startX, subWidthCMinus1);
+        startY=ROUND_UV_EX(startY, subHeightCMinus1);
+    } else if (componentMask == 2) {
+        buf=buf_tmp->bufferCr;
+        stride=buf_tmp->strideCr;
+        startX=ROUND_UV_EX(startX, subWidthCMinus1);
+        startY=ROUND_UV_EX(startY, subHeightCMinus1);
+    } else {
+        assert(0);
+    }
+
+    int offset=((stride*((buf_tmp->origin_y>>subHeightCMinus1) + startY))) + (startX+(buf_tmp->origin_x>>subWidthCMinus1));
+    printf("bitDepth is %d, dump block size %dx%d at offset %d, (%d, %d), component is %s\n",
+            bitDepth, txw, txh, offset, startX, startY, componentMask==0?"luma":(componentMask==1?"Cb":"Cr"));
+            unsigned char* start_tmp=buf+offset*val;
+            for (int i=0;i<txh;i++) {
+                for (int j=0;j<txw+1;j++) {
+                    if (j==txw) {
+                        printf("|||");
+                    } else if (j%4 == 0) {
+                        printf("|");
+                    }
+
+                    if (bitDepth == 8) {
+                        printf("%3u ", start_tmp[j]);
+                    } else if (bitDepth == 10 || bitDepth == 16) {
+                        printf("%3d ", *((int16_t*)start_tmp + j));
+                    } else if (bitDepth == 32) {
+                        printf("%3d ", *((int32_t*)start_tmp + j));
+                    } else {
+                        printf("bitDepth is %d\n", bitDepth);
+                        assert(0);
+                    }
+                }
+                printf("\n");
+                if (i % 4 == 3) {
+                    for (int k=0;k<txw;k++) {
+                        printf("-");
+                    }
+                    printf("\n");
+                }
+                        
+                start_tmp += stride*val;
+            }
+    printf("------------------------\n");
+}
+
+static void dump_coeff_block_from_desc(int txw, int txh, EbPictureBufferDesc_t *buf_tmp, int startX, int startY, int componentMask, int offset)
+{
+    int32_t* buf=NULL;
+    int stride=0;
+    int bitDepth = buf_tmp->bit_depth;
+    EbColorFormat colorFormat = buf_tmp->color_format;    // Chroma format
+    uint16_t subWidthCMinus1 = (colorFormat==EB_YUV444?1:2)-1;
+    uint16_t subHeightCMinus1 = (colorFormat>=EB_YUV422?1:2)-1;
+    if (componentMask ==0) {
+        buf=(int32_t *)buf_tmp->buffer_y;
+        stride=buf_tmp->stride_y;
+        subWidthCMinus1=0;
+        subHeightCMinus1=0;
+    } else if (componentMask == 1) {
+        buf=(int32_t *)buf_tmp->bufferCb;
+        stride=buf_tmp->strideCb;
+        startX=ROUND_UV_EX(startX, subWidthCMinus1);
+        startY=ROUND_UV_EX(startY, subHeightCMinus1);
+    } else if (componentMask == 2) {
+        buf=(int32_t *)buf_tmp->bufferCr;
+        stride=buf_tmp->strideCr;
+        startX=ROUND_UV_EX(startX, subWidthCMinus1);
+        startY=ROUND_UV_EX(startY, subHeightCMinus1);
+    } else {
+        assert(0);
+    }
+
+    printf("dump coeff block size %dx%d at offset %d, (%d, %d), component is %s\n",
+            txw, txh, offset, startX, startY, componentMask==0?"luma":(componentMask==1?"Cb":"Cr"));
+            int32_t* start_tmp=buf+offset;
+            for (int i=0;i<txh;i++) {
+                for (int j=0;j<txw;j++) {
+                    if (j%4 == 0) {
+                        printf("|");
+                    }
+
+                    printf("%3d ", start_tmp[j]);
+                }
+                printf("\n");
+                if (i % 4 == 3) {
+                    for (int k=0;k<txw;k++) {
+                        printf("-");
+                    }
+                    printf("\n");
+                }
+                start_tmp += txw;
+            }
+    printf("------------------------\n");
+}
+#endif
+
 extern void av1_predict_intra_block(
     TileInfo                    *tile,
 
@@ -2710,11 +2923,8 @@ EB_EXTERN void AV1EncodePass(
                                         pu_block_origin_y,
                                         ep_intra_mode_neighbor_array[plane]);
 
-
                                 //   if (picture_control_set_ptr->picture_number == 0 && context_ptr->cu_origin_x == 384 && context_ptr->cu_origin_y == 160)
                                 //      printf("CHEDD");
-
-
 
                                 uint32_t cu_originy_uv = (context_ptr->cu_origin_y >> 3 << 3) >> 1;
                                 uint32_t cu_originx_uv = (context_ptr->cu_origin_x >> 3 << 3) >> 1;
@@ -2911,10 +3121,6 @@ EB_EXTERN void AV1EncodePass(
                                             av1_predict_intra_block(
                                                     &sb_ptr->tile_info,
                                                     ED_STAGE,
-                                                    //pu_ptr->intra_luma_left_mode,
-                                                    //pu_ptr->intra_luma_top_mode,
-                                                    //pu_ptr->intra_chroma_left_mode,
-                                                    //pu_ptr->intra_chroma_top_mode,
                                                     context_ptr->blk_geom,
                                                     picture_control_set_ptr->parent_pcs_ptr->av1_cm,                  //const Av1Common *cm,
                                                     plane ? blk_geom->bwidth_uv_ex : blk_geom->bwidth,                   //int32_t wpx,
@@ -2969,6 +3175,19 @@ EB_EXTERN void AV1EncodePass(
 
                                         for (int i=0; i<=plane; i++) {
                                             int p = i + plane;
+#ifdef DEBUG_REF_INFO
+                                            {
+                                                int cu_originX = context_ptr->cu_origin_x;
+                                                int cu_originY = context_ptr->cu_origin_y;
+                                                int plane_originX = pu_block_origin_x;
+                                                int plane_originY = pu_block_origin_y;
+                                                {
+                                                    printf("\nAbout to dump pred for CU (%d, %d) at plane %d, size %dx%d, pu offset (%d, %d)\n",
+                                                            cu_originX, cu_originY, p, txw, txh, col, row);
+                                                    dump_block_from_desc(txw, txh, recon_buffer, cu_originX, cu_originY, p);
+                                                }
+                                            }
+#endif
                                             Av1EncodeGenerateRecon(
                                                     context_ptr,
                                                     pu_block_origin_x,
@@ -2981,6 +3200,26 @@ EB_EXTERN void AV1EncodePass(
                                                     txb_itr[plane],
                                                     eobs[txb_itr[plane]],
                                                     asm_type);
+#ifdef DEBUG_REF_INFO
+                                            {
+                                                int cu_originX = context_ptr->cu_origin_x;
+                                                int cu_originY = context_ptr->cu_origin_y;
+                                                int plane_originX = pu_block_origin_x;
+                                                int plane_originY = pu_block_origin_y;
+                                                {
+                                                    printf("\nAbout to dump recon for CU (%d, %d) at plane %d, size %dx%d, pu offset (%d, %d)\n",
+                                                            cu_originX, cu_originY, p, txw, txh, col, row);
+                                                    dump_block_from_desc(txw, txh, recon_buffer, cu_originX, cu_originY, p);
+
+                                                    printf("\nAbout to dump inverse quant for CU (%d, %d) at plane %d offset (%d, %d), tx size %d\n",
+                                                            cu_originX, cu_originY, p, plane_originX, plane_originY, tx_size);
+                                                    dump_coeff_block_from_desc(txw, txh, inverse_quant_buffer, cu_originX, cu_originY, p, context_ptr->coded_area_sb[plane]);
+                                                    printf("\nAbout to dump coeff for CU (%d, %d) at plane %d offset (%d, %d), tx size %d\n",
+                                                            cu_originX, cu_originY, p, plane_originX, plane_originY, tx_size);
+                                                    dump_coeff_block_from_desc(txw, txh, coeff_buffer_sb, cu_originX, cu_originY, p, context_ptr->coded_area_sb[plane]);
+                                                }
+                                            }
+#endif
 
                                             // Update Recon Samples-INTRA-
                                             EncodePassUpdateIntraReconSampleNeighborArrays(

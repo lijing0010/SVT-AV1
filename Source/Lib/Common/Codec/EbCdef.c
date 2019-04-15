@@ -479,9 +479,7 @@ void av1_cdef_frame(
     struct PictureParentControlSet_s     *pPcs = pCs->parent_pcs_ptr;
     Av1Common*   cm = pPcs->av1_cm;
 
-
     EbPictureBufferDesc_t  * recon_picture_ptr;
-
 
     if (pPcs->is_used_as_reference_flag == EB_TRUE)
         recon_picture_ptr = ((EbReferenceObject*)pCs->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture;
@@ -490,9 +488,8 @@ void av1_cdef_frame(
 
 
     EbByte  reconBufferY = &((recon_picture_ptr->buffer_y)[recon_picture_ptr->origin_x + recon_picture_ptr->origin_y * recon_picture_ptr->stride_y]);
-    EbByte  reconBufferCb = &((recon_picture_ptr->bufferCb)[recon_picture_ptr->origin_x / 2 + recon_picture_ptr->origin_y / 2 * recon_picture_ptr->strideCb]);
-    EbByte  reconBufferCr = &((recon_picture_ptr->bufferCr)[recon_picture_ptr->origin_x / 2 + recon_picture_ptr->origin_y / 2 * recon_picture_ptr->strideCr]);
-
+    EbByte  reconBufferCb = &((recon_picture_ptr->bufferCb)[(recon_picture_ptr->origin_x >> cm->subsampling_x) + ((recon_picture_ptr->origin_y >> cm->subsampling_y) * recon_picture_ptr->strideCb)]);
+    EbByte  reconBufferCr = &((recon_picture_ptr->bufferCr)[(recon_picture_ptr->origin_x >> cm->subsampling_x) + ((recon_picture_ptr->origin_y >> cm->subsampling_y) * recon_picture_ptr->strideCr)]);
 
 
 
@@ -520,8 +517,8 @@ void av1_cdef_frame(
     curr_row_cdef = prev_row_cdef + nhfb + 2;
     for (int32_t pli = 0; pli < num_planes; pli++) {
 
-        int32_t subsampling_x = (pli == 0) ? 0 : 1;
-        int32_t subsampling_y = (pli == 0) ? 0 : 1;
+        int32_t subsampling_x = (pli == 0) ? 0 : cm->subsampling_x;
+        int32_t subsampling_y = (pli == 0) ? 0 : cm->subsampling_y;
 
         xdec[pli] = subsampling_x; //CHKN xd->plane[pli].subsampling_x;
         ydec[pli] = subsampling_y; //CHKN  xd->plane[pli].subsampling_y;
@@ -1615,14 +1612,14 @@ void av1_cdef_search(
         recon_picture_ptr = picture_control_set_ptr->recon_picture_ptr;
 
     EbByte  reconBufferY = &((recon_picture_ptr->buffer_y)[recon_picture_ptr->origin_x + recon_picture_ptr->origin_y * recon_picture_ptr->stride_y]);
-    EbByte  reconBufferCb = &((recon_picture_ptr->bufferCb)[recon_picture_ptr->origin_x / 2 + recon_picture_ptr->origin_y / 2 * recon_picture_ptr->strideCb]);
-    EbByte  reconBufferCr = &((recon_picture_ptr->bufferCr)[recon_picture_ptr->origin_x / 2 + recon_picture_ptr->origin_y / 2 * recon_picture_ptr->strideCr]);
+    EbByte  reconBufferCb = &((recon_picture_ptr->bufferCb)[(recon_picture_ptr->origin_x >> cm->subsampling_x) + ((recon_picture_ptr->origin_y >> cm->subsampling_y) * recon_picture_ptr->strideCb)]);
+    EbByte  reconBufferCr = &((recon_picture_ptr->bufferCr)[(recon_picture_ptr->origin_x >> cm->subsampling_x) + ((recon_picture_ptr->origin_y >> cm->subsampling_y) * recon_picture_ptr->strideCr)]);
 
 
     EbPictureBufferDesc_t *input_picture_ptr = (EbPictureBufferDesc_t*)picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr;
     EbByte  inputBufferY = &((input_picture_ptr->buffer_y)[input_picture_ptr->origin_x + input_picture_ptr->origin_y * input_picture_ptr->stride_y]);
-    EbByte  inputBufferCb = &((input_picture_ptr->bufferCb)[input_picture_ptr->origin_x / 2 + input_picture_ptr->origin_y / 2 * input_picture_ptr->strideCb]);
-    EbByte  inputBufferCr = &((input_picture_ptr->bufferCr)[input_picture_ptr->origin_x / 2 + input_picture_ptr->origin_y / 2 * input_picture_ptr->strideCr]);
+    EbByte  inputBufferCb = &((input_picture_ptr->bufferCb)[(input_picture_ptr->origin_x >> cm->subsampling_x) + ((input_picture_ptr->origin_y >> cm->subsampling_y) * input_picture_ptr->strideCb)]);
+    EbByte  inputBufferCr = &((input_picture_ptr->bufferCr)[(input_picture_ptr->origin_x >> cm->subsampling_x) + ((input_picture_ptr->origin_y >> cm->subsampling_y) * input_picture_ptr->strideCr)]);
 
 
     int32_t r, c;
@@ -1724,8 +1721,8 @@ void av1_cdef_search(
         src[pli] = (uint16_t*)aom_memalign(32, sizeof(*src)       * mi_rows * mi_cols * MI_SIZE * MI_SIZE);
         ref_coeff[pli] = (uint16_t*)aom_memalign(32, sizeof(*ref_coeff) * mi_rows * mi_cols * MI_SIZE * MI_SIZE);
 
-        int32_t subsampling_x = (pli == 0) ? 0 : 1;
-        int32_t subsampling_y = (pli == 0) ? 0 : 1;
+        int32_t subsampling_x = (pli == 0) ? 0 : cm->subsampling_x;
+        int32_t subsampling_y = (pli == 0) ? 0 : cm->subsampling_y;
 
         xdec[pli] = subsampling_x; //CHKN  xd->plane[pli].subsampling_x;
         ydec[pli] = subsampling_y; //CHKN  xd->plane[pli].subsampling_y;
