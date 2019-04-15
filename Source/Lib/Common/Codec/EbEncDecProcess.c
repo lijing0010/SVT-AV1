@@ -644,7 +644,7 @@ void ReconOutput(
         outputReconPtr->n_filled_len += sampleTotalCount;
 
         // V Recon Samples
-        sampleTotalCount = ((recon_ptr->maxWidth - sequence_control_set_ptr->max_input_pad_right) * (recon_ptr->maxHeight - sequence_control_set_ptr->max_input_pad_bottom) >> 2) << is16bit;
+        sampleTotalCount = ((recon_ptr->maxWidth - sequence_control_set_ptr->max_input_pad_right) * (recon_ptr->maxHeight - sequence_control_set_ptr->max_input_pad_bottom) >> (3 - color_format)) << is16bit;
         reconReadPtr = recon_ptr->bufferCr + ((recon_ptr->origin_x << is16bit) >> subsampling_x) +
             ((recon_ptr->origin_y << is16bit) >> subsampling_y) * recon_ptr->strideCr;
         reconWritePtr = &(outputReconPtr->p_buffer[outputReconPtr->n_filled_len]);
