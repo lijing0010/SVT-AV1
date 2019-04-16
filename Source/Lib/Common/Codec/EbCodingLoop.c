@@ -2919,8 +2919,6 @@ EB_EXTERN void AV1EncodePass(
                                 uint32_t cu_originy_uv = (context_ptr->cu_origin_y >> 3 << 3) >> 1;
                                 uint32_t cu_originx_uv = (context_ptr->cu_origin_x >> 3 << 3) >> 1;
                                 if (cu_ptr->av1xd->use_intrabc) {
-                                    assert(0);
-#if 0
                                     MvReferenceFrame ref_frame = INTRA_FRAME;
                                     generate_av1_mvp_table(
                                             &sb_ptr->tile_info,
@@ -2991,6 +2989,7 @@ EB_EXTERN void AV1EncodePass(
                                     else
                                         av1_inter_prediction(
                                                 picture_control_set_ptr,
+												ED_STAGE,
                                                 cu_ptr->interp_filters,
                                                 cu_ptr,
                                                 cu_ptr->prediction_unit_array->ref_frame_type,
@@ -3009,7 +3008,6 @@ EB_EXTERN void AV1EncodePass(
                                                 asm_type);
 
 
-#endif
                                 } else {
                                     if (is16bit) {
                                         assert(0);
