@@ -1317,8 +1317,14 @@ void encode_pass_tx_search(
     txb_ptr->transform_type[PLANE_TYPE_Y] = best_tx_type;
 
     // For Inter blocks, transform type of chroma follows luma transfrom type
-    if (is_inter)
+    if (is_inter && picture_control_set_ptr->color_format == EB_YUV420) {
+        // Jing: TODO:
+        // 420 chroma can goes as luma, however in 422, transform types for luma may be invalid for chroma
+        // So 2 options:
+        //     - only works for 420
+        //     - Or for 422, set as same as luma if txb type is valid for chroma, but need to check the quality impact
         txb_ptr->transform_type[PLANE_TYPE_UV] = txb_ptr->transform_type[PLANE_TYPE_Y];
+    }
 
 }
 

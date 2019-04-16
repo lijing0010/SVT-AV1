@@ -69,7 +69,7 @@ typedef struct EntropyCodingContext_s
 
     // MCP Context
     EbBool                            is16bit; //enable 10 bit encode in CL
-    int32_t                           coded_area_sb[3];
+    int32_t                           coded_area_sb[2];
     //int32_t                           coded_area_sb_uv;
 } EntropyCodingContext_t;
 
