@@ -1447,7 +1447,7 @@ EbErrorType Av1TuPlaneEstimateCoeffBits(
     EntropyCoder_t                         *entropy_coder_ptr,
     EbPictureBufferDesc_t                  *coeff_buffer_sb,
     uint32_t                                eob,
-    uint64_t                               *yTuCoeffBits,
+    uint64_t                               *tuCoeffBits,
     TxSize                                  txsize,
     uint32_t                                plane,
     EbAsm                                   asm_type)
@@ -1487,7 +1487,7 @@ EbErrorType Av1TuPlaneEstimateCoeffBits(
     //Estimate the rate of the transform type and coefficient for Luma
     if (eob) {
 
-        *yTuCoeffBits = av1_cost_coeffs_txb(
+        *tuCoeffBits = av1_cost_coeffs_txb(
             candidate_buffer_ptr,
             coeffBuffer,
             (uint16_t)eob,
@@ -1498,7 +1498,7 @@ EbErrorType Av1TuPlaneEstimateCoeffBits(
             reducedTransformSetFlag);
     }
     else {
-        *yTuCoeffBits = av1_cost_skip_txb(
+        *tuCoeffBits = av1_cost_skip_txb(
             candidate_buffer_ptr,
             txsize,
             plane == 0 ? PLANE_TYPE_Y : PLANE_TYPE_UV,
