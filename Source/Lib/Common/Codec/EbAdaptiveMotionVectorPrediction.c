@@ -1371,6 +1371,9 @@ void update_av1_mi_map(
             //these needed for mvPred
             {
                 miPtr[miX + miY * mi_stride].mbmi.mode = cu_ptr->pred_mode;
+                if (blk_geom->has_uv_ex) {
+                    miPtr[miX + miY * mi_stride].mbmi.uv_mode = cu_ptr->prediction_unit_array->intra_chroma_mode;
+                }
 
                 if (cu_ptr->prediction_mode_flag == INTRA_MODE && cu_ptr->pred_mode == INTRA_MODE_4x4) {
                     miPtr[miX + miY * mi_stride].mbmi.tx_size = 0;
