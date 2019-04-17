@@ -1328,7 +1328,7 @@ EbErrorType av1_inter_prediction(
                 &filter_params_y, bw, bh);
 
             if (use_intrabc && (subpel_x != 0 || subpel_y != 0))
-                convolve_2d_for_intrabc((const uint8_t *)src_ptr, src_stride, dst_ptr, dst_stride, blk_geom->bwidth_uv, blk_geom->bheight_uv, subpel_x,
+                convolve_2d_for_intrabc((const uint8_t *)src_ptr, src_stride, dst_ptr, dst_stride, bw, bh, subpel_x,
                     subpel_y, &conv_params);
             else
             convolve[subpel_x != 0][subpel_y != 0][is_compound](
@@ -1357,7 +1357,7 @@ EbErrorType av1_inter_prediction(
             conv_params = get_conv_params_no_round(0, 0, 0, tmp_dstCr, 64, is_compound, EB_8BIT);
 
             if (use_intrabc && (subpel_x != 0 || subpel_y != 0))
-                convolve_2d_for_intrabc((const uint8_t *)src_ptr, src_stride, dst_ptr, dst_stride, blk_geom->bwidth_uv, blk_geom->bheight_uv, subpel_x,
+                convolve_2d_for_intrabc((const uint8_t *)src_ptr, src_stride, dst_ptr, dst_stride, bw, bh, subpel_x,
                     subpel_y, &conv_params);
             else
             convolve[subpel_x != 0][subpel_y != 0][is_compound](
