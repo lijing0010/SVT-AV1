@@ -1317,15 +1317,41 @@ void encode_pass_tx_search(
     txb_ptr->transform_type[PLANE_TYPE_Y] = best_tx_type;
 
     // For Inter blocks, transform type of chroma follows luma transfrom type
-    //if (is_inter && picture_control_set_ptr->color_format == EB_YUV420)
-    if (is_inter)
+    if (is_inter && context_ptr->blk_geom->txb_count[0] == context_ptr->blk_geom->txb_count[1])
     {
-        // Jing: TODO:
-        // 420 chroma can goes as luma, however in 422, transform types for luma may be invalid for chroma
-        // So 2 options:
-        //     - only works for 420
-        //     - Or for 422, set as same as luma if txb type is valid for chroma, but need to check the quality impact
+        // 420 chroma, always txb_count[Y]==txb_count[UV], it can goes as luma
+        // 422 chroma, if txb_count[Y]==txb_count[UV], it can goes as luma
         txb_ptr->transform_type[PLANE_TYPE_UV] = txb_ptr->transform_type[PLANE_TYPE_Y];
+    } else if (is_inter && picture_control_set_ptr->color_format == EB_YUV422)
+    {
+        // 422 chroma, and txb_count[Y]!=txb_count[UV] only for TU64x64 case, it sets the same as luma inside luma windows
+        TransformUnit *txb_uv_ptr;
+        uint8_t ss_x = (picture_control_set_ptr->color_format == EB_YUV444 ? 1 : 2) - 1;
+        uint8_t ss_y = (picture_control_set_ptr->color_format >= EB_YUV422 ? 1 : 2) - 1;
+        const int32_t luma_txb_x = context_ptr->cu_origin_x + context_ptr->blk_geom->tx_boff_x[context_ptr->txb_itr];
+        const int32_t luma_txb_y = context_ptr->cu_origin_y + context_ptr->blk_geom->tx_boff_y[context_ptr->txb_itr];
+        const int32_t txw = tx_size_wide[context_ptr->blk_geom->txsize[context_ptr->txb_itr]];
+        const int32_t txh = tx_size_high[context_ptr->blk_geom->txsize[context_ptr->txb_itr]];
+        const int32_t luma2uv_txb_x = luma_txb_x >> ss_x;
+        const int32_t luma2uv_txb_y = luma_txb_y >> ss_y;
+        const int32_t luma2uv_txb_x_end = (luma_txb_x + txw) >> ss_x;
+        const int32_t luma2uv_txb_y_end = (luma_txb_y + txh) >> ss_y;
+        for(int tuIt = context_ptr->txb_itr; tuIt < context_ptr->blk_geom->txb_count[1]; tuIt++ )
+        {
+            const int32_t uv_txb_x = ROUND_UV_EX(context_ptr->cu_origin_x, ss_x) + context_ptr->blk_geom->tx_boff_x_uv_ex[tuIt];
+            const int32_t uv_txb_y = ROUND_UV_EX(context_ptr->cu_origin_y, ss_y) + context_ptr->blk_geom->tx_boff_y_uv_ex[tuIt];
+            if (uv_txb_x >= luma2uv_txb_x && uv_txb_y >= luma2uv_txb_y &&
+                uv_txb_x < luma2uv_txb_x_end  && uv_txb_y < luma2uv_txb_y_end)
+            {
+                txb_uv_ptr = &cu_ptr->transform_unit_array[tuIt];
+                txb_uv_ptr->transform_type[PLANE_TYPE_UV] = txb_ptr->transform_type[PLANE_TYPE_Y];
+            }
+        }
+    } else if (is_inter && picture_control_set_ptr->color_format == EB_YUV444)
+    {
+        // 444 chroma, and txb_count[Y]!=txb_count[UV]
+        // Jing: TODO: double check if can use 422 method
+        assert(0);
     }
 
 }
