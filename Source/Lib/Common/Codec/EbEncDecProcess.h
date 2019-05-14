@@ -127,7 +127,7 @@ extern "C" {
         uint8_t                                upsample_left_chroma;
         uint8_t                                upsample_above_chroma; 
 
-        uint16_t                               coded_area_sb[2];
+        uint16_t                               coded_area_sb[3];
 
 #if ENCDEC_TX_SEARCH
         uint8_t                                is_inter;
