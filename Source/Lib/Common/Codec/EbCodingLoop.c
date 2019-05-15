@@ -3504,22 +3504,9 @@ EB_EXTERN void AV1EncodePass(
                                             //if (/*originX == 128 && originY == 320) &&*/ p == 2)
                                             {
                                                 TransformUnit *txb_ptr = &cu_ptr->transform_unit_array[context_ptr->txb_itr];
-                                                printf("\nAbout to dump coeff for (%d, %d) at plane %d, tx size %d, txb_itr=%d, count_non_zero_coeffs=%d, tx_type=%d\n", originX, originY, p, tx_size, context_ptr->txb_itr, count_non_zero_coeffs[p], txb_ptr->transform_type[(p==0) ? PLANE_TYPE_Y : PLANE_TYPE_UV]);
-                                                dump_coeff_block_from_desc(p ? context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_width[context_ptr->txb_itr], p ? context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_height[context_ptr->txb_itr], coeff_buffer_sb, originX, originY, p, context_ptr->coded_area_sb[p]);
+                                                printf("\nAbout to dump coeff for (%d, %d) at plane %d, tx size %d, txb_itr=%d, count_non_zero_coeffs=%d, tx_type=%d\n", originX, originY, p, tx_size, context_ptr->txb_itr, count_non_zero_coeffs[p], txb_ptr->transform_type[plane==0 ? PLANE_TYPE_Y : PLANE_TYPE_UV]);
+                                                dump_coeff_block_from_desc(p ? context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_width[context_ptr->txb_itr], p ? context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_height[context_ptr->txb_itr], coeff_buffer_sb, originX, originY, p, context_ptr->coded_area_sb[plane]);
 
-                                            }
-                                            if(0)
-                                            {
-                                                EbByte inverse_ptr[3];
-                                                int w = p ? context_ptr->blk_geom->tx_width_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_width[context_ptr->txb_itr];
-                                                int h = p ? context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_height[context_ptr->txb_itr];
-                                                Get1dOrigin(context_ptr->coded_area_sb[plane], inverse_quant_buffer, p, &inverse_ptr[p]);
-                                                for(int k=0; k<(w*h); k++)
-                                                {
-                                                    printf("%3d ", *(inverse_ptr[p]+k));
-                                                    if(((k+1)%w)==0)
-                                                        printf("\n");
-                                                }
                                             }
                                         }
 #endif
@@ -3580,7 +3567,7 @@ EB_EXTERN void AV1EncodePass(
                                                 picture_control_set_ptr,
                                                 candidateBuffer,
                                                 cu_ptr,
-                                                context_ptr->coded_area_sb[p],
+                                                context_ptr->coded_area_sb[plane],
                                                 coeff_est_entropy_coder_ptr,
                                                 coeff_buffer_sb,
                                                 eobs[context_ptr->txb_itr][p],
@@ -3638,8 +3625,6 @@ EB_EXTERN void AV1EncodePass(
 
                                 }
                                 context_ptr->coded_area_sb[plane] += (plane ? blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt] : blk_geom->tx_width[tuIt] * blk_geom->tx_height[tuIt]);
-                                if(plane == 1)
-                                    context_ptr->coded_area_sb[2] += blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt];
 
                             } // Transform Loop
                         } // kelvin end plane loop
@@ -3667,7 +3652,6 @@ EB_EXTERN void AV1EncodePass(
                     //reset coeff buffer offsets at the start of a new Tx loop
                     context_ptr->coded_area_sb[0] = coded_area_org;
                     context_ptr->coded_area_sb[1] = coded_area_org_uv;
-                    context_ptr->coded_area_sb[2] = coded_area_org_uv;
                     totLumaTu   = context_ptr->blk_geom->txb_count[0];
                     totChromaTu = context_ptr->blk_geom->txb_count[1];
                     for (int32_t plane = 0; plane <= blk_geom->has_uv_ex; ++plane)
@@ -3775,7 +3759,7 @@ EB_EXTERN void AV1EncodePass(
                                         const int32_t txh = tx_size_high[tx_size1];//p ? context_ptr->blk_geom->tx_height_uv_ex[context_ptr->txb_itr] : context_ptr->blk_geom->tx_height[context_ptr->txb_itr];
                                         {
                                             TransformUnit *txb_ptr = &cu_ptr->transform_unit_array[context_ptr->txb_itr];
-                                            printf("\nAbout to dump recon for (%d, %d) at plane %d, coded_area_sb[plane]=%d, eobs=%d, tx_type=%d\n", originX, originY, p, context_ptr->coded_area_sb[p], eobs[context_ptr->txb_itr][p], txb_ptr->transform_type[(p==0) ? PLANE_TYPE_Y : PLANE_TYPE_UV]);
+                                            printf("\nAbout to dump recon for (%d, %d) at plane %d, coded_area_sb[plane]=%d, eobs=%d, tx_type=%d\n", originX, originY, p, context_ptr->coded_area_sb[plane], eobs[context_ptr->txb_itr][p], txb_ptr->transform_type[(p==0) ? PLANE_TYPE_Y : PLANE_TYPE_UV]);
                                             dump_block_from_desc(txw, txh, recon_buffer, originX, originY, p);
                                         }
                                     }
@@ -3796,10 +3780,8 @@ EB_EXTERN void AV1EncodePass(
 
                             if (plane == 0)
                                 context_ptr->coded_area_sb[plane] += blk_geom->tx_width[tuIt] * blk_geom->tx_height[tuIt];
-                            if (plane > 0 && blk_geom->has_uv_ex) {
-                                context_ptr->coded_area_sb[1] += blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt];
-                                context_ptr->coded_area_sb[2] += blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt];
-                            }
+                            if (plane > 0 && blk_geom->has_uv_ex)
+                                context_ptr->coded_area_sb[plane] += blk_geom->tx_width_uv_ex[tuIt] * blk_geom->tx_height_uv_ex[tuIt];
 
                         } // Transform Loop
                     } // kelvin plane loop
