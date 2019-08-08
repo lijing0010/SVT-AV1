@@ -241,6 +241,9 @@ extern "C" {
         EbBool                          blk_skip_decision;
         EbBool                          trellis_quant_coeff_optimization;
         EbPictureBufferDesc                 *input_sample16bit_buffer;
+#if TILES_PARALLEL
+        uint16_t                        tile_index;
+#endif
     } ModeDecisionContext;
 
     typedef void(*EbAv1LambdaAssignFunc)(
@@ -272,8 +275,10 @@ extern "C" {
         EbFifo                    *mode_decision_output_fifo_ptr,
         EbBool                     enable_hbd_mode_decision);
 
+#if !TILES_PARALLEL
     extern void reset_mode_decision_neighbor_arrays(
         PictureControlSet *picture_control_set_ptr);
+#endif
 
     extern void lambda_assign_low_delay(
         uint32_t                    *fast_lambda,
@@ -312,6 +317,9 @@ extern "C" {
         PictureControlSet     *picture_control_set_ptr,
 #if !ENABLE_CDF_UPDATE
         SequenceControlSet    *sequence_control_set_ptr,
+#endif
+#if TILES_PARALLEL
+        uint16_t               tile_row_idx,
 #endif
         uint32_t                 segment_index);
 

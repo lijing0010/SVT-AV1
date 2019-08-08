@@ -71,7 +71,10 @@ void enc_dec_segments_init(
 {
     unsigned x, y, yLast;
     unsigned row_index, band_index, segment_index;
-
+#if TILES_PARALLEL
+    segColCount = (segColCount < pic_width_lcu) ? segColCount : pic_width_lcu;
+    segRowCount = (segRowCount < pic_height_lcu)? segRowCount : pic_height_lcu;
+#endif
     segments_ptr->lcu_row_count = pic_height_lcu;
     segments_ptr->lcu_band_count = BAND_TOTAL_COUNT(pic_height_lcu, pic_width_lcu);
     segments_ptr->segment_row_count = segRowCount;

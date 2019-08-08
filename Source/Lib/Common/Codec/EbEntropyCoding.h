@@ -46,6 +46,9 @@ extern "C" {
     extern EbErrorType write_sb(
         struct EntropyCodingContext   *context_ptr,
         LargestCodingUnit     *tb_ptr,
+#if TILES_PARALLEL
+        uint16_t               tile_idx,
+#endif
         PictureControlSet     *picture_control_set_ptr,
         EntropyCoder          *entropy_coder_ptr,
         EbPictureBufferDesc   *coeff_ptr);

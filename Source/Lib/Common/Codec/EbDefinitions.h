@@ -114,6 +114,7 @@ enum {
 /********************************************************/
 /****************** Pre-defined Values ******************/
 /********************************************************/
+#define TILES_PARALLEL 1
 
 #define ALTREF_MAX_NFRAMES 10 // maximum number of frames allowed for the Alt-ref picture computation
                               // this number can be increased by increasing the constant
@@ -181,6 +182,7 @@ enum {
 // Maximum number of tile rows and tile columns
 #define MAX_TILE_ROWS 64
 #define MAX_TILE_COLS 64
+#define MAX_TILE_CNTS 4096
 #define MAX_VARTX_DEPTH 1
 #define MI_SIZE_64X64 (64 >> MI_SIZE_LOG2)
 #define MI_SIZE_128X128 (128 >> MI_SIZE_LOG2)

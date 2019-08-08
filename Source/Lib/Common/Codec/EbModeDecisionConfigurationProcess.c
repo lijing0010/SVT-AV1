@@ -2057,6 +2057,21 @@ void* mode_decision_configuration_kernel(void *input_ptr)
             picture_control_set_ptr);
 
         // Post the results to the MD processes
+#if TILES_PARALLEL
+        for (int tile_row_idx = 0; tile_row_idx < picture_control_set_ptr->parent_pcs_ptr->av1_cm->tiles_info.tile_rows; tile_row_idx++) {
+            eb_get_empty_object(
+                    context_ptr->mode_decision_configuration_output_fifo_ptr,
+                    &encDecTasksWrapperPtr);
+
+            encDecTasksPtr = (EncDecTasks*)encDecTasksWrapperPtr->object_ptr;
+            encDecTasksPtr->picture_control_set_wrapper_ptr = rateControlResultsPtr->picture_control_set_wrapper_ptr;
+            encDecTasksPtr->input_type = ENCDEC_TASKS_MDC_INPUT;
+            encDecTasksPtr->tile_row_index = tile_row_idx;
+
+            // Post the Full Results Object
+            eb_post_full_object(encDecTasksWrapperPtr);
+        }
+#else
         eb_get_empty_object(
             context_ptr->mode_decision_configuration_output_fifo_ptr,
             &encDecTasksWrapperPtr);
@@ -2067,6 +2082,7 @@ void* mode_decision_configuration_kernel(void *input_ptr)
 
         // Post the Full Results Object
         eb_post_full_object(encDecTasksWrapperPtr);
+#endif
 
         // Release Rate Control Results
         eb_release_object(rateControlResultsWrapperPtr);

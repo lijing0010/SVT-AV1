@@ -25,6 +25,9 @@ extern "C" {
         EbObjectWrapper            *picture_control_set_wrapper_ptr;
         uint32_t                        input_type;
         int16_t                        enc_dec_segment_row;
+#if TILES_PARALLEL
+        uint16_t                       tile_row_index;
+#endif
     } EncDecTasks;
 
     typedef struct EncDecTasksInitData {

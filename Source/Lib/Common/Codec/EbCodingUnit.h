@@ -206,6 +206,9 @@ extern "C" {
         int32_t tg_horz_boundary;
         int32_t tile_row;
         int32_t tile_col;
+#if TILES_PARALLEL
+        int32_t tile_rs_index; //tile index in raster order
+#endif
     } TileInfo;
 
     typedef struct MacroBlockDPlane

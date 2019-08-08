@@ -213,6 +213,31 @@ static void reset_segmentation_map(SegmentationNeighborMap *segmentation_map){
 /**************************************************
  * Reset Mode Decision Neighbor Arrays
  *************************************************/
+#if TILES_PARALLEL
+static void ResetEncodePassNeighborArrays(PictureControlSet *picture_control_set_ptr, uint16_t tile_idx)
+{
+    neighbor_array_unit_reset(picture_control_set_ptr->ep_intra_luma_mode_neighbor_array[tile_idx]);
+    neighbor_array_unit_reset(picture_control_set_ptr->ep_intra_chroma_mode_neighbor_array[tile_idx]);
+    neighbor_array_unit_reset(picture_control_set_ptr->ep_mv_neighbor_array[tile_idx]);
+    neighbor_array_unit_reset(picture_control_set_ptr->ep_skip_flag_neighbor_array[tile_idx]);
+    neighbor_array_unit_reset(picture_control_set_ptr->ep_mode_type_neighbor_array[tile_idx]);
+    neighbor_array_unit_reset(picture_control_set_ptr->ep_leaf_depth_neighbor_array[tile_idx]);
+    neighbor_array_unit_reset(picture_control_set_ptr->ep_luma_recon_neighbor_array[tile_idx]);
+    neighbor_array_unit_reset(picture_control_set_ptr->ep_cb_recon_neighbor_array[tile_idx]);
+    neighbor_array_unit_reset(picture_control_set_ptr->ep_cr_recon_neighbor_array[tile_idx]);
+    neighbor_array_unit_reset(picture_control_set_ptr->ep_luma_dc_sign_level_coeff_neighbor_array[tile_idx]);
+    neighbor_array_unit_reset(picture_control_set_ptr->ep_cb_dc_sign_level_coeff_neighbor_array[tile_idx]);
+    neighbor_array_unit_reset(picture_control_set_ptr->ep_cr_dc_sign_level_coeff_neighbor_array[tile_idx]);
+    // TODO(Joel): 8-bit ep_luma_recon_neighbor_array (Cb,Cr) when is16bit==0?
+    EbBool is16bit = (EbBool)(picture_control_set_ptr->parent_pcs_ptr->sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
+    if (is16bit) {
+        neighbor_array_unit_reset(picture_control_set_ptr->ep_luma_recon_neighbor_array16bit[tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->ep_cb_recon_neighbor_array16bit[tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->ep_cr_recon_neighbor_array16bit[tile_idx]);
+    }
+    return;
+}
+#else
 static void ResetEncodePassNeighborArrays(PictureControlSet *picture_control_set_ptr)
 {
     neighbor_array_unit_reset(picture_control_set_ptr->ep_intra_luma_mode_neighbor_array);
@@ -236,6 +261,7 @@ static void ResetEncodePassNeighborArrays(PictureControlSet *picture_control_set
     }
     return;
 }
+#endif
 
 /**************************************************
  * Reset Coding Loop
@@ -306,8 +332,20 @@ static void ResetEncDec(
     context_ptr->md_rate_estimation_ptr = md_rate_estimation_array;
 #endif
     if (segment_index == 0){
+#if TILES_PARALLEL
+        if (context_ptr->tile_row_index == 0) {
+            reset_segmentation_map(picture_control_set_ptr->segmentation_neighbor_map);
+        }
+
+        for (int tile_idx = context_ptr->tile_row_index * picture_control_set_ptr->parent_pcs_ptr->av1_cm->tiles_info.tile_cols;
+                tile_idx < (context_ptr->tile_row_index + 1) * picture_control_set_ptr->parent_pcs_ptr->av1_cm->tiles_info.tile_cols;
+                tile_idx++) {
+            ResetEncodePassNeighborArrays(picture_control_set_ptr, tile_idx);
+        }
+#else
         ResetEncodePassNeighborArrays(picture_control_set_ptr);
         reset_segmentation_map(picture_control_set_ptr->segmentation_neighbor_map);
+#endif
     }
 
     return;
@@ -509,6 +547,9 @@ EbBool AssignEncDecSegments(
             feedbackTaskPtr->input_type = ENCDEC_TASKS_ENCDEC_INPUT;
             feedbackTaskPtr->enc_dec_segment_row = feedbackRowIndex;
             feedbackTaskPtr->picture_control_set_wrapper_ptr = taskPtr->picture_control_set_wrapper_ptr;
+#if TILES_PARALLEL
+            feedbackTaskPtr->tile_row_index = taskPtr->tile_row_index;
+#endif
             eb_post_full_object(wrapper_ptr);
         }
 
@@ -1441,6 +1482,11 @@ void* enc_dec_kernel(void *input_ptr)
     uint32_t                                 segmentBandIndex;
     uint32_t                                 segmentBandSize;
     EncDecSegments                          *segments_ptr;
+#if TILES_PARALLEL
+    uint16_t                                 tile_row_idx;
+    uint32_t                                 tile_row_width_in_sb; //change to tile group later if necessary
+#endif
+
     for (;;) {
         // Get Mode Decision Results
         eb_get_full_object(
@@ -1450,7 +1496,14 @@ void* enc_dec_kernel(void *input_ptr)
         encDecTasksPtr = (EncDecTasks*)encDecTasksWrapperPtr->object_ptr;
         picture_control_set_ptr = (PictureControlSet*)encDecTasksPtr->picture_control_set_wrapper_ptr->object_ptr;
         sequence_control_set_ptr = (SequenceControlSet*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
+#if TILES_PARALLEL
+        tile_row_idx = encDecTasksPtr->tile_row_index;
+        context_ptr->tile_row_index = tile_row_idx;
+        context_ptr->coded_sb_count = 0;
+        segments_ptr = picture_control_set_ptr->enc_dec_segment_ctrl[tile_row_idx];
+#else
         segments_ptr = picture_control_set_ptr->enc_dec_segment_ctrl;
+#endif
         lastLcuFlag = EB_FALSE;
         is16bit = (EbBool)(sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
         (void)is16bit;
@@ -1468,6 +1521,9 @@ void* enc_dec_kernel(void *input_ptr)
         lcuSizeLog2 = (uint8_t)Log2f(sb_sz);
         context_ptr->sb_sz = sb_sz;
         picture_width_in_sb = (sequence_control_set_ptr->seq_header.max_frame_width + sb_sz - 1) >> lcuSizeLog2;
+#if TILES_PARALLEL
+        tile_row_width_in_sb = picture_width_in_sb;
+#endif
         endOfRowFlag = EB_FALSE;
         lcuRowIndexStart = lcuRowIndexCount = 0;
         context_ptr->tot_intra_coded_area = 0;
@@ -1477,7 +1533,12 @@ void* enc_dec_kernel(void *input_ptr)
         {
             xLcuStartIndex = segments_ptr->x_start_array[segment_index];
             yLcuStartIndex = segments_ptr->y_start_array[segment_index];
+#if TILES_PARALLEL
+            lcuStartIndex = yLcuStartIndex * tile_row_width_in_sb + xLcuStartIndex;
+#else
+
             lcuStartIndex = yLcuStartIndex * picture_width_in_sb + xLcuStartIndex;
+#endif
             lcuSegmentCount = segments_ptr->valid_lcu_count_array[segment_index];
 
             segmentRowIndex = segment_index / segments_ptr->segment_band_count;
@@ -1491,6 +1552,9 @@ void* enc_dec_kernel(void *input_ptr)
 #if !ENABLE_CDF_UPDATE
                 sequence_control_set_ptr,
 #endif
+#if TILES_PARALLEL
+                context_ptr->tile_row_index,
+#endif
                 segment_index);
 
             // Reset EncDec Coding State
@@ -1503,7 +1567,23 @@ void* enc_dec_kernel(void *input_ptr)
             if (picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr != NULL)
                 ((EbReferenceObject  *)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->average_intensity = picture_control_set_ptr->parent_pcs_ptr->average_intensity[0];
             for (y_lcu_index = yLcuStartIndex, lcuSegmentIndex = lcuStartIndex; lcuSegmentIndex < lcuStartIndex + lcuSegmentCount; ++y_lcu_index) {
+#if TILES_PARALLEL
+                for (x_lcu_index = xLcuStartIndex; x_lcu_index < tile_row_width_in_sb&& (x_lcu_index + y_lcu_index < segmentBandSize) && lcuSegmentIndex < lcuStartIndex + lcuSegmentCount; ++x_lcu_index, ++lcuSegmentIndex) {
+#else
                 for (x_lcu_index = xLcuStartIndex; x_lcu_index < picture_width_in_sb && (x_lcu_index + y_lcu_index < segmentBandSize) && lcuSegmentIndex < lcuStartIndex + lcuSegmentCount; ++x_lcu_index, ++lcuSegmentIndex) {
+#endif
+#if TILES_PARALLEL
+                    sb_index = (uint16_t)((y_lcu_index + picture_control_set_ptr->parent_pcs_ptr->av1_cm->tiles_info.tile_row_start_sb[tile_row_idx]) * tile_row_width_in_sb + x_lcu_index);
+                    sb_ptr = picture_control_set_ptr->sb_ptr_array[sb_index];
+                    sb_origin_x = (x_lcu_index + 0) << lcuSizeLog2; //Change tile row to tile group later if needed
+                    sb_origin_y = (y_lcu_index + picture_control_set_ptr->parent_pcs_ptr->av1_cm->tiles_info.tile_row_start_sb[tile_row_idx]) << lcuSizeLog2;
+                    context_ptr->tile_index = sb_ptr->tile_info.tile_rs_index;
+                    //printf("tile row idx %d, LCU (%d, %d), sb_index is %d\n", tile_row_idx, sb_origin_x, sb_origin_y, sb_index);
+                    context_ptr->md_context->tile_index = sb_ptr->tile_info.tile_rs_index;
+                    endOfRowFlag = (x_lcu_index == tile_row_width_in_sb - 1) ? EB_TRUE : EB_FALSE;
+                    lcuRowIndexStart = (x_lcu_index == tile_row_width_in_sb - 1 && lcuRowIndexCount == 0) ? y_lcu_index : lcuRowIndexStart;
+                    lcuRowIndexCount = (x_lcu_index == tile_row_width_in_sb - 1) ? lcuRowIndexCount + 1 : lcuRowIndexCount;
+#else
                     sb_index = (uint16_t)(y_lcu_index * picture_width_in_sb + x_lcu_index);
                     sb_ptr = picture_control_set_ptr->sb_ptr_array[sb_index];
                     sb_origin_x = x_lcu_index << lcuSizeLog2;
@@ -1512,6 +1592,7 @@ void* enc_dec_kernel(void *input_ptr)
                     endOfRowFlag = (x_lcu_index == picture_width_in_sb - 1) ? EB_TRUE : EB_FALSE;
                     lcuRowIndexStart = (x_lcu_index == picture_width_in_sb - 1 && lcuRowIndexCount == 0) ? y_lcu_index : lcuRowIndexStart;
                     lcuRowIndexCount = (x_lcu_index == picture_width_in_sb - 1) ? lcuRowIndexCount + 1 : lcuRowIndexCount;
+#endif
                     mdcPtr = &picture_control_set_ptr->mdc_sb_array[sb_index];
                     context_ptr->sb_index = sb_index;
                     context_ptr->md_context->cu_use_ref_src_flag = (picture_control_set_ptr->parent_pcs_ptr->use_src_ref) && (picture_control_set_ptr->parent_pcs_ptr->edge_results_ptr[sb_index].edge_block_num == EB_FALSE || picture_control_set_ptr->parent_pcs_ptr->sb_flat_noise_array[sb_index]) ? EB_TRUE : EB_FALSE;
@@ -1651,6 +1732,9 @@ void* enc_dec_kernel(void *input_ptr)
                         context_ptr);
 #endif
 
+#if TILES_PARALLEL
+                    context_ptr->coded_sb_count++;
+#endif
                     if (picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr != NULL)
                         ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->intra_coded_area_sb[sb_index] = (uint8_t)((100 * context_ptr->intra_coded_area_sb[sb_index]) / (64 * 64));
                 }
@@ -1660,6 +1744,13 @@ void* enc_dec_kernel(void *input_ptr)
 
         eb_block_on_mutex(picture_control_set_ptr->intra_mutex);
         picture_control_set_ptr->intra_coded_area += (uint32_t)context_ptr->tot_intra_coded_area;
+#if TILES_PARALLEL
+        picture_control_set_ptr->enc_dec_coded_sb_count += (uint32_t)context_ptr->coded_sb_count;
+        lastLcuFlag = (picture_control_set_ptr->sb_total_count == picture_control_set_ptr->enc_dec_coded_sb_count);
+        //printf("POC %d, lastLcuFlag is %d, (%d and %d)\n",
+        //        picture_control_set_ptr->picture_number,
+        //        lastLcuFlag, picture_control_set_ptr->sb_total_count, picture_control_set_ptr->enc_dec_coded_sb_count);
+#endif
         eb_release_mutex(picture_control_set_ptr->intra_mutex);
 
         if (lastLcuFlag) {

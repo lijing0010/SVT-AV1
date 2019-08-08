@@ -272,6 +272,10 @@ void* packetization_kernel(void *input_ptr)
     context_ptr->tot_shown_frames = 0;
     context_ptr->disp_order_continuity_count = 0;
 
+#if TILES_PARALLEL
+    uint16_t tile_cnt = 0;
+#endif
+
     for (;;) {
         // Get EntropyCoding Results
         eb_get_full_object(
@@ -282,6 +286,10 @@ void* packetization_kernel(void *input_ptr)
         sequence_control_set_ptr = (SequenceControlSet*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
         encode_context_ptr = (EncodeContext*)sequence_control_set_ptr->encode_context_ptr;
         frm_hdr = &picture_control_set_ptr->parent_pcs_ptr->frm_hdr;
+#if TILES_PARALLEL
+        Av1Common *const cm = picture_control_set_ptr->parent_pcs_ptr->av1_cm;
+        tile_cnt = cm->tiles_info.tile_rows * cm->tiles_info.tile_cols;
+#endif
         //****************************************************
         // Input Entropy Results into Reordering Queue
         //****************************************************
@@ -328,10 +336,17 @@ void* packetization_kernel(void *input_ptr)
         if (picture_control_set_ptr->parent_pcs_ptr->frame_end_cdf_update_mode &&
             picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
             picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr) {
-
+#if TILES_PARALLEL
+            for (uint16_t tile_idx = 0; tile_idx < tile_cnt; tile_idx++) {
+                eb_av1_reset_cdf_symbol_counters(picture_control_set_ptr->entropy_coding_info[tile_idx]->entropy_coder_ptr->fc);
+                ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->frame_context
+                    = (*picture_control_set_ptr->entropy_coding_info[tile_idx]->entropy_coder_ptr->fc);
+            }
+#else
             eb_av1_reset_cdf_symbol_counters(picture_control_set_ptr->entropy_coder_ptr->fc);
             ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->frame_context
                 = (*picture_control_set_ptr->entropy_coder_ptr->fc);
+#endif
 
             // Get Empty Results Object
             eb_get_empty_object(

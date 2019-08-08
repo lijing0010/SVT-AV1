@@ -43,6 +43,9 @@ extern "C" {
         EbObjectWrapper *picture_control_set_wrapper_ptr;
         uint32_t         completed_lcu_row_index_start;
         uint32_t         completed_lcu_row_count;
+#if TILES_PARALLEL
+        uint16_t         tile_index;
+#endif
     } RestResults;
 
     typedef struct EncDecResultsInitData {

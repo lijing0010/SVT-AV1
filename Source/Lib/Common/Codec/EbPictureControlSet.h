@@ -13679,6 +13679,7 @@ extern "C" {
         MeshPattern mesh_patterns[MAX_MESH_STEP];
     } SpeedFeatures;
 
+
     typedef struct PictureControlSet
     {
         EbDctor                            dctor;
@@ -13693,7 +13694,9 @@ extern "C" {
 
         struct PictureParentControlSet     *parent_pcs_ptr;  //The parent of this PCS.
         EbObjectWrapper                    *picture_parent_control_set_wrapper_ptr;
+#if !TILES_PARALLEL
         EntropyCoder                       *entropy_coder_ptr;
+#endif
         // Packetization (used to encode SPS, PPS, etc)
         Bitstream                          *bitstream_ptr;
 
@@ -13710,9 +13713,19 @@ extern "C" {
 
         EbColorFormat                         color_format;
 
+#if TILES_PARALLEL
+        EncDecSegments                     **enc_dec_segment_ctrl;
+        uint32_t                             enc_dec_coded_sb_count;
+#else
         EncDecSegments                     *enc_dec_segment_ctrl;
+#endif
 
         // Entropy Process Rows
+#if TILES_PARALLEL
+        EntropyTileInfo                     **entropy_coding_info;
+        EbHandle                              entropy_coding_pic_mutex;
+        EbBool                                entropy_coding_pic_reset_flag;
+#else
         int8_t                                entropy_coding_current_available_row;
         EbBool                                entropy_coding_row_array[MAX_LCU_ROWS];
         int8_t                                entropy_coding_current_row;
@@ -13720,6 +13733,8 @@ extern "C" {
         EbHandle                              entropy_coding_mutex;
         EbBool                                entropy_coding_in_progress;
         EbBool                                entropy_coding_pic_done;
+#endif
+
         EbHandle                              intra_mutex;
         uint32_t                              intra_coded_area;
         uint32_t                              tot_seg_searched_cdef;
@@ -13769,6 +13784,35 @@ extern "C" {
         EntropyCoder                       *coeff_est_entropy_coder_ptr;
 
         // Mode Decision Neighbor Arrays
+#if TILES_PARALLEL
+        NeighborArrayUnit                  **md_intra_luma_mode_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_intra_chroma_mode_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_mv_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_skip_flag_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_mode_type_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_leaf_depth_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_luma_recon_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_tx_depth_1_luma_recon_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_cb_recon_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_cr_recon_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        EbBool                             hbd_mode_decision;
+        NeighborArrayUnit                  **md_luma_recon_neighbor_array16bit[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_tx_depth_1_luma_recon_neighbor_array16bit[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_cb_recon_neighbor_array16bit[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_cr_recon_neighbor_array16bit[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_skip_coeff_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_luma_dc_sign_level_coeff_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_cb_dc_sign_level_coeff_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_cr_dc_sign_level_coeff_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_txfm_context_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_inter_pred_dir_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+        NeighborArrayUnit                  **md_ref_frame_type_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+
+        NeighborArrayUnit32                **md_interpolation_type_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+
+        NeighborArrayUnit                  **mdleaf_partition_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+#else
         NeighborArrayUnit                  *md_intra_luma_mode_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
         NeighborArrayUnit                  *md_intra_chroma_mode_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
         NeighborArrayUnit                  *md_mv_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
@@ -13796,7 +13840,25 @@ extern "C" {
         NeighborArrayUnit32                *md_interpolation_type_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
 
         NeighborArrayUnit                  *mdleaf_partition_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+#endif
         // Encode Pass Neighbor Arrays
+#if TILES_PARALLEL
+        NeighborArrayUnit                  **ep_intra_luma_mode_neighbor_array;
+        NeighborArrayUnit                  **ep_intra_chroma_mode_neighbor_array;
+        NeighborArrayUnit                  **ep_mv_neighbor_array;
+        NeighborArrayUnit                  **ep_skip_flag_neighbor_array;
+        NeighborArrayUnit                  **ep_mode_type_neighbor_array;
+        NeighborArrayUnit                  **ep_leaf_depth_neighbor_array;
+        NeighborArrayUnit                  **ep_luma_recon_neighbor_array;
+        NeighborArrayUnit                  **ep_cb_recon_neighbor_array;
+        NeighborArrayUnit                  **ep_cr_recon_neighbor_array;
+        NeighborArrayUnit                  **ep_luma_recon_neighbor_array16bit;
+        NeighborArrayUnit                  **ep_cb_recon_neighbor_array16bit;
+        NeighborArrayUnit                  **ep_cr_recon_neighbor_array16bit;
+        NeighborArrayUnit                  **ep_luma_dc_sign_level_coeff_neighbor_array;
+        NeighborArrayUnit                  **ep_cr_dc_sign_level_coeff_neighbor_array;
+        NeighborArrayUnit                  **ep_cb_dc_sign_level_coeff_neighbor_array;
+#else
         NeighborArrayUnit                  *ep_intra_luma_mode_neighbor_array;
         NeighborArrayUnit                  *ep_intra_chroma_mode_neighbor_array;
         NeighborArrayUnit                  *ep_mv_neighbor_array;
@@ -13812,7 +13874,24 @@ extern "C" {
         NeighborArrayUnit                  *ep_luma_dc_sign_level_coeff_neighbor_array;
         NeighborArrayUnit                  *ep_cr_dc_sign_level_coeff_neighbor_array;
         NeighborArrayUnit                  *ep_cb_dc_sign_level_coeff_neighbor_array;
+#endif
         // Entropy Coding Neighbor Arrays
+#if TILES_PARALLEL
+        NeighborArrayUnit                  **mode_type_neighbor_array;
+        NeighborArrayUnit                  **partition_context_neighbor_array;
+        NeighborArrayUnit                  **intra_luma_mode_neighbor_array;
+        NeighborArrayUnit                  **skip_flag_neighbor_array;
+        NeighborArrayUnit                  **skip_coeff_neighbor_array;
+        NeighborArrayUnit                  **luma_dc_sign_level_coeff_neighbor_array; // Stored per 4x4. 8 bit: lower 6 bits (COEFF_CONTEXT_BITS), shows if there is at least one Coef. Top 2 bit store the sign of DC as follow: 0->0,1->-1,2-> 1
+        NeighborArrayUnit                  **cr_dc_sign_level_coeff_neighbor_array; // Stored per 4x4. 8 bit: lower 6 bits(COEFF_CONTEXT_BITS), shows if there is at least one Coef. Top 2 bit store the sign of DC as follow: 0->0,1->-1,2-> 1
+        NeighborArrayUnit                  **cb_dc_sign_level_coeff_neighbor_array; // Stored per 4x4. 8 bit: lower 6 bits(COEFF_CONTEXT_BITS), shows if there is at least one Coef. Top 2 bit store the sign of DC as follow: 0->0,1->-1,2-> 1
+        NeighborArrayUnit                  **txfm_context_array;
+        NeighborArrayUnit                  **inter_pred_dir_neighbor_array;
+        NeighborArrayUnit                  **ref_frame_type_neighbor_array;
+        NeighborArrayUnit32                **interpolation_type_neighbor_array;
+
+        NeighborArrayUnit                  **segmentation_id_pred_array;
+#else
         NeighborArrayUnit                  *mode_type_neighbor_array;
         NeighborArrayUnit                  *partition_context_neighbor_array;
         NeighborArrayUnit                  *intra_luma_mode_neighbor_array;
@@ -13827,6 +13906,7 @@ extern "C" {
         NeighborArrayUnit32                *interpolation_type_neighbor_array;
 
         NeighborArrayUnit                  *segmentation_id_pred_array;
+#endif
         SegmentationNeighborMap              *segmentation_neighbor_map;
 
         ModeInfo                            **mi_grid_base; //2 SB Rows of mi Data are enough
@@ -13848,9 +13928,19 @@ extern "C" {
         EbEncMode                             enc_mode;
         EbBool                                intra_md_open_loop_flag;
         EbBool                                limit_intra;
+
+#if TILES_PARALLEL
+        //Jing:TODO
+        //re-calculate MAX_TILE_CNTS, currently 4K is too big
+        int32_t                               cdef_preset[MAX_TILE_CNTS][4];
+        WienerInfo                            wiener_info[MAX_TILE_CNTS][MAX_MB_PLANE];
+        SgrprojInfo                           sgrproj_info[MAX_TILE_CNTS][MAX_MB_PLANE];
+#else
         int32_t                               cdef_preset[4];
         WienerInfo                            wiener_info[MAX_MB_PLANE];
         SgrprojInfo                           sgrproj_info[MAX_MB_PLANE];
+#endif
+
         SpeedFeatures sf;
         SearchSiteConfig ss_cfg;//CHKN this might be a seq based
         HashTable hash_table;
@@ -13864,6 +13954,12 @@ extern "C" {
         FRAME_CONTEXT           ref_frame_context[REF_FRAMES];
         EbWarpedMotionParams    ref_global_motion[TOTAL_REFS_PER_FRAME];
         struct MdRateEstimationContext *md_rate_estimation_array;
+#endif
+
+#if TILES_PARALLEL
+        //Put it here for deinit, don't need to go pcs->ppcs->av1_cm which may already be released
+        uint16_t tile_row_count;
+        uint16_t tile_column_count;
 #endif
     } PictureControlSet;
 
@@ -13951,6 +14047,11 @@ extern "C" {
         EbLinkedListNode                     *app_out_data_ll_head_ptr;
 
         EbBufferHeaderType                   *input_ptr;            // input picture buffer
+#if TILES_PARALLEL
+        uint8_t                               log2_tile_rows;
+        uint8_t                               log2_tile_cols;
+        uint8_t                               log2_sb_sz;
+#endif
 
         EbBool                                idr_flag;
         EbBool                                cra_flag;
@@ -14280,6 +14381,17 @@ extern "C" {
         uint8_t                            nsq_present;
 #if INCOMPLETE_SB_FIX
         uint8_t                            over_boundary_block_mode;
+#endif
+#if TILES_PARALLEL
+        //init value for pcs
+        uint8_t                            tile_row_count;
+        uint8_t                            tile_column_count;
+
+        //Init value for ppcs
+        uint8_t                            log2_tile_rows; //from command line
+        uint8_t                            log2_tile_cols;
+        uint8_t                            log2_sb_sz; //in mi unit
+
 #endif
     } PictureControlSetInitData;
 

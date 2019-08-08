@@ -116,7 +116,15 @@ void* dlf_kernel(void *input_ptr)
         EbBool is16bit       = (EbBool)(sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
 
         EbBool dlfEnableFlag = (EbBool) picture_control_set_ptr->parent_pcs_ptr->loop_filter_mode;
+#if TILES_PARALLEL
+        uint16_t total_tile_cnt = picture_control_set_ptr->parent_pcs_ptr->av1_cm->tiles_info.tile_cols * picture_control_set_ptr->parent_pcs_ptr->av1_cm->tiles_info.tile_rows;
+        // Jing: Move sb level lf to here if tile_parallel
+        if ((dlfEnableFlag && picture_control_set_ptr->parent_pcs_ptr->loop_filter_mode >= 2 && total_tile_cnt == 1) ||
+                (dlfEnableFlag && picture_control_set_ptr->parent_pcs_ptr->loop_filter_mode == 1 && total_tile_cnt > 1)) {
+#else
         if (dlfEnableFlag && picture_control_set_ptr->parent_pcs_ptr->loop_filter_mode >= 2) {
+#endif
+
             EbPictureBufferDesc  *recon_buffer = is16bit ? picture_control_set_ptr->recon_picture16bit_ptr : picture_control_set_ptr->recon_picture_ptr;
 
             if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE)

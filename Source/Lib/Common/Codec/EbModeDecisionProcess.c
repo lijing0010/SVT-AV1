@@ -206,6 +206,44 @@ EbErrorType mode_decision_context_ctor(
 /**************************************************
  * Reset Mode Decision Neighbor Arrays
  *************************************************/
+#if TILES_PARALLEL
+static void reset_mode_decision_neighbor_arrays(PictureControlSet *picture_control_set_ptr, uint16_t tile_idx)
+{
+    uint8_t depth;
+    for (depth = 0; depth < NEIGHBOR_ARRAY_TOTAL_COUNT; depth++) {
+        neighbor_array_unit_reset(picture_control_set_ptr->md_intra_luma_mode_neighbor_array[depth][tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->md_intra_chroma_mode_neighbor_array[depth][tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->md_mv_neighbor_array[depth][tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->md_skip_flag_neighbor_array[depth][tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->md_mode_type_neighbor_array[depth][tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->md_leaf_depth_neighbor_array[depth][tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->mdleaf_partition_neighbor_array[depth][tile_idx]);
+
+        if (!picture_control_set_ptr->hbd_mode_decision) {
+            neighbor_array_unit_reset(picture_control_set_ptr->md_luma_recon_neighbor_array[depth][tile_idx]);
+            neighbor_array_unit_reset(picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array[depth][tile_idx]);
+            neighbor_array_unit_reset(picture_control_set_ptr->md_cb_recon_neighbor_array[depth][tile_idx]);
+            neighbor_array_unit_reset(picture_control_set_ptr->md_cr_recon_neighbor_array[depth][tile_idx]);
+        } else {
+            neighbor_array_unit_reset(picture_control_set_ptr->md_luma_recon_neighbor_array16bit[depth][tile_idx]);
+            neighbor_array_unit_reset(picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array16bit[depth][tile_idx]);
+            neighbor_array_unit_reset(picture_control_set_ptr->md_cb_recon_neighbor_array16bit[depth][tile_idx]);
+            neighbor_array_unit_reset(picture_control_set_ptr->md_cr_recon_neighbor_array16bit[depth][tile_idx]);
+        }
+        neighbor_array_unit_reset(picture_control_set_ptr->md_skip_coeff_neighbor_array[depth][tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->md_luma_dc_sign_level_coeff_neighbor_array[depth][tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[depth][tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->md_cb_dc_sign_level_coeff_neighbor_array[depth][tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->md_cr_dc_sign_level_coeff_neighbor_array[depth][tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->md_txfm_context_array[depth][tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->md_inter_pred_dir_neighbor_array[depth][tile_idx]);
+        neighbor_array_unit_reset(picture_control_set_ptr->md_ref_frame_type_neighbor_array[depth][tile_idx]);
+
+        neighbor_array_unit_reset32(picture_control_set_ptr->md_interpolation_type_neighbor_array[depth][tile_idx]);
+    }
+    return;
+}
+#else
 void reset_mode_decision_neighbor_arrays(PictureControlSet *picture_control_set_ptr)
 {
     uint8_t depth;
@@ -243,6 +281,7 @@ void reset_mode_decision_neighbor_arrays(PictureControlSet *picture_control_set_
 
     return;
 }
+#endif
 
 extern void lambda_assign_low_delay(
     uint32_t                    *fast_lambda,
@@ -382,6 +421,9 @@ void reset_mode_decision(
 #if !ENABLE_CDF_UPDATE
     SequenceControlSet    *sequence_control_set_ptr,
 #endif
+#if TILES_PARALLEL
+    uint16_t                   tile_row_idx,
+#endif
     uint32_t                   segment_index)
 {
 #if !ENABLE_CDF_UPDATE
@@ -452,7 +494,15 @@ void reset_mode_decision(
 
     // Reset Neighbor Arrays at start of new Segment / Picture
     if (segment_index == 0) {
+#if TILES_PARALLEL
+        for (int tile_idx = tile_row_idx * picture_control_set_ptr->parent_pcs_ptr->av1_cm->tiles_info.tile_cols;
+                tile_idx < (tile_row_idx + 1) * picture_control_set_ptr->parent_pcs_ptr->av1_cm->tiles_info.tile_cols;
+                tile_idx++) {
+            reset_mode_decision_neighbor_arrays(picture_control_set_ptr, tile_idx);
+        }
+#else
         reset_mode_decision_neighbor_arrays(picture_control_set_ptr);
+#endif
     }
 
 #if EIGTH_PEL_MV

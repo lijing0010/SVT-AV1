@@ -20,6 +20,10 @@
 #include "EbPictureControlSet.h"
 #include "EbPictureBufferDesc.h"
 
+#if TILES_PARALLEL
+void set_tile_info(PictureParentControlSet * pcs_ptr);
+#endif
+
 void *eb_aom_memalign(size_t align, size_t size);
 void eb_aom_free(void *memblk);
 void *eb_aom_malloc(size_t size);
@@ -123,6 +127,115 @@ EbErrorType me_sb_results_ctor(
     return EB_ErrorNone;
 }
 
+#if TILES_PARALLEL
+void picture_control_set_dctor(EbPtr p)
+{
+    PictureControlSet* obj = (PictureControlSet*)p;
+    uint16_t tile_cnt = obj->tile_row_count * obj->tile_column_count;
+    uint16_t tile_row_cnt = obj->tile_row_count;
+    uint8_t depth;
+
+    av1_hash_table_destroy(&obj->hash_table);
+    EB_DELETE_PTR_ARRAY(obj->enc_dec_segment_ctrl, tile_row_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_intra_luma_mode_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_intra_chroma_mode_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_mv_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_skip_flag_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_mode_type_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_leaf_depth_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_luma_recon_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_cb_recon_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_cr_recon_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_luma_dc_sign_level_coeff_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_cb_dc_sign_level_coeff_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_cr_dc_sign_level_coeff_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->mode_type_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->partition_context_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->skip_flag_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->skip_coeff_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->luma_dc_sign_level_coeff_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->cr_dc_sign_level_coeff_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->cb_dc_sign_level_coeff_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->inter_pred_dir_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ref_frame_type_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->intra_luma_mode_neighbor_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->txfm_context_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->segmentation_id_pred_array, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_luma_recon_neighbor_array16bit, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_cb_recon_neighbor_array16bit, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->ep_cr_recon_neighbor_array16bit, tile_cnt);
+    EB_DELETE_PTR_ARRAY(obj->interpolation_type_neighbor_array, tile_cnt);
+
+    EB_DELETE(obj->segmentation_neighbor_map);
+    for (depth = 0; depth < NEIGHBOR_ARRAY_TOTAL_COUNT; depth++) {
+        EB_DELETE_PTR_ARRAY(obj->md_intra_luma_mode_neighbor_array[depth], tile_cnt);
+        EB_DELETE_PTR_ARRAY(obj->md_intra_chroma_mode_neighbor_array[depth], tile_cnt);
+        EB_DELETE_PTR_ARRAY(obj->md_mv_neighbor_array[depth], tile_cnt);
+        EB_DELETE_PTR_ARRAY(obj->md_skip_flag_neighbor_array[depth], tile_cnt);
+        EB_DELETE_PTR_ARRAY(obj->md_mode_type_neighbor_array[depth], tile_cnt);
+        EB_DELETE_PTR_ARRAY(obj->md_leaf_depth_neighbor_array[depth], tile_cnt);
+        EB_DELETE_PTR_ARRAY(obj->mdleaf_partition_neighbor_array[depth], tile_cnt);
+        if (obj->hbd_mode_decision) {
+            EB_DELETE_PTR_ARRAY(obj->md_luma_recon_neighbor_array16bit[depth], tile_cnt);
+            EB_DELETE_PTR_ARRAY(obj->md_tx_depth_1_luma_recon_neighbor_array16bit[depth], tile_cnt);
+            EB_DELETE_PTR_ARRAY(obj->md_cb_recon_neighbor_array16bit[depth], tile_cnt);
+            EB_DELETE_PTR_ARRAY(obj->md_cr_recon_neighbor_array16bit[depth], tile_cnt);
+        } else {
+            EB_DELETE_PTR_ARRAY(obj->md_luma_recon_neighbor_array[depth], tile_cnt);
+            EB_DELETE_PTR_ARRAY(obj->md_tx_depth_1_luma_recon_neighbor_array[depth], tile_cnt);
+            EB_DELETE_PTR_ARRAY(obj->md_cb_recon_neighbor_array[depth], tile_cnt);
+            EB_DELETE_PTR_ARRAY(obj->md_cr_recon_neighbor_array[depth], tile_cnt);
+        }
+        EB_DELETE_PTR_ARRAY(obj->md_skip_coeff_neighbor_array[depth], tile_cnt);
+        EB_DELETE_PTR_ARRAY(obj->md_luma_dc_sign_level_coeff_neighbor_array[depth], tile_cnt);
+        EB_DELETE_PTR_ARRAY(obj->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[depth], tile_cnt);
+        EB_DELETE_PTR_ARRAY(obj->md_cr_dc_sign_level_coeff_neighbor_array[depth], tile_cnt);
+        EB_DELETE_PTR_ARRAY(obj->md_cb_dc_sign_level_coeff_neighbor_array[depth], tile_cnt);
+        EB_DELETE_PTR_ARRAY(obj->md_txfm_context_array[depth], tile_cnt);
+        EB_DELETE_PTR_ARRAY(obj->md_inter_pred_dir_neighbor_array[depth], tile_cnt);
+        EB_DELETE_PTR_ARRAY(obj->md_ref_frame_type_neighbor_array[depth], tile_cnt);
+        EB_DELETE_PTR_ARRAY(obj->md_interpolation_type_neighbor_array[depth], tile_cnt);
+    }
+    EB_DELETE_PTR_ARRAY(obj->sb_ptr_array, obj->sb_total_count);
+    EB_DELETE(obj->coeff_est_entropy_coder_ptr);
+    EB_DELETE(obj->bitstream_ptr);
+
+    EB_DELETE_PTR_ARRAY(obj->entropy_coding_info, tile_cnt);
+
+    EB_DELETE(obj->recon_picture32bit_ptr);
+    EB_DELETE(obj->recon_picture16bit_ptr);
+    EB_DELETE(obj->recon_picture_ptr);
+    EB_DELETE(obj->film_grain_picture16bit_ptr);
+    EB_DELETE(obj->film_grain_picture_ptr);
+    EB_DELETE(obj->input_frame16bit);
+
+
+    EB_FREE_ARRAY(obj->mse_seg[0]);
+    EB_FREE_ARRAY(obj->mse_seg[1]);
+
+    EB_FREE_ARRAY(obj->src[0]);
+    EB_FREE_ARRAY(obj->ref_coeff[0]);
+    EB_FREE_ARRAY(obj->src[1]);
+    EB_FREE_ARRAY(obj->ref_coeff[1]);
+    EB_FREE_ARRAY(obj->src[2]);
+    EB_FREE_ARRAY(obj->ref_coeff[2]);
+
+    EB_FREE_ARRAY(obj->mi_grid_base);
+    EB_FREE_ARRAY(obj->mip);
+#if ENABLE_CDF_UPDATE
+    EB_FREE_ARRAY(obj->md_rate_estimation_array);
+#endif
+    EB_FREE_ARRAY(obj->ec_ctx_array);
+    EB_FREE_ARRAY(obj->rate_est_array);
+
+    EB_FREE_ARRAY(obj->mdc_sb_array);
+    EB_FREE_ARRAY(obj->qp_array);
+    EB_DESTROY_MUTEX(obj->intra_mutex);
+    EB_DESTROY_MUTEX(obj->cdef_search_mutex);
+    EB_DESTROY_MUTEX(obj->rest_search_mutex);
+
+}
+#else
 void picture_control_set_dctor(EbPtr p)
 {
     PictureControlSet* obj = (PictureControlSet*)p;
@@ -220,12 +333,17 @@ void picture_control_set_dctor(EbPtr p)
 
     EB_FREE_ARRAY(obj->mdc_sb_array);
     EB_FREE_ARRAY(obj->qp_array);
+#if TILES_PARALLEL
+    EB_DESTROY_MUTEX(object_ptr->entropy_coding_pic_mutex);
+#else
     EB_DESTROY_MUTEX(obj->entropy_coding_mutex);
+#endif
     EB_DESTROY_MUTEX(obj->intra_mutex);
     EB_DESTROY_MUTEX(obj->cdef_search_mutex);
     EB_DESTROY_MUTEX(obj->rest_search_mutex);
 
 }
+#endif
 
 typedef struct InitData {
     NeighborArrayUnit **na_unit_dbl_ptr;
@@ -277,6 +395,15 @@ EbErrorType picture_control_set_ctor(
     EbBool is16bit = initDataPtr->bit_depth > 8 ? EB_TRUE : EB_FALSE;
     const uint16_t subsampling_x = (initDataPtr->color_format == EB_YUV444 ? 1 : 2) - 1;
     const uint16_t subsampling_y = (initDataPtr->color_format >= EB_YUV422 ? 1 : 2) - 1;
+
+#if TILES_PARALLEL
+    uint32_t total_tile_cnt = initDataPtr->tile_row_count * initDataPtr->tile_column_count;
+    uint32_t tile_idx = 0;
+    uint32_t encDecSegRow = initDataPtr->enc_dec_segment_row;
+    uint32_t encDecSegCol = initDataPtr->enc_dec_segment_col;
+    object_ptr->tile_row_count = initDataPtr->tile_row_count;
+    object_ptr->tile_column_count = initDataPtr->tile_column_count;
+#endif
 
     object_ptr->dctor = picture_control_set_dctor;
 
@@ -368,11 +495,22 @@ EbErrorType picture_control_set_ctor(
             eb_picture_buffer_desc_ctor,
             (EbPtr)&coeffBufferDescInitData);
     }
+
     // Entropy Coder
+#if TILES_PARALLEL
+    EB_ALLOC_PTR_ARRAY(object_ptr->entropy_coding_info, total_tile_cnt);
+    for (tile_idx = 0; tile_idx < total_tile_cnt; tile_idx++) {
+        EB_NEW(
+                object_ptr->entropy_coding_info[tile_idx],
+                entropy_tile_info_ctor,
+                SEGMENT_ENTROPY_BUFFER_SIZE / total_tile_cnt);
+    }
+#else
     EB_NEW(
         object_ptr->entropy_coder_ptr,
         entropy_coder_ctor,
         SEGMENT_ENTROPY_BUFFER_SIZE);
+#endif
 
     // Packetization process Bitstream
     EB_NEW(
@@ -436,6 +574,282 @@ EbErrorType picture_control_set_ctor(
 
     object_ptr->hbd_mode_decision = initDataPtr->hbd_mode_decision;
     // Mode Decision Neighbor Arrays
+#if TILES_PARALLEL
+    uint8_t depth;
+    for (depth = 0; depth < NEIGHBOR_ARRAY_TOTAL_COUNT; depth++) {
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_intra_luma_mode_neighbor_array[depth], total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_intra_chroma_mode_neighbor_array[depth], total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_mv_neighbor_array[depth], total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_skip_flag_neighbor_array[depth], total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_mode_type_neighbor_array[depth], total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_leaf_depth_neighbor_array[depth], total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->mdleaf_partition_neighbor_array[depth], total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_skip_coeff_neighbor_array[depth], total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_luma_dc_sign_level_coeff_neighbor_array[depth], total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[depth], total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_cr_dc_sign_level_coeff_neighbor_array[depth], total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_cb_dc_sign_level_coeff_neighbor_array[depth], total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_txfm_context_array[depth], total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_inter_pred_dir_neighbor_array[depth], total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_ref_frame_type_neighbor_array[depth], total_tile_cnt);
+        if (!initDataPtr->hbd_mode_decision) {
+            EB_ALLOC_PTR_ARRAY(object_ptr->md_luma_recon_neighbor_array[depth], total_tile_cnt);
+            EB_ALLOC_PTR_ARRAY(object_ptr->md_tx_depth_1_luma_recon_neighbor_array[depth], total_tile_cnt);
+            EB_ALLOC_PTR_ARRAY(object_ptr->md_cb_recon_neighbor_array[depth], total_tile_cnt);
+            EB_ALLOC_PTR_ARRAY(object_ptr->md_cr_recon_neighbor_array[depth], total_tile_cnt);
+        } else {
+            EB_ALLOC_PTR_ARRAY(object_ptr->md_luma_recon_neighbor_array16bit[depth], total_tile_cnt);
+            EB_ALLOC_PTR_ARRAY(object_ptr->md_tx_depth_1_luma_recon_neighbor_array16bit[depth], total_tile_cnt);
+            EB_ALLOC_PTR_ARRAY(object_ptr->md_cb_recon_neighbor_array16bit[depth], total_tile_cnt);
+            EB_ALLOC_PTR_ARRAY(object_ptr->md_cr_recon_neighbor_array16bit[depth], total_tile_cnt);
+        }
+        EB_ALLOC_PTR_ARRAY(object_ptr->md_interpolation_type_neighbor_array[depth], total_tile_cnt);
+    }
+    for (tile_idx = 0; tile_idx < total_tile_cnt; tile_idx++) {
+        for (depth = 0; depth < NEIGHBOR_ARRAY_TOTAL_COUNT; depth++) {
+            InitData data[] = {
+                {
+                    &object_ptr->md_intra_luma_mode_neighbor_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(uint8_t),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK
+                },
+                {
+                    &object_ptr->md_intra_chroma_mode_neighbor_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE >> subsampling_x,
+                    MAX_PICTURE_HEIGHT_SIZE >> subsampling_y,
+                    sizeof(uint8_t),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+                },
+                {
+                    &object_ptr->md_mv_neighbor_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(MvUnit),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+                },
+                {
+                    &object_ptr->md_skip_flag_neighbor_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(uint8_t),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+                },
+                {
+                    &object_ptr->md_mode_type_neighbor_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(uint8_t),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+                },
+                {
+                    &object_ptr->md_leaf_depth_neighbor_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(uint8_t),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+                },
+                {
+                    &object_ptr->mdleaf_partition_neighbor_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(struct PartitionContext),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+                },
+                {
+                    &object_ptr->md_skip_coeff_neighbor_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(uint8_t),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+                },
+                // for each 4x4
+                {
+                    &object_ptr->md_luma_dc_sign_level_coeff_neighbor_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(uint8_t),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+                },
+                // for each 4x4
+                {
+                    &object_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(uint8_t),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+                },
+                // for each 4x4
+                {
+                    &object_ptr->md_cr_dc_sign_level_coeff_neighbor_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(uint8_t),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+                },
+                // for each 4x4
+                {
+                    &object_ptr->md_cb_dc_sign_level_coeff_neighbor_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(uint8_t),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+                },
+                {
+                    &object_ptr->md_txfm_context_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(TXFM_CONTEXT),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+                },
+                {
+                    &object_ptr->md_inter_pred_dir_neighbor_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(uint8_t),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+                },
+                {
+                    &object_ptr->md_ref_frame_type_neighbor_array[depth][tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(uint8_t),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+                }
+            };
+            return_error = create_neighbor_array_units(data, DIM(data));
+            if (return_error == EB_ErrorInsufficientResources)
+                return EB_ErrorInsufficientResources;
+
+            if (!initDataPtr->hbd_mode_decision) {
+                InitData data[] = {
+                    {
+                        &object_ptr->md_luma_recon_neighbor_array[depth][tile_idx],
+                        MAX_PICTURE_WIDTH_SIZE,
+                        MAX_PICTURE_HEIGHT_SIZE,
+                        sizeof(uint8_t),
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+                    },
+                    {
+                        &object_ptr->md_tx_depth_1_luma_recon_neighbor_array[depth][tile_idx],
+                        MAX_PICTURE_WIDTH_SIZE,
+                        MAX_PICTURE_HEIGHT_SIZE,
+                        sizeof(uint8_t),
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+                    },
+                    {
+                        &object_ptr->md_cb_recon_neighbor_array[depth][tile_idx],
+                        MAX_PICTURE_WIDTH_SIZE >> subsampling_x,
+                        MAX_PICTURE_HEIGHT_SIZE >> subsampling_y,
+                        sizeof(uint8_t),
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+                    },
+                    {
+                        &object_ptr->md_cr_recon_neighbor_array[depth][tile_idx],
+                        MAX_PICTURE_WIDTH_SIZE >> subsampling_x,
+                        MAX_PICTURE_HEIGHT_SIZE >> subsampling_y,
+                        sizeof(uint8_t),
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+                    }
+                };
+                return_error = create_neighbor_array_units(data, DIM(data));
+                if (return_error == EB_ErrorInsufficientResources)
+                    return EB_ErrorInsufficientResources;
+            } else {
+                InitData data[] = {
+                    {
+                        &object_ptr->md_luma_recon_neighbor_array16bit[depth][tile_idx],
+                        MAX_PICTURE_WIDTH_SIZE,
+                        MAX_PICTURE_HEIGHT_SIZE,
+                        sizeof(uint16_t),
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+                    },
+                    {
+                        &object_ptr->md_tx_depth_1_luma_recon_neighbor_array16bit[depth][tile_idx],
+                        MAX_PICTURE_WIDTH_SIZE,
+                        MAX_PICTURE_HEIGHT_SIZE,
+                        sizeof(uint16_t),
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+                    },
+                    {
+                        &object_ptr->md_cb_recon_neighbor_array16bit[depth][tile_idx],
+                        MAX_PICTURE_WIDTH_SIZE >> subsampling_x,
+                        MAX_PICTURE_HEIGHT_SIZE >> subsampling_y,
+                        sizeof(uint16_t),
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+                    },
+                    {
+                        &object_ptr->md_cr_recon_neighbor_array16bit[depth][tile_idx],
+                        MAX_PICTURE_WIDTH_SIZE >> subsampling_x,
+                        MAX_PICTURE_HEIGHT_SIZE >> subsampling_y,
+                        sizeof(uint16_t),
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                        NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+                    }
+                };
+                return_error = create_neighbor_array_units(data, DIM(data));
+                if (return_error == EB_ErrorInsufficientResources)
+                    return EB_ErrorInsufficientResources;
+            }
+
+            EB_NEW(
+                    object_ptr->md_interpolation_type_neighbor_array[depth][tile_idx],
+                    neighbor_array_unit_ctor32,
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(uint32_t),
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    PU_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
+        }
+    }
+#else
     uint8_t depth;
     for (depth = 0; depth < NEIGHBOR_ARRAY_TOTAL_COUNT; depth++) {
         InitData data[] = {
@@ -679,7 +1093,334 @@ EbErrorType picture_control_set_ctor(
             PU_NEIGHBOR_ARRAY_GRANULARITY,
             NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
     }
+#endif
+
+#if TILES_PARALLEL
+    //EncDec
+    EB_ALLOC_PTR_ARRAY(object_ptr->ep_intra_luma_mode_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->ep_intra_chroma_mode_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->ep_mv_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->ep_skip_flag_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->ep_mode_type_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->ep_leaf_depth_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->ep_luma_recon_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->ep_cb_recon_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->ep_cr_recon_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->ep_luma_dc_sign_level_coeff_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->ep_cb_dc_sign_level_coeff_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->ep_cr_dc_sign_level_coeff_neighbor_array, total_tile_cnt);
+
+    //Entropy
+    EB_ALLOC_PTR_ARRAY(object_ptr->mode_type_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->partition_context_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->skip_flag_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->skip_coeff_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->luma_dc_sign_level_coeff_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->cr_dc_sign_level_coeff_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->cb_dc_sign_level_coeff_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->inter_pred_dir_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->ref_frame_type_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->intra_luma_mode_neighbor_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->txfm_context_array, total_tile_cnt);
+    EB_ALLOC_PTR_ARRAY(object_ptr->segmentation_id_pred_array, total_tile_cnt);
+    if (is16bit) {
+        EB_ALLOC_PTR_ARRAY(object_ptr->ep_luma_recon_neighbor_array16bit, total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->ep_cb_recon_neighbor_array16bit, total_tile_cnt);
+        EB_ALLOC_PTR_ARRAY(object_ptr->ep_cr_recon_neighbor_array16bit, total_tile_cnt);
+    }
+    EB_ALLOC_PTR_ARRAY(object_ptr->interpolation_type_neighbor_array, total_tile_cnt);
+
+    for (tile_idx = 0; tile_idx < total_tile_cnt; tile_idx++) {
+        InitData data[] = {
+            // Encode Pass Neighbor Arrays
+            {
+                &object_ptr->ep_intra_luma_mode_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            {
+                &object_ptr->ep_intra_chroma_mode_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE >> subsampling_x,
+                MAX_PICTURE_HEIGHT_SIZE >> subsampling_y,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            {
+                &object_ptr->ep_mv_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(MvUnit),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+            },
+            {
+                &object_ptr->ep_skip_flag_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                CU_NEIGHBOR_ARRAY_GRANULARITY,
+                CU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            {
+                &object_ptr->ep_mode_type_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+            },
+            {
+                &object_ptr->ep_leaf_depth_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            {
+                &object_ptr->ep_luma_recon_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+            },
+            {
+                &object_ptr->ep_cb_recon_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE >> subsampling_x,
+                MAX_PICTURE_HEIGHT_SIZE >> subsampling_y,
+                sizeof(uint8_t),
+                SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+            },
+            {
+                &object_ptr->ep_cr_recon_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE >> subsampling_x,
+                MAX_PICTURE_HEIGHT_SIZE >> subsampling_y,
+                sizeof(uint8_t),
+                SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+            },
+           // for each 4x4
+            {
+                &object_ptr->ep_luma_dc_sign_level_coeff_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            // for each 4x4
+            {
+                &object_ptr->ep_cb_dc_sign_level_coeff_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            // for each 4x4
+            {
+                &object_ptr->ep_cr_dc_sign_level_coeff_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+
+            // Entropy Coding Neighbor Arrays
+            {
+                &object_ptr->mode_type_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            {
+                &object_ptr->partition_context_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(struct PartitionContext),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            {
+                &object_ptr->skip_flag_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            {
+                &object_ptr->skip_coeff_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            // for each 4x4
+            {
+                &object_ptr->luma_dc_sign_level_coeff_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            // for each 4x4
+            {
+                &object_ptr->cr_dc_sign_level_coeff_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            // for each 4x4
+            {
+                &object_ptr->cb_dc_sign_level_coeff_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            {
+                &object_ptr->inter_pred_dir_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            {
+                &object_ptr->ref_frame_type_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            {
+                &object_ptr->intra_luma_mode_neighbor_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            {
+                &object_ptr->txfm_context_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(TXFM_CONTEXT),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
+            },
+            {
+                &object_ptr->segmentation_id_pred_array[tile_idx],
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint8_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+            },
+        };
+        return_error = create_neighbor_array_units(data, DIM(data));
+        if (return_error == EB_ErrorInsufficientResources)
+            return EB_ErrorInsufficientResources;
+
+        if (is16bit) {
+            InitData data[] = {
+                {
+                    &object_ptr->ep_luma_recon_neighbor_array16bit[tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE,
+                    MAX_PICTURE_HEIGHT_SIZE,
+                    sizeof(uint16_t),
+                    SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                    SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+                },
+                {
+                    &object_ptr->ep_cb_recon_neighbor_array16bit[tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE >> subsampling_x,
+                    MAX_PICTURE_HEIGHT_SIZE >> subsampling_y,
+                    sizeof(uint16_t),
+                    SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                    SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+                },
+                {
+                    &object_ptr->ep_cr_recon_neighbor_array16bit[tile_idx],
+                    MAX_PICTURE_WIDTH_SIZE >> subsampling_x,
+                    MAX_PICTURE_HEIGHT_SIZE >> subsampling_y,
+                    sizeof(uint16_t),
+                    SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                    SAMPLE_NEIGHBOR_ARRAY_GRANULARITY,
+                    NEIGHBOR_ARRAY_UNIT_FULL_MASK,
+                },
+            };
+            return_error = create_neighbor_array_units(data, DIM(data));
+            if (return_error == EB_ErrorInsufficientResources)
+                return EB_ErrorInsufficientResources;
+        }
+        else {
+            object_ptr->ep_luma_recon_neighbor_array16bit = 0;
+            object_ptr->ep_cb_recon_neighbor_array16bit = 0;
+            object_ptr->ep_cr_recon_neighbor_array16bit = 0;
+        }
+        EB_NEW(
+                object_ptr->interpolation_type_neighbor_array[tile_idx],
+                neighbor_array_unit_ctor32,
+                MAX_PICTURE_WIDTH_SIZE,
+                MAX_PICTURE_HEIGHT_SIZE,
+                sizeof(uint32_t),
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                PU_NEIGHBOR_ARRAY_GRANULARITY,
+                NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
+    }
+
+    //Jing: Double check here
+    //Segmentation neighbor arrays
+    EB_NEW(
+        object_ptr->segmentation_neighbor_map,
+        segmentation_map_ctor,
+        initDataPtr->picture_width, initDataPtr->picture_height);
+#else
     {
+            // Encode Pass Neighbor Arrays
         InitData data[] = {
             {
                 &object_ptr->ep_intra_luma_mode_neighbor_array,
@@ -690,7 +1431,6 @@ EbErrorType picture_control_set_ctor(
                 PU_NEIGHBOR_ARRAY_GRANULARITY,
                 NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK,
             },
-            // Encode Pass Neighbor Arrays
             {
                 &object_ptr->ep_intra_chroma_mode_neighbor_array,
                 MAX_PICTURE_WIDTH_SIZE >> subsampling_x,
@@ -911,6 +1651,7 @@ EbErrorType picture_control_set_ctor(
         if (return_error == EB_ErrorInsufficientResources)
             return EB_ErrorInsufficientResources;
     }
+
     if (is16bit) {
         InitData data[] = {
             {
@@ -965,6 +1706,7 @@ EbErrorType picture_control_set_ctor(
         object_ptr->segmentation_neighbor_map,
         segmentation_map_ctor,
         initDataPtr->picture_width, initDataPtr->picture_height);
+#endif
 
     // Note - non-zero offsets are not supported (to be fixed later in DLF chroma filtering)
     object_ptr->cb_qp_offset = 0;
@@ -981,13 +1723,36 @@ EbErrorType picture_control_set_ctor(
     object_ptr->constrained_intra_flag = EB_FALSE;
 
     // Segments
+#if TILES_PARALLEL
+    object_ptr->enc_dec_coded_sb_count = 0;
+
+    EB_MALLOC_ARRAY(object_ptr->enc_dec_segment_ctrl, initDataPtr->tile_row_count);
+    if (total_tile_cnt > 1) {
+        //Jing: Tuning segments number, put tile info to pps
+        encDecSegRow = pictureLcuHeight / initDataPtr->tile_row_count;
+        encDecSegCol = pictureLcuWidth;
+    }
+
+    for (tile_idx = 0; tile_idx < initDataPtr->tile_row_count; tile_idx++) {
+        EB_NEW(object_ptr->enc_dec_segment_ctrl[tile_idx],
+                enc_dec_segments_ctor,
+                encDecSegCol,
+                encDecSegRow);
+    }
+#else
     EB_NEW(
         object_ptr->enc_dec_segment_ctrl,
         enc_dec_segments_ctor,
         initDataPtr->enc_dec_segment_col,
         initDataPtr->enc_dec_segment_row);
+#endif
+
     // Entropy Rows
+#if TILES_PARALLEL
+    EB_CREATE_MUTEX(object_ptr->entropy_coding_pic_mutex);
+#else
     EB_CREATE_MUTEX(object_ptr->entropy_coding_mutex);
+#endif
 
     EB_CREATE_MUTEX(object_ptr->intra_mutex);
 
@@ -1303,6 +2068,13 @@ EbErrorType picture_parent_control_set_ctor(
         EB_NEW(object_ptr->denoise_and_model, denoise_and_model_ctor,
             (EbPtr)&fg_init_data);
     }
+
+#if TILES_PARALLEL
+    object_ptr->log2_tile_rows = initDataPtr->log2_tile_rows;
+    object_ptr->log2_tile_cols = initDataPtr->log2_tile_cols;
+    object_ptr->log2_sb_sz = initDataPtr->log2_sb_sz;
+    set_tile_info(object_ptr);
+#endif
 
     return return_error;
 }

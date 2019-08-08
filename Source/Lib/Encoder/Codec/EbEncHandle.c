@@ -535,7 +535,12 @@ EbErrorType load_default_buffer_configuration_settings(
     sequence_control_set_ptr->picture_demux_fifo_init_count               = 300;
     sequence_control_set_ptr->rate_control_tasks_fifo_init_count          = 300;
     sequence_control_set_ptr->rate_control_fifo_init_count                = 301;
+#if TILES_PARALLEL
+    //Jing: Too many tiles may drain the fifo
+    sequence_control_set_ptr->mode_decision_configuration_fifo_init_count = 300 * (MIN(9, 1<<sequence_control_set_ptr->static_config.tile_rows));
+#else
     sequence_control_set_ptr->mode_decision_configuration_fifo_init_count = 300;
+#endif
     sequence_control_set_ptr->motion_estimation_fifo_init_count           = 300;
     sequence_control_set_ptr->entropy_coding_fifo_init_count              = 300;
     sequence_control_set_ptr->enc_dec_fifo_init_count                     = 300;
@@ -962,6 +967,11 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
         inputData.in_loop_me_flag = (uint8_t)enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->static_config.in_loop_me_flag;
         inputData.mrp_mode = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->mrp_mode;
         inputData.nsq_present = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->nsq_present;
+#if TILES_PARALLEL
+        inputData.log2_tile_rows = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->static_config.tile_rows;
+        inputData.log2_tile_cols = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->static_config.tile_columns;
+        inputData.log2_sb_sz = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->seq_header.sb_size_log2;
+#endif
         EB_NEW(
             enc_handle_ptr->picture_parent_control_set_pool_ptr_array[instance_index],
             eb_system_resource_ctor,
@@ -1012,6 +1022,12 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
         inputData.max_depth = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->max_sb_depth;
         inputData.hbd_mode_decision = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->static_config.enable_hbd_mode_decision;
         inputData.cdf_mode = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->cdf_mode;
+#if TILES_PARALLEL
+        //Jing: Get tile info from parent_pcs
+        PictureParentControlSet *parent_pcs = (PictureParentControlSet *)enc_handle_ptr->picture_parent_control_set_pool_ptr_array[instance_index]->wrapper_ptr_pool[0]->object_ptr;
+        inputData.tile_row_count = parent_pcs->av1_cm->tiles_info.tile_rows;
+        inputData.tile_column_count = parent_pcs->av1_cm->tiles_info.tile_cols;
+#endif
         EB_NEW(
             enc_handle_ptr->picture_control_set_pool_ptr_array[instance_index],
             eb_system_resource_ctor,

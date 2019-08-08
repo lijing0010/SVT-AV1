@@ -23,7 +23,9 @@
 
 void eb_av1_tile_set_col(TileInfo *tile, PictureParentControlSet * pcs_ptr, int col);
 void eb_av1_tile_set_row(TileInfo *tile, PictureParentControlSet * pcs_ptr, int row);
+#if !TILES_PARALLEL
 void set_tile_info(PictureParentControlSet * pcs_ptr);
+#endif
 #if ENABLE_CDF_UPDATE
 extern MvReferenceFrame svt_get_ref_frame_type(uint8_t list, uint8_t ref_idx);
 #endif
@@ -670,11 +672,61 @@ void* picture_manager_kernel(void *input_ptr)
                         ChildPictureControlSetPtr->parent_pcs_ptr->sad_me = 0;
                         ChildPictureControlSetPtr->parent_pcs_ptr->quantized_coeff_num_bits = 0;
                         ChildPictureControlSetPtr->enc_mode = entryPictureControlSetPtr->enc_mode;
+#if TILES_PARALLEL
+                        ChildPictureControlSetPtr->enc_dec_coded_sb_count = 0;
+#endif
 
                         //3.make all  init for ChildPCS
                         picture_width_in_sb = (uint8_t)((entrySequenceControlSetPtr->seq_header.max_frame_width + entrySequenceControlSetPtr->sb_size_pix - 1) / entrySequenceControlSetPtr->sb_size_pix);
                         picture_height_in_sb = (uint8_t)((entrySequenceControlSetPtr->seq_header.max_frame_height + entrySequenceControlSetPtr->sb_size_pix - 1) / entrySequenceControlSetPtr->sb_size_pix);
 
+#if TILES_PARALLEL
+                        uint32_t encDecSegColCnt =
+                            entrySequenceControlSetPtr->enc_dec_segment_col_count_array[entryPictureControlSetPtr->temporal_layer_index];
+                        uint32_t encDecSegRowCnt =
+                            entrySequenceControlSetPtr->enc_dec_segment_row_count_array[entryPictureControlSetPtr->temporal_layer_index];
+
+                        struct PictureParentControlSet     *ppcs_ptr = ChildPictureControlSetPtr->parent_pcs_ptr;
+                        Av1Common *const cm = ppcs_ptr->av1_cm;
+                        int tile_row, tile_col;
+                        uint32_t  x_lcu_index,  y_lcu_index;
+                        const int tile_cols = ppcs_ptr->av1_cm->tiles_info.tile_cols;
+                        const int tile_rows = ppcs_ptr->av1_cm->tiles_info.tile_rows;
+                        TileInfo tile_info;
+
+                        if (tile_rows * tile_cols > 1) {
+                            //Jing: TODO: Tuning segments number for each tile later
+                            encDecSegColCnt = picture_width_in_sb; // Use tile row, segments will work within tile row, which will cross tiles
+                            encDecSegRowCnt = picture_height_in_sb / tile_rows;
+                        }
+
+                        for (tile_row = 0; tile_row < tile_rows; tile_row++) {
+                            uint16_t tile_height_in_sb = cm->tiles_info.tile_row_start_sb[tile_row + 1] - cm->tiles_info.tile_row_start_sb[tile_row];
+                            enc_dec_segments_init(
+                                    ChildPictureControlSetPtr->enc_dec_segment_ctrl[tile_row],
+                                    encDecSegColCnt,
+                                    encDecSegRowCnt,
+                                    picture_width_in_sb, //segments in tile row
+                                    tile_height_in_sb);
+
+
+                            // Jing: Apply with tile row for better parallelism..
+                            // Entropy Coding Rows
+                            for (tile_col = 0; tile_col < tile_cols; tile_col++) {
+                                int tileIdx = tile_row * tile_cols + tile_col;
+                                ChildPictureControlSetPtr->entropy_coding_info[tileIdx]->entropy_coding_current_row = 0;
+                                ChildPictureControlSetPtr->entropy_coding_info[tileIdx]->entropy_coding_current_available_row = 0;
+                                ChildPictureControlSetPtr->entropy_coding_info[tileIdx]->entropy_coding_row_count = tile_height_in_sb;
+                                ChildPictureControlSetPtr->entropy_coding_info[tileIdx]->entropy_coding_in_progress = EB_FALSE;
+                                ChildPictureControlSetPtr->entropy_coding_info[tileIdx]->entropy_coding_tile_done = EB_FALSE;
+
+                                for(unsigned rowIndex=0; rowIndex < MAX_LCU_ROWS; ++rowIndex) {
+                                    ChildPictureControlSetPtr->entropy_coding_info[tileIdx]->entropy_coding_row_array[rowIndex] = EB_FALSE;
+                                }
+                            }
+                            ChildPictureControlSetPtr->entropy_coding_pic_reset_flag = EB_TRUE;
+                        }
+#else
                         // EncDec Segments
                         enc_dec_segments_init(
                             ChildPictureControlSetPtr->enc_dec_segment_ctrl,
@@ -695,9 +747,10 @@ void* picture_manager_kernel(void *input_ptr)
                             for (row_index = 0; row_index < MAX_LCU_ROWS; ++row_index)
                                 ChildPictureControlSetPtr->entropy_coding_row_array[row_index] = EB_FALSE;
                         }
-
+#endif
                         ChildPictureControlSetPtr->parent_pcs_ptr->av1_cm->pcs_ptr = ChildPictureControlSetPtr;
 
+#if !TILES_PARALLEL
                         set_tile_info(ChildPictureControlSetPtr->parent_pcs_ptr);
 
                         struct PictureParentControlSet     *ppcs_ptr = ChildPictureControlSetPtr->parent_pcs_ptr;
@@ -707,6 +760,7 @@ void* picture_manager_kernel(void *input_ptr)
                         const int tile_cols = ppcs_ptr->av1_cm->tiles_info.tile_cols;
                         const int tile_rows = ppcs_ptr->av1_cm->tiles_info.tile_rows;
                         TileInfo tile_info;
+#endif
                         //Tile Loop
                         for (tile_row = 0; tile_row < tile_rows; tile_row++)
                         {
@@ -715,7 +769,9 @@ void* picture_manager_kernel(void *input_ptr)
                             for (tile_col = 0; tile_col < tile_cols; tile_col++)
                             {
                                 eb_av1_tile_set_col(&tile_info, ppcs_ptr, tile_col);
-
+#if TILES_PARALLEL
+                                tile_info.tile_rs_index = tile_col + tile_row * tile_cols;
+#endif
                                 for (y_lcu_index = cm->tiles_info.tile_row_start_sb[tile_row]; y_lcu_index < (uint32_t)cm->tiles_info.tile_row_start_sb[tile_row + 1]; ++y_lcu_index)
                                 {
                                     for (x_lcu_index = cm->tiles_info.tile_col_start_sb[tile_col]; x_lcu_index < (uint32_t)cm->tiles_info.tile_col_start_sb[tile_col + 1]; ++x_lcu_index)

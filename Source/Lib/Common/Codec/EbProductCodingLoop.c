@@ -100,6 +100,9 @@ void mode_decision_update_neighbor_arrays(
     context_ptr->mv_unit.mv[REF_LIST_1].mv_union = context_ptr->md_cu_arr_nsq[index_mds].prediction_unit_array[0].mv[REF_LIST_1].mv_union;
     uint8_t                    inter_pred_direction_index = (uint8_t)context_ptr->cu_ptr->prediction_unit_array->inter_pred_direction_index;
     uint8_t                    ref_frame_type = (uint8_t)context_ptr->cu_ptr->prediction_unit_array[0].ref_frame_type;
+#if TILES_PARALLEL
+    uint16_t tile_idx = context_ptr->tile_index;
+#endif
 
     if (picture_control_set_ptr->parent_pcs_ptr->interpolation_search_level != IT_SEARCH_OFF)
     neighbor_array_unit_mode_write32(
@@ -169,7 +172,11 @@ void mode_decision_update_neighbor_arrays(
                 NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
 
             neighbor_array_unit_mode_write(
+#if TILES_PARALLEL
+                picture_control_set_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx],
+#else
                 picture_control_set_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX],
+#endif
                 (uint8_t*)&dc_sign_level_coeff,
                 context_ptr->sb_origin_x + context_ptr->blk_geom->tx_org_x[context_ptr->cu_ptr->tx_depth][txb_itr],
                 context_ptr->sb_origin_y + context_ptr->blk_geom->tx_org_y[context_ptr->cu_ptr->tx_depth][txb_itr],
@@ -272,7 +279,11 @@ void mode_decision_update_neighbor_arrays(
                 context_ptr->blk_geom->bheight);
             if (picture_control_set_ptr->parent_pcs_ptr->atb_mode) {
                 update_recon_neighbor_array(
+#if TILES_PARALLEL
+                    picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx],
+#else
                     picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX],
+#endif
                     context_ptr->cu_ptr->neigh_top_recon[0],
                     context_ptr->cu_ptr->neigh_left_recon[0],
                     origin_x,
@@ -315,7 +326,11 @@ void mode_decision_update_neighbor_arrays(
 
             if (picture_control_set_ptr->parent_pcs_ptr->atb_mode) {
                 update_recon_neighbor_array16bit(
+#if TILES_PARALLEL
+                    picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX][tile_idx],
+#else
                     picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX],
+#endif
                     context_ptr->cu_ptr->neigh_top_recon_16bit[0],
                     context_ptr->cu_ptr->neigh_left_recon_16bit[0],
                     origin_x,
@@ -359,7 +374,11 @@ void copy_neighbour_arrays(
     uint32_t                            sb_org_x,
     uint32_t                            sb_org_y)
 {
+#if TILES_PARALLEL
+    uint16_t tile_idx = context_ptr->tile_index;
+#else
     (void)*context_ptr;
+#endif
 
     const BlockGeom * blk_geom = get_blk_geom_mds(blk_mds);
 
@@ -371,8 +390,13 @@ void copy_neighbour_arrays(
     uint32_t                            bheight_uv = blk_geom->bheight_uv;
 
     copy_neigh_arr(
+#if TILES_PARALLEL
+        picture_control_set_ptr->md_intra_luma_mode_neighbor_array[src_idx][tile_idx],
+        picture_control_set_ptr->md_intra_luma_mode_neighbor_array[dst_idx][tile_idx],
+#else
         picture_control_set_ptr->md_intra_luma_mode_neighbor_array[src_idx],
         picture_control_set_ptr->md_intra_luma_mode_neighbor_array[dst_idx],
+#endif
         blk_org_x,
         blk_org_y,
         blk_geom->bwidth,
@@ -381,8 +405,13 @@ void copy_neighbour_arrays(
 
     //neighbor_array_unit_reset(picture_control_set_ptr->md_intra_chroma_mode_neighbor_array[depth]);
     copy_neigh_arr(
+#if TILES_PARALLEL
+        picture_control_set_ptr->md_intra_chroma_mode_neighbor_array[src_idx][tile_idx],
+        picture_control_set_ptr->md_intra_chroma_mode_neighbor_array[dst_idx][tile_idx],
+#else
         picture_control_set_ptr->md_intra_chroma_mode_neighbor_array[src_idx],
         picture_control_set_ptr->md_intra_chroma_mode_neighbor_array[dst_idx],
+#endif
         blk_org_x_uv,
         blk_org_y_uv,
         bwidth_uv,
@@ -391,8 +420,13 @@ void copy_neighbour_arrays(
 
     //neighbor_array_unit_reset(picture_control_set_ptr->md_skip_flag_neighbor_array[depth]);
     copy_neigh_arr(
+#if TILES_PARALLEL
+        picture_control_set_ptr->md_skip_flag_neighbor_array[src_idx][tile_idx],
+        picture_control_set_ptr->md_skip_flag_neighbor_array[dst_idx][tile_idx],
+#else
         picture_control_set_ptr->md_skip_flag_neighbor_array[src_idx],
         picture_control_set_ptr->md_skip_flag_neighbor_array[dst_idx],
+#endif
         blk_org_x,
         blk_org_y,
         blk_geom->bwidth,
@@ -401,8 +435,13 @@ void copy_neighbour_arrays(
 
     //neighbor_array_unit_reset(picture_control_set_ptr->md_mode_type_neighbor_array[depth]);
     copy_neigh_arr(
+#if TILES_PARALLEL
+        picture_control_set_ptr->md_mode_type_neighbor_array[src_idx][tile_idx],
+        picture_control_set_ptr->md_mode_type_neighbor_array[dst_idx][tile_idx],
+#else
         picture_control_set_ptr->md_mode_type_neighbor_array[src_idx],
         picture_control_set_ptr->md_mode_type_neighbor_array[dst_idx],
+#endif
         blk_org_x,
         blk_org_y,
         blk_geom->bwidth,
@@ -411,16 +450,26 @@ void copy_neighbour_arrays(
 
     //neighbor_array_unit_reset(picture_control_set_ptr->md_leaf_depth_neighbor_array[depth]);
     copy_neigh_arr(
+#if TILES_PARALLEL
+        picture_control_set_ptr->md_leaf_depth_neighbor_array[src_idx][tile_idx],
+        picture_control_set_ptr->md_leaf_depth_neighbor_array[dst_idx][tile_idx],
+#else
         picture_control_set_ptr->md_leaf_depth_neighbor_array[src_idx],
         picture_control_set_ptr->md_leaf_depth_neighbor_array[dst_idx],
+#endif
         blk_org_x,
         blk_org_y,
         blk_geom->bwidth,
         blk_geom->bheight,
         NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
     copy_neigh_arr(
+#if TILES_PARALLEL
+        picture_control_set_ptr->mdleaf_partition_neighbor_array[src_idx][tile_idx],
+        picture_control_set_ptr->mdleaf_partition_neighbor_array[dst_idx][tile_idx],
+#else
         picture_control_set_ptr->mdleaf_partition_neighbor_array[src_idx],
         picture_control_set_ptr->mdleaf_partition_neighbor_array[dst_idx],
+#endif
         blk_org_x,
         blk_org_y,
         blk_geom->bwidth,
@@ -429,8 +478,13 @@ void copy_neighbour_arrays(
 
     if (!context_ptr->hbd_mode_decision) {
         copy_neigh_arr(
+#if TILES_PARALLEL
+            picture_control_set_ptr->md_luma_recon_neighbor_array[src_idx][tile_idx],
+            picture_control_set_ptr->md_luma_recon_neighbor_array[dst_idx][tile_idx],
+#else
             picture_control_set_ptr->md_luma_recon_neighbor_array[src_idx],
             picture_control_set_ptr->md_luma_recon_neighbor_array[dst_idx],
+#endif
             blk_org_x,
             blk_org_y,
             blk_geom->bwidth,
@@ -438,8 +492,13 @@ void copy_neighbour_arrays(
             NEIGHBOR_ARRAY_UNIT_FULL_MASK);
         if (picture_control_set_ptr->parent_pcs_ptr->atb_mode) {
             copy_neigh_arr(
+#if TILES_PARALLEL
+                picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array[src_idx][tile_idx],
+                picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array[dst_idx][tile_idx],
+#else
                 picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array[src_idx],
                 picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array[dst_idx],
+#endif
                 blk_org_x,
                 blk_org_y,
                 blk_geom->bwidth,
@@ -448,8 +507,13 @@ void copy_neighbour_arrays(
         }
         if (blk_geom->has_uv && context_ptr->chroma_level <= CHROMA_MODE_1) {
             copy_neigh_arr(
+#if TILES_PARALLEL
+                picture_control_set_ptr->md_cb_recon_neighbor_array[src_idx][tile_idx],
+                picture_control_set_ptr->md_cb_recon_neighbor_array[dst_idx][tile_idx],
+#else
                 picture_control_set_ptr->md_cb_recon_neighbor_array[src_idx],
                 picture_control_set_ptr->md_cb_recon_neighbor_array[dst_idx],
+#endif
                 blk_org_x_uv,
                 blk_org_y_uv,
                 bwidth_uv,
@@ -457,8 +521,13 @@ void copy_neighbour_arrays(
                 NEIGHBOR_ARRAY_UNIT_FULL_MASK);
 
             copy_neigh_arr(
+#if TILES_PARALLEL
+                picture_control_set_ptr->md_cr_recon_neighbor_array[src_idx][tile_idx],
+                picture_control_set_ptr->md_cr_recon_neighbor_array[dst_idx][tile_idx],
+#else
                 picture_control_set_ptr->md_cr_recon_neighbor_array[src_idx],
                 picture_control_set_ptr->md_cr_recon_neighbor_array[dst_idx],
+#endif
                 blk_org_x_uv,
                 blk_org_y_uv,
                 bwidth_uv,
@@ -467,8 +536,13 @@ void copy_neighbour_arrays(
         }
     } else {
         copy_neigh_arr(
+#if TILES_PARALLEL
+            picture_control_set_ptr->md_luma_recon_neighbor_array16bit[src_idx][tile_idx],
+            picture_control_set_ptr->md_luma_recon_neighbor_array16bit[dst_idx][tile_idx],
+#else
             picture_control_set_ptr->md_luma_recon_neighbor_array16bit[src_idx],
             picture_control_set_ptr->md_luma_recon_neighbor_array16bit[dst_idx],
+#endif
             blk_org_x,
             blk_org_y,
             blk_geom->bwidth,
@@ -477,8 +551,13 @@ void copy_neighbour_arrays(
 
         if (picture_control_set_ptr->parent_pcs_ptr->atb_mode) {
             copy_neigh_arr(
+#if TILES_PARALLEL
+                picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array16bit[src_idx][tile_idx],
+                picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array16bit[dst_idx][tile_idx],
+#else
                 picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array16bit[src_idx],
                 picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array16bit[dst_idx],
+#endif
                 blk_org_x,
                 blk_org_y,
                 blk_geom->bwidth,
@@ -488,8 +567,13 @@ void copy_neighbour_arrays(
 
         if (blk_geom->has_uv && context_ptr->chroma_level <= CHROMA_MODE_1) {
             copy_neigh_arr(
+#if TILES_PARALLEL
+                picture_control_set_ptr->md_cb_recon_neighbor_array16bit[src_idx][tile_idx],
+                picture_control_set_ptr->md_cb_recon_neighbor_array16bit[dst_idx][tile_idx],
+#else
                 picture_control_set_ptr->md_cb_recon_neighbor_array16bit[src_idx],
                 picture_control_set_ptr->md_cb_recon_neighbor_array16bit[dst_idx],
+#endif
                 blk_org_x_uv,
                 blk_org_y_uv,
                 bwidth_uv,
@@ -497,8 +581,13 @@ void copy_neighbour_arrays(
                 NEIGHBOR_ARRAY_UNIT_FULL_MASK);
 
             copy_neigh_arr(
+#if TILES_PARALLEL
+                picture_control_set_ptr->md_cr_recon_neighbor_array16bit[src_idx][tile_idx],
+                picture_control_set_ptr->md_cr_recon_neighbor_array16bit[dst_idx][tile_idx],
+#else
                 picture_control_set_ptr->md_cr_recon_neighbor_array16bit[src_idx],
                 picture_control_set_ptr->md_cr_recon_neighbor_array16bit[dst_idx],
+#endif
                 blk_org_x_uv,
                 blk_org_y_uv,
                 bwidth_uv,
@@ -509,8 +598,13 @@ void copy_neighbour_arrays(
 
     //neighbor_array_unit_reset(picture_control_set_ptr->md_skip_coeff_neighbor_array[depth]);
     copy_neigh_arr(
+#if TILES_PARALLEL
+        picture_control_set_ptr->md_skip_coeff_neighbor_array[src_idx][tile_idx],
+        picture_control_set_ptr->md_skip_coeff_neighbor_array[dst_idx][tile_idx],
+#else
         picture_control_set_ptr->md_skip_coeff_neighbor_array[src_idx],
         picture_control_set_ptr->md_skip_coeff_neighbor_array[dst_idx],
+#endif
         blk_org_x,
         blk_org_y,
         blk_geom->bwidth,
@@ -518,8 +612,13 @@ void copy_neighbour_arrays(
         NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
     //neighbor_array_unit_reset(picture_control_set_ptr->md_luma_dc_sign_level_coeff_neighbor_array[depth]);
     copy_neigh_arr(
+#if TILES_PARALLEL
+        picture_control_set_ptr->md_luma_dc_sign_level_coeff_neighbor_array[src_idx][tile_idx],
+        picture_control_set_ptr->md_luma_dc_sign_level_coeff_neighbor_array[dst_idx][tile_idx],
+#else
         picture_control_set_ptr->md_luma_dc_sign_level_coeff_neighbor_array[src_idx],
         picture_control_set_ptr->md_luma_dc_sign_level_coeff_neighbor_array[dst_idx],
+#endif
         blk_org_x,
         blk_org_y,
         blk_geom->bwidth,
@@ -527,8 +626,13 @@ void copy_neighbour_arrays(
         NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
 
     copy_neigh_arr(
+#if TILES_PARALLEL
+        picture_control_set_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[src_idx][tile_idx],
+        picture_control_set_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[dst_idx][tile_idx],
+#else
         picture_control_set_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[src_idx],
         picture_control_set_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[dst_idx],
+#endif
         blk_org_x,
         blk_org_y,
         blk_geom->bwidth,
@@ -537,8 +641,13 @@ void copy_neighbour_arrays(
 
     if (blk_geom->has_uv && context_ptr->chroma_level <= CHROMA_MODE_1) {
         copy_neigh_arr(
+#if TILES_PARALLEL
+            picture_control_set_ptr->md_cb_dc_sign_level_coeff_neighbor_array[src_idx][tile_idx],
+            picture_control_set_ptr->md_cb_dc_sign_level_coeff_neighbor_array[dst_idx][tile_idx],
+#else
             picture_control_set_ptr->md_cb_dc_sign_level_coeff_neighbor_array[src_idx],
             picture_control_set_ptr->md_cb_dc_sign_level_coeff_neighbor_array[dst_idx],
+#endif
             blk_org_x_uv,
             blk_org_y_uv,
             bwidth_uv,
@@ -547,8 +656,13 @@ void copy_neighbour_arrays(
         //neighbor_array_unit_reset(picture_control_set_ptr->md_cr_dc_sign_level_coeff_neighbor_array[depth]);
 
         copy_neigh_arr(
+#if TILES_PARALLEL
+            picture_control_set_ptr->md_cr_dc_sign_level_coeff_neighbor_array[src_idx][tile_idx],
+            picture_control_set_ptr->md_cr_dc_sign_level_coeff_neighbor_array[dst_idx][tile_idx],
+#else
             picture_control_set_ptr->md_cr_dc_sign_level_coeff_neighbor_array[src_idx],
             picture_control_set_ptr->md_cr_dc_sign_level_coeff_neighbor_array[dst_idx],
+#endif
             blk_org_x_uv,
             blk_org_y_uv,
             bwidth_uv,
@@ -558,8 +672,13 @@ void copy_neighbour_arrays(
 
     //neighbor_array_unit_reset(picture_control_set_ptr->md_txfm_context_array[depth]);
     copy_neigh_arr(
+#if TILES_PARALLEL
+        picture_control_set_ptr->md_txfm_context_array[src_idx][tile_idx],
+        picture_control_set_ptr->md_txfm_context_array[dst_idx][tile_idx],
+#else
         picture_control_set_ptr->md_txfm_context_array[src_idx],
         picture_control_set_ptr->md_txfm_context_array[dst_idx],
+#endif
         blk_org_x,
         blk_org_y,
         blk_geom->bwidth,
@@ -567,8 +686,13 @@ void copy_neighbour_arrays(
         NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
     //neighbor_array_unit_reset(picture_control_set_ptr->md_inter_pred_dir_neighbor_array[depth]);
     copy_neigh_arr(
+#if TILES_PARALLEL
+        picture_control_set_ptr->md_inter_pred_dir_neighbor_array[src_idx][tile_idx],
+        picture_control_set_ptr->md_inter_pred_dir_neighbor_array[dst_idx][tile_idx],
+#else
         picture_control_set_ptr->md_inter_pred_dir_neighbor_array[src_idx],
         picture_control_set_ptr->md_inter_pred_dir_neighbor_array[dst_idx],
+#endif
         blk_org_x,
         blk_org_y,
         blk_geom->bwidth,
@@ -576,8 +700,13 @@ void copy_neighbour_arrays(
         NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
     //neighbor_array_unit_reset(picture_control_set_ptr->md_ref_frame_type_neighbor_array[depth]);
     copy_neigh_arr(
+#if TILES_PARALLEL
+        picture_control_set_ptr->md_ref_frame_type_neighbor_array[src_idx][tile_idx],
+        picture_control_set_ptr->md_ref_frame_type_neighbor_array[dst_idx][tile_idx],
+#else
         picture_control_set_ptr->md_ref_frame_type_neighbor_array[src_idx],
         picture_control_set_ptr->md_ref_frame_type_neighbor_array[dst_idx],
+#endif
         blk_org_x,
         blk_org_y,
         blk_geom->bwidth,
@@ -585,8 +714,13 @@ void copy_neighbour_arrays(
         NEIGHBOR_ARRAY_UNIT_TOP_AND_LEFT_ONLY_MASK);
 
     copy_neigh_arr_32(
+#if TILES_PARALLEL
+        picture_control_set_ptr->md_interpolation_type_neighbor_array[src_idx][tile_idx],
+        picture_control_set_ptr->md_interpolation_type_neighbor_array[dst_idx][tile_idx],
+#else
         picture_control_set_ptr->md_interpolation_type_neighbor_array[src_idx],
         picture_control_set_ptr->md_interpolation_type_neighbor_array[dst_idx],
+#endif
         blk_org_x,
         blk_org_y,
         blk_geom->bwidth,
@@ -3097,12 +3231,21 @@ void perform_intra_tx_partitioning(
 
     TxType best_tx_type_depth_0 = DCT_DCT; // Track the best tx type @ depth 0 to be used @ the final stage (i.e. avoid redoing the tx type search).
 
+#if TILES_PARALLEL
+    uint16_t tile_idx = context_ptr->tile_index;
+#endif
+
     // Reset depth_1 neighbor arrays
     if (end_tx_depth) {
         if (!picture_control_set_ptr->hbd_mode_decision) {
             copy_neigh_arr(
+#if TILES_PARALLEL
+                picture_control_set_ptr->md_luma_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx],
+                picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx],
+#else
                 picture_control_set_ptr->md_luma_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX],
                 picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX],
+#endif
                 context_ptr->sb_origin_x + context_ptr->blk_geom->origin_x,
                 context_ptr->sb_origin_y + context_ptr->blk_geom->origin_y,
                 context_ptr->blk_geom->bwidth,
@@ -3110,8 +3253,13 @@ void perform_intra_tx_partitioning(
                 NEIGHBOR_ARRAY_UNIT_FULL_MASK);
         } else {
             copy_neigh_arr(
+#if TILES_PARALLEL
+                picture_control_set_ptr->md_luma_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX][tile_idx],
+                picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX][tile_idx],
+#else
                 picture_control_set_ptr->md_luma_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX],
                 picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX],
+#endif
                 context_ptr->sb_origin_x + context_ptr->blk_geom->origin_x,
                 context_ptr->sb_origin_y + context_ptr->blk_geom->origin_y,
                 context_ptr->blk_geom->bwidth,
@@ -3120,8 +3268,13 @@ void perform_intra_tx_partitioning(
         }
 
         copy_neigh_arr(
+#if TILES_PARALLEL
+            picture_control_set_ptr->md_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx],
+            picture_control_set_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx],
+#else
             picture_control_set_ptr->md_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX],
             picture_control_set_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX],
+#endif
             context_ptr->sb_origin_x + context_ptr->blk_geom->origin_x,
             context_ptr->sb_origin_y + context_ptr->blk_geom->origin_y,
             context_ptr->blk_geom->bwidth,
@@ -3135,20 +3288,35 @@ void perform_intra_tx_partitioning(
         if (!context_ptr->hbd_mode_decision) {
             context_ptr->tx_search_luma_recon_neighbor_array =
                 (context_ptr->tx_depth) ?
+#if TILES_PARALLEL
+                picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx] :
+                picture_control_set_ptr->md_luma_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+#else
                 picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX] :
                 picture_control_set_ptr->md_luma_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX];
+#endif
         } else {
             context_ptr->tx_search_luma_recon_neighbor_array16bit =
                 (context_ptr->tx_depth) ?
+#if TILES_PARALLEL
+                picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX][tile_idx] :
+                picture_control_set_ptr->md_luma_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+#else
                 picture_control_set_ptr->md_tx_depth_1_luma_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX] :
                 picture_control_set_ptr->md_luma_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX];
+#endif
         }
 
         // Set luma dc sign level coeff
         context_ptr->tx_search_luma_dc_sign_level_coeff_neighbor_array =
             (context_ptr->tx_depth) ?
+#if TILES_PARALLEL
+            picture_control_set_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx] :
+            picture_control_set_ptr->md_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+#else
             picture_control_set_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX] :
             picture_control_set_ptr->md_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX];
+#endif
 
         // Initialize TU Split
         y_full_distortion[DIST_CALC_RESIDUAL] = 0;
@@ -3530,7 +3698,11 @@ void perform_intra_tx_partitioning(
 
                 int8_t dc_sign_level_coeff = candidateBuffer->candidate_ptr->quantized_dc[0][context_ptr->txb_itr];
                 neighbor_array_unit_mode_write(
+#if TILES_PARALLEL
+                    picture_control_set_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx],
+#else
                     picture_control_set_ptr->md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX],
+#endif
                     (uint8_t*)&dc_sign_level_coeff,
                     context_ptr->sb_origin_x + context_ptr->blk_geom->tx_org_x[context_ptr->tx_depth][context_ptr->txb_itr],
                     context_ptr->sb_origin_y + context_ptr->blk_geom->tx_org_y[context_ptr->tx_depth][context_ptr->txb_itr],
@@ -3567,9 +3739,17 @@ void perform_intra_tx_partitioning(
     if (context_ptr->tx_depth == 0) {
         // Set recon neighbor array to be used @ intra compensation
         if (context_ptr->hbd_mode_decision)
+#if TILES_PARALLEL
+            context_ptr->tx_search_luma_recon_neighbor_array16bit = picture_control_set_ptr->md_luma_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+#else
             context_ptr->tx_search_luma_recon_neighbor_array16bit = picture_control_set_ptr->md_luma_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX];
+#endif
         else
+#if TILES_PARALLEL
+            context_ptr->tx_search_luma_recon_neighbor_array = picture_control_set_ptr->md_luma_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+#else
             context_ptr->tx_search_luma_recon_neighbor_array = picture_control_set_ptr->md_luma_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX];
+#endif
 
         // Initialize TU Split
         y_full_distortion[DIST_CALC_RESIDUAL] = 0;
@@ -3591,7 +3771,11 @@ void perform_intra_tx_partitioning(
                 sequence_control_set_ptr,
 #endif
                 COMPONENT_LUMA,
+#if TILES_PARALLEL
+                picture_control_set_ptr->md_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx],
+#else
                 picture_control_set_ptr->md_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX],
+#endif
                 context_ptr->sb_origin_x + tx_org_x,
                 context_ptr->sb_origin_y + tx_org_y,
                 context_ptr->blk_geom->bsize,
@@ -5538,6 +5722,9 @@ EB_EXTERN EbErrorType mode_decision_sb(
     // Pre Intra Search
     uint32_t                               leaf_count = mdcResultTbPtr->leaf_count;
     const EbMdcLeafData *const           leaf_data_array = mdcResultTbPtr->leaf_data_array;
+#if TILES_PARALLEL
+    const uint16_t tile_idx = context_ptr->tile_index;
+#endif
     context_ptr->sb_ptr = sb_ptr;
     if (picture_control_set_ptr->parent_pcs_ptr->pic_depth_mode <= PIC_SQ_DEPTH_MODE) {
         init_nsq_block(
@@ -5549,6 +5736,33 @@ EB_EXTERN EbErrorType mode_decision_sb(
             context_ptr);
     }
     // Mode Decision Neighbor Arrays
+#if TILES_PARALLEL
+    context_ptr->intra_luma_mode_neighbor_array = picture_control_set_ptr->md_intra_luma_mode_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    context_ptr->intra_chroma_mode_neighbor_array = picture_control_set_ptr->md_intra_chroma_mode_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    context_ptr->mv_neighbor_array = picture_control_set_ptr->md_mv_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    context_ptr->skip_flag_neighbor_array = picture_control_set_ptr->md_skip_flag_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    context_ptr->mode_type_neighbor_array = picture_control_set_ptr->md_mode_type_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    context_ptr->leaf_depth_neighbor_array = picture_control_set_ptr->md_leaf_depth_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    context_ptr->leaf_partition_neighbor_array = picture_control_set_ptr->mdleaf_partition_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+
+    if (!context_ptr->hbd_mode_decision) {
+        context_ptr->luma_recon_neighbor_array = picture_control_set_ptr->md_luma_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+        context_ptr->cb_recon_neighbor_array = picture_control_set_ptr->md_cb_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+        context_ptr->cr_recon_neighbor_array = picture_control_set_ptr->md_cr_recon_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    } else {
+        context_ptr->luma_recon_neighbor_array16bit = picture_control_set_ptr->md_luma_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+        context_ptr->cb_recon_neighbor_array16bit = picture_control_set_ptr->md_cb_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+        context_ptr->cr_recon_neighbor_array16bit = picture_control_set_ptr->md_cr_recon_neighbor_array16bit[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    }
+    context_ptr->skip_coeff_neighbor_array = picture_control_set_ptr->md_skip_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    context_ptr->luma_dc_sign_level_coeff_neighbor_array = picture_control_set_ptr->md_luma_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    context_ptr->cb_dc_sign_level_coeff_neighbor_array = picture_control_set_ptr->md_cb_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    context_ptr->cr_dc_sign_level_coeff_neighbor_array = picture_control_set_ptr->md_cr_dc_sign_level_coeff_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    context_ptr->txfm_context_array = picture_control_set_ptr->md_txfm_context_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    context_ptr->inter_pred_dir_neighbor_array = picture_control_set_ptr->md_inter_pred_dir_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    context_ptr->ref_frame_type_neighbor_array = picture_control_set_ptr->md_ref_frame_type_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+    context_ptr->interpolation_type_neighbor_array = picture_control_set_ptr->md_interpolation_type_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX][tile_idx];
+#else
     context_ptr->intra_luma_mode_neighbor_array = picture_control_set_ptr->md_intra_luma_mode_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX];
     context_ptr->intra_chroma_mode_neighbor_array = picture_control_set_ptr->md_intra_chroma_mode_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX];
     context_ptr->mv_neighbor_array = picture_control_set_ptr->md_mv_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX];
@@ -5574,6 +5788,7 @@ EB_EXTERN EbErrorType mode_decision_sb(
     context_ptr->inter_pred_dir_neighbor_array = picture_control_set_ptr->md_inter_pred_dir_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX];
     context_ptr->ref_frame_type_neighbor_array = picture_control_set_ptr->md_ref_frame_type_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX];
     context_ptr->interpolation_type_neighbor_array = picture_control_set_ptr->md_interpolation_type_neighbor_array[MD_NEIGHBOR_ARRAY_INDEX];
+#endif
 
     EbPictureBufferDesc *input_picture_ptr = picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr;
     if (context_ptr->hbd_mode_decision) {
