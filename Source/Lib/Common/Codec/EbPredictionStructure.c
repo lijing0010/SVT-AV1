@@ -946,6 +946,13 @@ static EbErrorType PredictionStructureCtor(
             leadingPicCount +
             initPicCount +
             steadyStatePicCount;
+        if (numberOfReferences ==4 && (predictionStructureConfigPtr->entry_count == 8 || predictionStructureConfigPtr->entry_count == 16))
+        {
+            printf("predType %d, numberOfReferences %d, entry count %d, pred entry count %d, leadingPicCount %d, initPicCount %d, steadyStatePicCount %d\n",
+                    predType, numberOfReferences, predictionStructureConfigPtr->entry_count,
+                    predictionStructurePtr->pred_struct_entry_count,
+                    leadingPicCount, initPicCount, steadyStatePicCount);
+        }
 
         // Set the Section Indices
         predictionStructurePtr->leading_pic_index = 0;
@@ -1234,7 +1241,6 @@ static EbErrorType PredictionStructureCtor(
     // CONSTRUCT DEPENDENT LIST 0
     //----------------------------------------
 
-    {
         int64_t  depIndex;
         uint64_t  pictureNumber;
 
@@ -1284,6 +1290,7 @@ static EbErrorType PredictionStructureCtor(
         // Third, reset the Dependent List Length (they are re-derived)
         for (entryIndex = 0; entryIndex < predictionStructurePtr->pred_struct_entry_count; ++entryIndex)
             predictionStructurePtr->pred_struct_entry_ptr_array[entryIndex]->dep_list0.list_count = 0;
+    {
         // Fourth, run through each Reference List entry again and populate the Dependent Lists and Dep List Counts
         {
             // Go through a single pass of the Leading Pictures and Init pictures
@@ -1307,6 +1314,7 @@ static EbErrorType PredictionStructureCtor(
                 // Go through each Reference picture and accumulate counts
                 for (refIndex = 0; refIndex < predictionStructurePtr->pred_struct_entry_ptr_array[entryIndex]->ref_list0.reference_list_count; ++refIndex) {
                     depIndex = pictureNumber - predictionStructurePtr->pred_struct_entry_ptr_array[entryIndex]->ref_list0.reference_list[refIndex];
+
 
                     // Assign the Reference to the Dep List and Increment the Dep List Count
                     if (depIndex >= 0 && depIndex < (int32_t)(predictionStructurePtr->steady_state_index + predictionStructurePtr->pred_struct_period)) {
@@ -1425,6 +1433,57 @@ static EbErrorType PredictionStructureCtor(
             EB_FALSE;
     }
 
+    if (((predictionStructureConfigPtr->entry_count == 8 || (predictionStructureConfigPtr->entry_count == 16 && predType == 2)) && numberOfReferences == 4)) {
+           for (int i=0; i<predictionStructurePtr->pred_struct_entry_count;i++) {
+               printf("pred_struct_position %d, pointer is %p, pred_struct_entry_ptr_array is %p\n",
+                       i, predictionStructurePtr->pred_struct_entry_ptr_array[i],
+                       predictionStructurePtr->pred_struct_entry_ptr_array);
+               if (predictionStructurePtr->pred_struct_entry_ptr_array[i]->ref_list0.reference_list_count > 0) {
+                   printf("\t Reference L0:");
+                   for (int j = 0; j < predictionStructurePtr->pred_struct_entry_ptr_array[i]->ref_list0.reference_list_count; j++) {
+                       printf(" %3d",
+                               predictionStructurePtr->pred_struct_entry_ptr_array[i]->ref_list0.reference_list[j]);
+                   }
+                   printf("\n");
+               } else {
+                   printf("\t Reference L0: NULL\n");
+               }
+
+               if (predictionStructurePtr->pred_struct_entry_ptr_array[i]->ref_list1.reference_list_count > 0) {
+                   printf("\t Reference L1:");
+                   for (int j = 0; j < predictionStructurePtr->pred_struct_entry_ptr_array[i]->ref_list1.reference_list_count; j++) {
+                       printf(" %3d",
+                               predictionStructurePtr->pred_struct_entry_ptr_array[i]->ref_list1.reference_list[j]);
+                   }
+                   printf("\n");
+               } else {
+                   printf("\t Reference L1: NULL\n");
+               }
+
+               if (predictionStructurePtr->pred_struct_entry_ptr_array[i]->dep_list0.list_count > 0) {
+                   printf("\t Dep list L0:");
+                   for (int j = 0; j < predictionStructurePtr->pred_struct_entry_ptr_array[i]->dep_list0.list_count; j++) {
+                       printf(" %3d",
+                               predictionStructurePtr->pred_struct_entry_ptr_array[i]->dep_list0.list[j]);
+                   }
+                   printf("\n");
+               } else {
+                   printf("\t Dep List L0: NULL\n");
+               }
+
+               if (predictionStructurePtr->pred_struct_entry_ptr_array[i]->dep_list1.list_count> 0) {
+                   printf("\t Dep List L1:");
+                   for (int j = 0; j < predictionStructurePtr->pred_struct_entry_ptr_array[i]->dep_list1.list_count; j++) {
+                       printf(" %3d",
+                               predictionStructurePtr->pred_struct_entry_ptr_array[i]->dep_list1.list[j]);
+                   }
+                   printf("\n");
+               } else {
+                   printf("\t Dep List L1: NULL\n");
+               }
+           }
+               
+    }
     //----------------------------------------
     // CONSTRUCT THE RPSes
     //----------------------------------------
@@ -1500,7 +1559,6 @@ static EbErrorType PredictionStructureCtor(
             for (depIndex = 0; depIndex < predictionStructurePtr->pred_struct_entry_ptr_array[entryIndex]->dep_list0.list_count; ++depIndex) {
                 adjustedDepIndex = predictionStructurePtr->pred_struct_entry_ptr_array[entryIndex]->dep_list0.list[depIndex] + (int32_t)refPocIndex;
 
-                //if(adjustedDepIndex >= 0 && adjustedDepIndex < (int32_t) timelineSize) {
                 if (adjustedDepIndex >= 0) {
                     // Update Max
                     depListMax = MAX(decodeOrderTable[adjustedDepIndex], depListMax);
@@ -1515,7 +1573,6 @@ static EbErrorType PredictionStructureCtor(
             for (depIndex = 0; depIndex < predictionStructurePtr->pred_struct_entry_ptr_array[entryIndex]->dep_list1.list_count; ++depIndex) {
                 adjustedDepIndex = predictionStructurePtr->pred_struct_entry_ptr_array[entryIndex]->dep_list1.list[depIndex] + (int32_t)refPocIndex;
 
-                //if(adjustedDepIndex >= 0 && adjustedDepIndex < (int32_t) timelineSize)  {
                 if (adjustedDepIndex >= 0) {
                     // Update Max
                     depListMax = MAX(decodeOrderTable[adjustedDepIndex], depListMax);

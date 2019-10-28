@@ -173,6 +173,7 @@ void* picture_manager_kernel(void *input_ptr)
                 picture_control_set_ptr = (PictureParentControlSet*)queueEntryPtr->parent_pcs_wrapper_ptr->object_ptr;
 
                 predPositionPtr = picture_control_set_ptr->pred_struct_ptr->pred_struct_entry_ptr_array[picture_control_set_ptr->pred_struct_index];
+                printf("PM, POC %d, pred_struct_index %d\n", picture_control_set_ptr->picture_number, picture_control_set_ptr->pred_struct_index);
                 // If there was a change in the number of temporal layers, then cleanup the Reference Queue's Dependent Counts
                 if (picture_control_set_ptr->hierarchical_layers_diff != 0) {
                     // Dynamic GOP
