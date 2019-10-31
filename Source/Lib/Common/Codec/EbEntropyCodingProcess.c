@@ -441,6 +441,9 @@ void* entropy_coding_kernel(void *input_ptr)
                     sb_ptr->total_bits = 0;
                     uint32_t prev_pos = sb_index ? picture_control_set_ptr->entropy_coder_ptr->ec_writer.ec.offs : 0;//residual_bc.pos
                     EbPictureBufferDesc *coeff_picture_ptr = sb_ptr->quantized_coeff;
+                    if (picture_control_set_ptr->picture_number == 44) {
+                        printf("EC,POC 44,  write_sb (%d, %d)\n", sb_origin_x, sb_origin_y);
+                    }
                     write_sb(
                         context_ptr,
                         sb_ptr,
@@ -489,6 +492,9 @@ void* entropy_coding_kernel(void *input_ptr)
                         for (ref_idx = 0; ref_idx < picture_control_set_ptr->parent_pcs_ptr->ref_list0_count; ++ref_idx) {
                             if (picture_control_set_ptr->ref_pic_ptr_array[0][ref_idx] != EB_NULL) {
 
+                                printf("EC, POC %d release L0, live_count %d\n",
+                                        picture_control_set_ptr->picture_number,
+                                        picture_control_set_ptr->ref_pic_ptr_array[0][ref_idx]->live_count);
                                 eb_release_object(picture_control_set_ptr->ref_pic_ptr_array[0][ref_idx]);
                             }
                         }
@@ -496,6 +502,9 @@ void* entropy_coding_kernel(void *input_ptr)
                         // Release the List 1 Reference Pictures
                         for (ref_idx = 0; ref_idx < picture_control_set_ptr->parent_pcs_ptr->ref_list1_count; ++ref_idx) {
                             if (picture_control_set_ptr->ref_pic_ptr_array[1][ref_idx] != EB_NULL)
+                                printf("EC, POC %d release L1, live_count %d\n",
+                                        picture_control_set_ptr->picture_number,
+                                        picture_control_set_ptr->ref_pic_ptr_array[1][ref_idx]->live_count);
                                 eb_release_object(picture_control_set_ptr->ref_pic_ptr_array[1][ref_idx]);
                         }
 

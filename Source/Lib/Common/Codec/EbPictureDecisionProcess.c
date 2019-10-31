@@ -767,7 +767,6 @@ EbErrorType GenerateMiniGopRps(
                 picture_control_set_ptr->pred_structure,
                 sequence_control_set_ptr->reference_count,
                 picture_control_set_ptr->hierarchical_levels);
-            printf("POC %d, pred_struct_entry is %p\n", picture_control_set_ptr->picture_number, picture_control_set_ptr->pred_struct_ptr->pred_struct_entry_ptr_array);
         }
     }
     return return_error;
@@ -1354,10 +1353,10 @@ void  Av1GenerateRpsInfo(
     uint32_t                           mini_gop_index
 )
 {
-    (void)encode_context_ptr;
     Av1RpsNode *av1Rps = &picture_control_set_ptr->av1_ref_signal;
     FrameHeader *frm_hdr = &picture_control_set_ptr->frm_hdr;
 
+    PredictionStructureEntry *predPositionPtr = picture_control_set_ptr->pred_struct_ptr->pred_struct_entry_ptr_array[picture_control_set_ptr->pred_struct_index];
     //set Frame Type
     if (picture_control_set_ptr->slice_type == I_SLICE)
         frm_hdr->frame_type = picture_control_set_ptr->idr_flag ? KEY_FRAME : INTRA_ONLY_FRAME;
@@ -1366,14 +1365,17 @@ void  Av1GenerateRpsInfo(
 
     picture_control_set_ptr->intra_only = picture_control_set_ptr->slice_type == I_SLICE ? 1 : 0;
 
-    printf("\tIn Av1GenerateRpsInfo, hierarchical_levels is %d, temporal_layer_index is %d, slice_type %d, toggle is %d/%d/%d, pictureIndex %d, pred_struct_index %d, pcs_pred_type is %d\n",
+    printf("\tIn Av1GenerateRpsInfo, hierarchical_levels is %d, temporal_layer_index is %d, pred_struct_index %d, prev minigop %d, current minigop %d\n",
             picture_control_set_ptr->hierarchical_levels,
             picture_control_set_ptr->temporal_layer_index,
-            picture_control_set_ptr->slice_type,
-            context_ptr->lay0_toggle, context_ptr->lay1_toggle, context_ptr->lay2_toggle,
-            pictureIndex,
             picture_control_set_ptr->pred_struct_index,
-            picture_control_set_ptr->pred_struct_ptr->pred_type);
+            picture_control_set_ptr->pred_struct_ptr->pred_type,
+            encode_context_ptr->previous_mini_gop_length,
+            context_ptr->mini_gop_length[mini_gop_index]);
+    printf("\t\tpred_structure_index %d, ref_list0_count %d, ref_list1_count %d\n",
+            picture_control_set_ptr->pred_struct_index,
+            predPositionPtr->ref_list0.reference_list_count,
+            predPositionPtr->ref_list1.reference_list_count);
 
     //RPS for Flat GOP
     if (picture_control_set_ptr->hierarchical_levels == 0)
@@ -1471,10 +1473,8 @@ void  Av1GenerateRpsInfo(
             av1Rps->ref_poc_array[BWD] = get_ref_poc(context_ptr, picture_control_set_ptr->picture_number, four_level_hierarchical_pred_struct[gop_i].ref_list1[0]);
             av1Rps->ref_poc_array[ALT] = av1Rps->ref_poc_array[BWD];
             av1Rps->ref_poc_array[ALT2] = av1Rps->ref_poc_array[BWD];
-            //if (!is_trailing_frames)
-            {
-                av1Rps->refresh_frame_mask = 1 << (LAY1_OFF + context_ptr->lay1_toggle);
-            }
+
+            av1Rps->refresh_frame_mask = 1 << (LAY1_OFF + context_ptr->lay1_toggle);
 
             break;
 
@@ -1670,6 +1670,21 @@ void  Av1GenerateRpsInfo(
             break;
         }
 
+        // Jing: Check for reference number, remove invalid dependancy
+        if (predPositionPtr->ref_list0.reference_list_count < 4) {
+            av1Rps->ref_dpb_index[GOLD] = av1Rps->ref_dpb_index[LAST];
+            av1Rps->ref_poc_array[GOLD] = av1Rps->ref_poc_array[LAST];
+        }
+        if (predPositionPtr->ref_list0.reference_list_count < 3) {
+            av1Rps->ref_dpb_index[LAST3] = av1Rps->ref_dpb_index[LAST];
+            av1Rps->ref_poc_array[LAST3] = av1Rps->ref_poc_array[LAST];
+        }
+        if (predPositionPtr->ref_list0.reference_list_count < 2) {
+            av1Rps->ref_dpb_index[LAST2] = av1Rps->ref_dpb_index[LAST];
+            av1Rps->ref_poc_array[LAST2] = av1Rps->ref_poc_array[LAST];
+        }
+        ////////////////
+
         {
             int tmp = av1Rps->ref_dpb_index[ALT];
             av1Rps->ref_dpb_index[ALT] = av1Rps->ref_dpb_index[ALT2];
@@ -1714,8 +1729,9 @@ void  Av1GenerateRpsInfo(
                 if (context_ptr->mini_gop_length[0] != picture_control_set_ptr->pred_struct_ptr->pred_struct_period)
                     printf("Error in GOp indexing3\n");
 
-                printf("is_used_as_reference_flag is %d, pictureIndex is %d\n", 
-                        picture_control_set_ptr->is_used_as_reference_flag ,pictureIndex);
+                //printf("[%d]: is_used_as_reference_flag is %d, pictureIndex is %d\n", 
+                //        picture_control_set_ptr->picture_number,
+                //        picture_control_set_ptr->is_used_as_reference_flag ,pictureIndex);
                 if (picture_control_set_ptr->is_used_as_reference_flag && pictureIndex != 0)
                 {
                     frm_hdr->show_frame = EB_FALSE;
@@ -1736,7 +1752,7 @@ void  Av1GenerateRpsInfo(
                         frm_hdr->show_existing_frame = base2_idx;
                     else
                         printf("Error in GOp indexing2\n");
-                    printf("pictureIndex %d, show_existing_frame %d\n", pictureIndex, frm_hdr->show_existing_frame);
+                    //printf("pictureIndex %d, show_existing_frame %d\n", pictureIndex, frm_hdr->show_existing_frame);
                 }
             }
         }
@@ -1745,15 +1761,15 @@ void  Av1GenerateRpsInfo(
             exit(0);
         }
 
-            //printf("\t\tfive_level_hierarchical_pred_struct, L0 [%d, %d, %d, %d], L1 [%d, %d, %d, %d]\n",
-            //        five_level_hierarchical_pred_struct[gop_i].ref_list0[0],
-            //        five_level_hierarchical_pred_struct[gop_i].ref_list0[1],
-            //        five_level_hierarchical_pred_struct[gop_i].ref_list0[2],
-            //        five_level_hierarchical_pred_struct[gop_i].ref_list0[3],
-            //        five_level_hierarchical_pred_struct[gop_i].ref_list1[0],
-            //        five_level_hierarchical_pred_struct[gop_i].ref_list1[1],
-            //        five_level_hierarchical_pred_struct[gop_i].ref_list1[2],
-            //        five_level_hierarchical_pred_struct[gop_i].ref_list1[3]);
+            printf("\t\tfour_level_hierarchical_pred_struct, L0 [%d, %d, %d, %d], L1 [%d, %d, %d, %d]\n",
+                    four_level_hierarchical_pred_struct[gop_i].ref_list0[0],
+                    four_level_hierarchical_pred_struct[gop_i].ref_list0[1],
+                    four_level_hierarchical_pred_struct[gop_i].ref_list0[2],
+                    four_level_hierarchical_pred_struct[gop_i].ref_list0[3],
+                    four_level_hierarchical_pred_struct[gop_i].ref_list1[0],
+                    four_level_hierarchical_pred_struct[gop_i].ref_list1[1],
+                    four_level_hierarchical_pred_struct[gop_i].ref_list1[2],
+                    four_level_hierarchical_pred_struct[gop_i].ref_list1[3]);
             printf("\t\tref_dpb_index (%d,%d,%d,%d,%d,%d,%d), ref_poc_array is (%d, %d, %d, %d, %d, %d, %d)\n",
                     av1Rps->ref_dpb_index[0],
                     av1Rps->ref_dpb_index[1],
@@ -1805,28 +1821,6 @@ void  Av1GenerateRpsInfo(
                 return;
             }
 
-            //pictureIndex has this order:
-            //         0     2    4      6    8     10     12      14
-            //            1          5           9            13
-            //                 3                        11
-            //                              7
-            //                                                          15(could be an I)
-
-            //DPB: Loc7|Loc6|Loc5|Loc4|Loc3|Loc2|Loc1|Loc0
-            //Layer 0 : circular move 0-1-2
-            //Layer 1 : circular move 3-4
-#if PRED_CHANGE_5L
-            //Layer 2 : DPB Location 5
-            //Layer 3 : DPB Location 6
-            //Layer 4 : DPB Location 7
-#endif
-            //pic_num                  for poc 17
-            //         1     3    5      7    9     11     13      15         17    19     21    23   25     27    29    31
-            //            2          6           10            14                18           22          26          30
-            //                 4                        12:L2_0                         20:L2_1                 28
-            //                              8:L1_0                                                       24:L1_1
-            //base0:0                                               base1:16                                           base2:32
-
             const uint8_t  base0_idx = context_ptr->lay0_toggle == 0 ? 1 : context_ptr->lay0_toggle == 1 ? 2 : 0;   //the oldest L0 picture in the DPB
             const uint8_t  base1_idx = context_ptr->lay0_toggle == 0 ? 2 : context_ptr->lay0_toggle == 1 ? 0 : 1;   //the middle L0 picture in the DPB
             const uint8_t  base2_idx = context_ptr->lay0_toggle == 0 ? 0 : context_ptr->lay0_toggle == 1 ? 1 : 2;   //the newest L0 picture in the DPB
@@ -1838,8 +1832,8 @@ void  Av1GenerateRpsInfo(
             const uint8_t  lay3_idx = LAY3_OFF;    //the newest L3 picture in the DPB
             const uint8_t  lay4_idx = LAY4_OFF;    //the newest L3 picture in the DPB
 #endif
-            printf("\t\tbase0_idx %d, base1_idx %d, base2_idx %d, lay1_0_idx %d,lay1_1_idx %d, lay2_1_idx %d, lay3_idx %d, lay4_idx %d, key_poc is %d\n",
-                    base0_idx, base1_idx, base2_idx, lay1_0_idx, lay1_1_idx, lay2_1_idx, lay3_idx, lay4_idx, context_ptr->key_poc);
+            //printf("\t\tbase0_idx %d, base1_idx %d, base2_idx %d, lay1_0_idx %d,lay1_1_idx %d, lay2_1_idx %d, lay3_idx %d, lay4_idx %d, key_poc is %d\n",
+            //        base0_idx, base1_idx, base2_idx, lay1_0_idx, lay1_1_idx, lay2_1_idx, lay3_idx, lay4_idx, context_ptr->key_poc);
             switch (picture_control_set_ptr->temporal_layer_index) {
                 case 0:
 
@@ -2300,6 +2294,30 @@ void  Av1GenerateRpsInfo(
                     printf("Error: unexpected picture mini Gop number\n");
                     break;
             }
+
+            // Jing: Check for reference number, remove invalid dependancy
+            if (predPositionPtr->ref_list0.reference_list_count < 4) {
+                av1Rps->ref_dpb_index[GOLD] = av1Rps->ref_dpb_index[LAST];
+                av1Rps->ref_poc_array[GOLD] = av1Rps->ref_poc_array[LAST];
+            }
+            if (predPositionPtr->ref_list0.reference_list_count < 3) {
+                av1Rps->ref_dpb_index[LAST3] = av1Rps->ref_dpb_index[LAST];
+                av1Rps->ref_poc_array[LAST3] = av1Rps->ref_poc_array[LAST];
+            }
+            if (predPositionPtr->ref_list0.reference_list_count < 2) {
+                av1Rps->ref_dpb_index[LAST2] = av1Rps->ref_dpb_index[LAST];
+                av1Rps->ref_poc_array[LAST2] = av1Rps->ref_poc_array[LAST];
+            }
+
+            //Only for layer0 in five layer case
+            if (predPositionPtr->ref_list1.reference_list_count < 2) {
+                av1Rps->ref_dpb_index[ALT] = av1Rps->ref_dpb_index[BWD];
+                av1Rps->ref_dpb_index[ALT2] = av1Rps->ref_dpb_index[BWD];
+                av1Rps->ref_poc_array[ALT] = av1Rps->ref_poc_array[BWD];
+                av1Rps->ref_poc_array[ALT2] = av1Rps->ref_poc_array[BWD];
+            }
+            ////////////////
+
             printf("\t\tfive_level_hierarchical_pred_struct, L0 [%d, %d, %d, %d], L1 [%d, %d, %d, %d]\n",
                     five_level_hierarchical_pred_struct[gop_i].ref_list0[0],
                     five_level_hierarchical_pred_struct[gop_i].ref_list0[1],
@@ -3052,9 +3070,6 @@ void* picture_decision_kernel(void *input_ptr)
                         sequence_control_set_ptr->static_config.hierarchical_levels :
                         encode_context_ptr->previous_mini_gop_hierarchical_levels;
 
-                    encode_context_ptr->previous_mini_gop_length = (picture_control_set_ptr->picture_number == 0) ?
-                        (1 << sequence_control_set_ptr->static_config.hierarchical_levels) :
-                        encode_context_ptr->previous_mini_gop_length;
 
                     {
                         if (encode_context_ptr->pre_assignment_buffer_count > 1)
@@ -3077,6 +3092,9 @@ void* picture_decision_kernel(void *input_ptr)
                                 context_ptr,
                                 encode_context_ptr);
                         }
+                        encode_context_ptr->previous_mini_gop_length = (picture_control_set_ptr->picture_number == 0) ?
+                            (1 << sequence_control_set_ptr->static_config.hierarchical_levels) :
+                            encode_context_ptr->previous_mini_gop_length;
                     }
 
                     GenerateMiniGopRps(
@@ -3096,7 +3114,6 @@ void* picture_decision_kernel(void *input_ptr)
 
                             // Keep track of the number of hierarchical levels of the latest implemented mini GOP
                             encode_context_ptr->previous_mini_gop_hierarchical_levels = context_ptr->mini_gop_hierarchical_levels[mini_gop_index];
-                            encode_context_ptr->previous_mini_gop_length = context_ptr->mini_gop_length[mini_gop_index];
                         }
 
                         // 1st Loop over Pictures in the Pre-Assignment Buffer
@@ -3107,14 +3124,15 @@ void* picture_decision_kernel(void *input_ptr)
                             // Keep track of the mini GOP size to which the input picture belongs - needed @ PictureManagerProcess()
                             picture_control_set_ptr->pre_assignment_buffer_count = context_ptr->mini_gop_length[mini_gop_index];
 
-                            printf("\n---[%u]: mini_gop_index %d, total_number_of_mini_gops %d, pictureIndex %d, mini_gop start/end %d/%d, period %d, hierarchical_layers_diff is %d\n",
+                            printf("\n---[%u]: mini_gop_index %d, total_number_of_mini_gops %d, pictureIndex %d, mini_gop start/end %d/%d, period %d, hierarchical_layers_diff is %d, previous_mini_gop_length is %d\n",
                                     picture_control_set_ptr->picture_number,
                                     mini_gop_index, context_ptr->total_number_of_mini_gops, pictureIndex,
                                     context_ptr->mini_gop_start_index[mini_gop_index],
                                     context_ptr->mini_gop_end_index[mini_gop_index],
                                     picture_control_set_ptr->pred_struct_ptr->pred_struct_period,
-                                    picture_control_set_ptr->hierarchical_layers_diff);
-                            printf("\tpred_struct_position val is %d at line %d\n", encode_context_ptr->pred_struct_position, __LINE__);
+                                    picture_control_set_ptr->hierarchical_layers_diff,
+                                    encode_context_ptr->previous_mini_gop_length);
+                            //printf("\tpred_struct_position val is %d at line %d\n", encode_context_ptr->pred_struct_position, __LINE__);
                             // Update the Pred Structure if cutting short a Random Access period
                             if ((context_ptr->mini_gop_length[mini_gop_index] < picture_control_set_ptr->pred_struct_ptr->pred_struct_period || context_ptr->mini_gop_idr_count[mini_gop_index] > 0) &&
                                 picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_RANDOM_ACCESS &&
@@ -3165,17 +3183,17 @@ void* picture_decision_kernel(void *input_ptr)
                                     (encode_context_ptr->pre_assignment_buffer_eos_flag) ? P_SLICE :
                                     B_SLICE;
                             }
-                            printf("\tpred_struct_position val is %d at line %d\n", encode_context_ptr->pred_struct_position, __LINE__);
+                            //printf("\tpred_struct_position val is %d at line %d\n", encode_context_ptr->pred_struct_position, __LINE__);
                             // If mini GOP switch, reset position
                             encode_context_ptr->pred_struct_position = (picture_control_set_ptr->init_pred_struct_position_flag) ?
                                 picture_control_set_ptr->pred_struct_ptr->init_pic_index :
                                 encode_context_ptr->pred_struct_position;
 
-                            printf("\tpred_struct_position val is %d at line %d, idr_flag %d, cra_flag %d, elapsed_non_cra_count %d\n",
-                                    encode_context_ptr->pred_struct_position, __LINE__,
-                                    picture_control_set_ptr->idr_flag,
-                                    picture_control_set_ptr->cra_flag,
-                                    encode_context_ptr->elapsed_non_cra_count);
+                            //printf("\tpred_struct_position val is %d at line %d, idr_flag %d, cra_flag %d, elapsed_non_cra_count %d\n",
+                            //        encode_context_ptr->pred_struct_position, __LINE__,
+                            //        picture_control_set_ptr->idr_flag,
+                            //        picture_control_set_ptr->cra_flag,
+                            //        encode_context_ptr->elapsed_non_cra_count);
                             // If Intra, reset position
                             if (picture_control_set_ptr->idr_flag == EB_TRUE)
                                 encode_context_ptr->pred_struct_position = picture_control_set_ptr->pred_struct_ptr->init_pic_index;
@@ -3198,7 +3216,7 @@ void* picture_decision_kernel(void *input_ptr)
                             // Else, Increment the position normally
                             else
                                 ++encode_context_ptr->pred_struct_position;
-                            printf("\tpred_struct_position val is %d at line %d\n", encode_context_ptr->pred_struct_position, __LINE__);
+                            //printf("\tpred_struct_position val is %d at line %d\n", encode_context_ptr->pred_struct_position, __LINE__);
                             // The poc number of the latest IDR picture is stored so that last_idr_picture (present in PCS) for the incoming pictures can be updated.
                             // The last_idr_picture is used in reseting the poc (in entropy coding) whenever IDR is encountered.
                             // Note IMP: This logic only works when display and decode order are the same. Currently for Random Access, IDR is inserted (similar to CRA) by using trailing P pictures (low delay fashion) and breaking prediction structure.
@@ -3212,8 +3230,8 @@ void* picture_decision_kernel(void *input_ptr)
                                 encode_context_ptr->pred_struct_position - picture_control_set_ptr->pred_struct_ptr->pred_struct_period :
                                 encode_context_ptr->pred_struct_position;
 
-                            printf("  -----Final pred_struct_position val is %d at line %d, pred_struct_ptr is %p-----\n",
-                                    encode_context_ptr->pred_struct_position, __LINE__, picture_control_set_ptr->pred_struct_ptr);
+                            printf("-----Final pred_struct_position val is %d at line %d-----\n",
+                                    encode_context_ptr->pred_struct_position, __LINE__);
 
                             predPositionPtr = picture_control_set_ptr->pred_struct_ptr->pred_struct_entry_ptr_array[encode_context_ptr->pred_struct_position];
                             if (sequence_control_set_ptr->static_config.enable_overlays == EB_TRUE) {
@@ -3388,10 +3406,10 @@ void* picture_decision_kernel(void *input_ptr)
                                 picture_control_set_ptr->limit_ois_to_dc_mode_flag = EB_FALSE;
 
                                 // Update the Dependant List Count - If there was an I-frame or Scene Change, then cleanup the Picture Decision PA Reference Queue Dependent Counts
-                                printf("POC %d, pa reference q, header %d, tail %d\n",
-                                        picture_control_set_ptr->picture_number,
-                                        encode_context_ptr->picture_decision_pa_reference_queue_head_index,
-                                        encode_context_ptr->picture_decision_pa_reference_queue_tail_index);
+                                //printf("POC %d, pa reference q, header %d, tail %d\n",
+                                //        picture_control_set_ptr->picture_number,
+                                //        encode_context_ptr->picture_decision_pa_reference_queue_head_index,
+                                //        encode_context_ptr->picture_decision_pa_reference_queue_tail_index);
 
                                 if (picture_control_set_ptr->slice_type == I_SLICE)
                                 {
@@ -3465,9 +3483,9 @@ void* picture_decision_kernel(void *input_ptr)
                                 // there is no need to add the overlay frames in the PA Reference Queue
                                 if (!picture_control_set_ptr->is_overlay)
                                 {
-                                    printf("save poc %d to pa_reference_queue %d\n",
-                                            picture_control_set_ptr->picture_number,
-                                            encode_context_ptr->picture_decision_pa_reference_queue_tail_index);
+                                    //printf("save poc %d to pa_reference_queue %d\n",
+                                    //        picture_control_set_ptr->picture_number,
+                                    //        encode_context_ptr->picture_decision_pa_reference_queue_tail_index);
 
                                     inputEntryPtr = encode_context_ptr->picture_decision_pa_reference_queue[encode_context_ptr->picture_decision_pa_reference_queue_tail_index];
                                     inputEntryPtr->input_object_ptr = picture_control_set_ptr->pa_reference_picture_wrapper_ptr;
@@ -3492,9 +3510,6 @@ void* picture_decision_kernel(void *input_ptr)
                                 if (!picture_control_set_ptr->is_overlay) {
                                     inputEntryPtr->list0_ptr = &predPositionPtr->ref_list0;
                                     inputEntryPtr->list1_ptr = &predPositionPtr->ref_list1;
-                                    printf("POC %d, predPositionPtr is %p, pred_struct_entry_ptr_array is %p\n",
-                                            picture_control_set_ptr->picture_number, predPositionPtr,
-                                            picture_control_set_ptr->pred_struct_ptr->pred_struct_entry_ptr_array);
                                 }
                                 if (!picture_control_set_ptr->is_overlay)
                                 {
@@ -3513,6 +3528,13 @@ void* picture_decision_kernel(void *input_ptr)
 
                                     inputEntryPtr->dep_list1_count = inputEntryPtr->list1.list_count;
                                     inputEntryPtr->dependent_count = inputEntryPtr->dep_list0_count + inputEntryPtr->dep_list1_count;
+                                    printf("PD: POC %d, ref_list0_count %d, ref_list1_count %d, inputEntryPtr POC %d, dep0 %d, dep1 %d\n",
+                                            picture_control_set_ptr->picture_number,
+                                            picture_control_set_ptr->ref_list0_count,
+                                            picture_control_set_ptr->ref_list1_count,
+                                            inputEntryPtr->picture_number,
+                                            inputEntryPtr->dep_list0_count,
+                                            inputEntryPtr->dep_list1_count);
 
                                     ((EbPaReferenceObject*)picture_control_set_ptr->pa_reference_picture_wrapper_ptr->object_ptr)->dependent_pictures_count = inputEntryPtr->dependent_count;
                                 }
@@ -3526,6 +3548,8 @@ void* picture_decision_kernel(void *input_ptr)
                                 EB_MEMSET(picture_control_set_ptr->ref_pa_pic_ptr_array[REF_LIST_0], 0, REF_LIST_MAX_DEPTH * sizeof(EbObjectWrapper*));
                                 EB_MEMSET(picture_control_set_ptr->ref_pa_pic_ptr_array[REF_LIST_1], 0, REF_LIST_MAX_DEPTH * sizeof(EbObjectWrapper*));
 
+                                EB_MEMSET(picture_control_set_ptr->ref_pic_poc_array[REF_LIST_0], 0, REF_LIST_MAX_DEPTH * sizeof(uint64_t));
+                                EB_MEMSET(picture_control_set_ptr->ref_pic_poc_array[REF_LIST_1], 0, REF_LIST_MAX_DEPTH * sizeof(uint64_t));
                                 //Jing: why here?
                                 //EB_MEMSET(picture_control_set_ptr->ref_pa_pic_ptr_array[REF_LIST_0], 0, REF_LIST_MAX_DEPTH * sizeof(uint32_t));
                                 //EB_MEMSET(picture_control_set_ptr->ref_pa_pic_ptr_array[REF_LIST_1], 0, REF_LIST_MAX_DEPTH * sizeof(uint32_t));
@@ -3820,7 +3844,7 @@ void* picture_decision_kernel(void *input_ptr)
                                                 picture_control_set_ptr->picture_number,
                                                 -inputEntryPtr->list0_ptr->reference_list[ref_pic_index] /*
                                                 sequence_control_set_ptr->bits_for_picture_order_count*/);
-                                                printf("POC %d, L0 ref poc %d, ref in list0 val %d, pred_struct_index %d, ref_pic_index %d\n",
+                                                printf("PD POC %d, L0 ref poc %d, ref in list0 val %d, pred_struct_index %d, ref_pic_index %d\n",
                                                         picture_control_set_ptr->picture_number, ref_poc,
                                                         inputEntryPtr->list0_ptr->reference_list[ref_pic_index],
                                                         picture_control_set_ptr->pred_struct_index, ref_pic_index);
@@ -3828,11 +3852,19 @@ void* picture_decision_kernel(void *input_ptr)
                                             // Set the Reference Object
                                         picture_control_set_ptr->ref_pa_pic_ptr_array[REF_LIST_0][ref_pic_index] = paReferenceEntryPtr->input_object_ptr;
                                         picture_control_set_ptr->ref_pic_poc_array[REF_LIST_0][ref_pic_index] = ref_poc;
+
                                         // Increment the PA Reference's liveCount by the number of tiles in the input picture
                                         eb_object_inc_live_count(
                                             paReferenceEntryPtr->input_object_ptr,
                                             1);
                                         --paReferenceEntryPtr->dependent_count;
+                                        /////
+                                        //EbPaReferenceObject *tmp_ref_obj = picture_control_set_ptr->ref_pa_pic_ptr_array[REF_LIST_0][ref_pic_index]->object_ptr;
+                                        printf("===POC %d, ref_pa_poc L0[%d]=%d, paReferenceEntryPtr->dependent_count is %d\n",
+                                                picture_control_set_ptr->picture_number,
+                                                ref_pic_index, ref_poc, paReferenceEntryPtr->dependent_count);
+                                        ////////////////////
+
                                     }
                                 }
                             }
@@ -3851,8 +3883,12 @@ void* picture_decision_kernel(void *input_ptr)
                                         // Calculate the Ref POC
                                         ref_poc = POC_CIRCULAR_ADD(
                                             picture_control_set_ptr->picture_number,
-                                            -inputEntryPtr->list1_ptr->reference_list[ref_pic_index]/*,
-                                            sequence_control_set_ptr->bits_for_picture_order_count*/);
+                                            -inputEntryPtr->list1_ptr->reference_list[ref_pic_index]);
+                                    
+                                        printf("PD: POC %d, L1 ref poc %d, ref in list1 val %d, pred_struct_index %d, ref_pic_index %d\n",
+                                                picture_control_set_ptr->picture_number, ref_poc,
+                                                inputEntryPtr->list1_ptr->reference_list[ref_pic_index],
+                                                picture_control_set_ptr->pred_struct_index, ref_pic_index);
                                         // Set the Reference Object
                                         picture_control_set_ptr->ref_pa_pic_ptr_array[REF_LIST_1][ref_pic_index] = paReferenceEntryPtr->input_object_ptr;
                                         picture_control_set_ptr->ref_pic_poc_array[REF_LIST_1][ref_pic_index] = ref_poc;
@@ -3862,6 +3898,12 @@ void* picture_decision_kernel(void *input_ptr)
                                             paReferenceEntryPtr->input_object_ptr,
                                             1);
                                         --paReferenceEntryPtr->dependent_count;
+                                        /////
+                                        //EbPaReferenceObject *tmp_ref_obj = picture_control_set_ptr->ref_pa_pic_ptr_array[REF_LIST_1][ref_pic_index]->object_ptr;
+                                        printf("===POC %d, ref_pa_poc L1[%d]=%d, paReferenceEntryPtr->dependent_count is %d\n",
+                                                picture_control_set_ptr->picture_number,
+                                                ref_pic_index, ref_poc, paReferenceEntryPtr->dependent_count);
+                                        ////////////////////
                                     }
                                 }
                             }
@@ -3892,6 +3934,7 @@ void* picture_decision_kernel(void *input_ptr)
                             {
                                 uint32_t segment_index;
 
+                                    printf("---post POC %d , task_type 0\n", picture_control_set_ptr->picture_number);
                                 for (segment_index = 0; segment_index < picture_control_set_ptr->me_segments_total_count; ++segment_index) {
                                     // Get Empty Results Object
                                     eb_get_empty_object(
@@ -3925,6 +3968,8 @@ void* picture_decision_kernel(void *input_ptr)
                                 encode_context_ptr->pre_assignment_buffer_eos_flag = EB_FALSE;
                             }
                         }
+
+                        encode_context_ptr->previous_mini_gop_length = context_ptr->mini_gop_length[mini_gop_index];
                     } // End MINI GOPs loop
                 }
 

@@ -151,7 +151,7 @@ void* picture_manager_kernel(void *input_ptr)
             sequence_control_set_ptr = (SequenceControlSet*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
             encode_context_ptr = sequence_control_set_ptr->encode_context_ptr;
 
-            //printf("\nPicture Manager Process @ %d \n ", picture_control_set_ptr->picture_number);
+            printf("\nPicture Manager Process @ %d \n ", picture_control_set_ptr->picture_number);
 
             queueEntryIndex = (int32_t)(picture_control_set_ptr->picture_number_alt - encode_context_ptr->picture_manager_reorder_queue[encode_context_ptr->picture_manager_reorder_queue_head_index]->picture_number);
             queueEntryIndex += encode_context_ptr->picture_manager_reorder_queue_head_index;
@@ -173,7 +173,9 @@ void* picture_manager_kernel(void *input_ptr)
                 picture_control_set_ptr = (PictureParentControlSet*)queueEntryPtr->parent_pcs_wrapper_ptr->object_ptr;
 
                 predPositionPtr = picture_control_set_ptr->pred_struct_ptr->pred_struct_entry_ptr_array[picture_control_set_ptr->pred_struct_index];
-                printf("PM, POC %d, pred_struct_index %d\n", picture_control_set_ptr->picture_number, picture_control_set_ptr->pred_struct_index);
+                printf("PM, POC %d, pred_struct_index %d, hierarchical_layers_diff is %d\n",
+                        picture_control_set_ptr->picture_number, picture_control_set_ptr->pred_struct_index,
+                        picture_control_set_ptr->hierarchical_layers_diff);
                 // If there was a change in the number of temporal layers, then cleanup the Reference Queue's Dependent Counts
                 if (picture_control_set_ptr->hierarchical_layers_diff != 0) {
                     // Dynamic GOP
@@ -296,6 +298,8 @@ void* picture_manager_kernel(void *input_ptr)
 
                         // Modify Dependent List0
                         depListCount = referenceEntryPtr->list0.list_count;
+                        printf("PM: current poc %d, referenceEntryPtr poc %d, dep count %d\n",
+                                picture_control_set_ptr->picture_number, referenceEntryPtr->picture_number, depListCount);
                         for (depIdx = 0; depIdx < depListCount; ++depIdx) {
                             current_input_poc = picture_control_set_ptr->picture_number;
 
@@ -309,6 +313,8 @@ void* picture_manager_kernel(void *input_ptr)
 
                                 // If Dependent POC is greater or equal to the IDR POC
                             if (depPoc >= current_input_poc && referenceEntryPtr->list0.list[depIdx]) {
+                                printf("remove invalid dependance, depPoc %d, current_input_poc %d, ref poc number %d\n",
+                                        depPoc, current_input_poc, referenceEntryPtr->picture_number);
                                 referenceEntryPtr->list0.list[depIdx] = 0;
 
                                 // Decrement the Reference's referenceCount
@@ -414,6 +420,10 @@ void* picture_manager_kernel(void *input_ptr)
                     referenceEntryPtr->dep_list1_count = referenceEntryPtr->list1.list_count;
                     referenceEntryPtr->dependent_count = referenceEntryPtr->dep_list0_count + referenceEntryPtr->dep_list1_count;
 
+                    printf("PM, create referenceEntryPtr, POC %d, dep0 count %d, dep1 count %d\n",
+                            picture_control_set_ptr->picture_number,
+                            referenceEntryPtr->dep_list0_count,
+                            referenceEntryPtr->dep_list1_count);
                     CHECK_REPORT_ERROR(
                         (picture_control_set_ptr->pred_struct_ptr->pred_struct_period * REF_LIST_MAX_DEPTH < MAX_ELAPSED_IDR_COUNT),
                         encode_context_ptr->app_callback_ptr,
@@ -768,6 +778,8 @@ void* picture_manager_kernel(void *input_ptr)
                                                 ((EbReferenceObject*)referenceEntryPtr->reference_object_ptr->object_ptr)->global_motion[frame];
                                         }
                                     }
+                                    printf("PM, POC %d, configure L0, ref POC %d, ref_list0 count %d\n", entryPictureControlSetPtr->picture_number,
+                                            referenceEntryPtr->picture_number, entryPictureControlSetPtr->ref_list0_count);
                                     // Set the Reference Object
                                     ChildPictureControlSetPtr->ref_pic_ptr_array[REF_LIST_0][refIdx] = referenceEntryPtr->reference_object_ptr;
                                     ChildPictureControlSetPtr->ref_pic_qp_array[REF_LIST_0][refIdx] = (uint8_t)((EbReferenceObject*)referenceEntryPtr->reference_object_ptr->object_ptr)->qp;
@@ -779,6 +791,8 @@ void* picture_manager_kernel(void *input_ptr)
 
                                     // Decrement the Reference's dependent_count Count
                                     --referenceEntryPtr->dependent_count;
+                                    //Jing: TODO
+                                    //may need to change the referenceEntryPtr->dependent_count for trailing frames somewhere
 
                                     CHECK_REPORT_ERROR(
                                         (referenceEntryPtr->dependent_count != ~0u),
@@ -816,6 +830,8 @@ void* picture_manager_kernel(void *input_ptr)
                                                 ((EbReferenceObject*)referenceEntryPtr->reference_object_ptr->object_ptr)->global_motion[frame];
                                         }
                                     }
+                                    printf("PM, POC %d, configure L1, ref POC %d, list1_count %d\n", entryPictureControlSetPtr->picture_number,
+                                            referenceEntryPtr->picture_number, entryPictureControlSetPtr->ref_list1_count);
                                     // Set the Reference Object
                                     ChildPictureControlSetPtr->ref_pic_ptr_array[REF_LIST_1][refIdx] = referenceEntryPtr->reference_object_ptr;
 

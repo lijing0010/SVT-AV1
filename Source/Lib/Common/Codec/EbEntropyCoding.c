@@ -6562,6 +6562,12 @@ EB_EXTERN EbErrorType write_sb(
             int32_t mi_row = blkOriginY >> MI_SIZE_LOG2;
             int32_t mi_col = blkOriginX >> MI_SIZE_LOG2;
 
+            if (picture_control_set_ptr->picture_number == 44) {
+                printf("\tcu idx %d, (%d, %d), size %d, partition %d \n",
+                        cu_index, cu_origin_x, cu_origin_y, bsize,
+                        tb_ptr->cu_partition_array[cu_index]);
+            }
+
             if (bsize >= BLOCK_8X8) {
                 for (int32_t plane = 0; plane < 3; ++plane) {
                     int32_t rcol0, rcol1, rrow0, rrow1, tile_tl_idx;

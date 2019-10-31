@@ -1782,6 +1782,8 @@ EbErrorType prediction_structure_group_ctor(
 
     predictionStructureGroupPtr->dctor = prediction_structure_group_dctor;
 
+    // Jing: TODO
+    // Check for >= ENC_M0 for single pass case, crash?
     if (enc_mode > ENC_M0) {
         for (int gop_i = 1; gop_i < 8; ++gop_i) {
             for (int i = 1; i < 4; ++i) {

@@ -633,6 +633,22 @@ void* motion_estimation_kernel(void *input_ptr)
                 picture_control_set_ptr,
                 context_ptr);
 
+        //uint64_t                              ref_pic_poc_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
+        
+            //dump ref_pic_poc_array
+#if 0
+            printf("In ME, POC %d, L0 ref POC: [%d, %d, %d, %d], L1 ref POC: [%d, %d, %d], ref_list0_count %d, list1_count %d\n",
+                    picture_control_set_ptr->picture_number,
+                    picture_control_set_ptr->ref_pic_poc_array[0][0],
+                    picture_control_set_ptr->ref_pic_poc_array[0][1],
+                    picture_control_set_ptr->ref_pic_poc_array[0][2],
+                    picture_control_set_ptr->ref_pic_poc_array[0][3],
+                    picture_control_set_ptr->ref_pic_poc_array[1][0],
+                    picture_control_set_ptr->ref_pic_poc_array[1][1],
+                    picture_control_set_ptr->ref_pic_poc_array[1][2],
+                    picture_control_set_ptr->ref_list0_count,
+                    picture_control_set_ptr->ref_list1_count);
+#endif
             // Segments
             segment_index = inputResultsPtr->segment_index;
             picture_width_in_sb = (sequence_control_set_ptr->seq_header.max_frame_width + sequence_control_set_ptr->sb_sz - 1) / sequence_control_set_ptr->sb_sz;

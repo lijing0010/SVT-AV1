@@ -13776,7 +13776,7 @@ EbErrorType motion_estimate_lcu(
 
     SequenceControlSet *sequence_control_set_ptr =
         (SequenceControlSet *)picture_control_set_ptr
-            ->sequence_control_set_wrapper_ptr->object_ptr;
+        ->sequence_control_set_wrapper_ptr->object_ptr;
 
     int16_t xTopLeftSearchRegion;
     int16_t yTopLeftSearchRegion;
@@ -13784,18 +13784,18 @@ EbErrorType motion_estimate_lcu(
 
     int16_t picture_width =
         (int16_t)((SequenceControlSet *)picture_control_set_ptr
-                      ->sequence_control_set_wrapper_ptr->object_ptr)
-            ->seq_header.max_frame_width;
+                ->sequence_control_set_wrapper_ptr->object_ptr)
+        ->seq_header.max_frame_width;
     int16_t picture_height =
         (int16_t)((SequenceControlSet *)picture_control_set_ptr
-                      ->sequence_control_set_wrapper_ptr->object_ptr)
-            ->seq_header.max_frame_height;
+                ->sequence_control_set_wrapper_ptr->object_ptr)
+        ->seq_header.max_frame_height;
     uint32_t sb_width = (input_ptr->width - sb_origin_x) < BLOCK_SIZE_64
-                            ? input_ptr->width - sb_origin_x
-                            : BLOCK_SIZE_64;
+        ? input_ptr->width - sb_origin_x
+        : BLOCK_SIZE_64;
     uint32_t sb_height = (input_ptr->height - sb_origin_y) < BLOCK_SIZE_64
-                             ? input_ptr->height - sb_origin_y
-                             : BLOCK_SIZE_64;
+        ? input_ptr->height - sb_origin_y
+        : BLOCK_SIZE_64;
 
     int16_t padWidth = (int16_t)BLOCK_SIZE_64 - 1;
     int16_t padHeight = (int16_t)BLOCK_SIZE_64 - 1;
@@ -13810,23 +13810,23 @@ EbErrorType motion_estimate_lcu(
     uint32_t searchRegionNumberInWidth = 0;
     uint32_t searchRegionNumberInHeight = 0;
     int16_t xHmeLevel0SearchCenter[EB_HME_SEARCH_AREA_COLUMN_MAX_COUNT]
-                                  [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
+        [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
     int16_t yHmeLevel0SearchCenter[EB_HME_SEARCH_AREA_COLUMN_MAX_COUNT]
-                                  [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
+        [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
     uint64_t hmeLevel0Sad[EB_HME_SEARCH_AREA_COLUMN_MAX_COUNT]
-                         [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
+        [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
     int16_t xHmeLevel1SearchCenter[EB_HME_SEARCH_AREA_COLUMN_MAX_COUNT]
-                                  [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
+        [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
     int16_t yHmeLevel1SearchCenter[EB_HME_SEARCH_AREA_COLUMN_MAX_COUNT]
-                                  [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
+        [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
     uint64_t hmeLevel1Sad[EB_HME_SEARCH_AREA_COLUMN_MAX_COUNT]
-                         [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
+        [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
     int16_t xHmeLevel2SearchCenter[EB_HME_SEARCH_AREA_COLUMN_MAX_COUNT]
-                                  [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
+        [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
     int16_t yHmeLevel2SearchCenter[EB_HME_SEARCH_AREA_COLUMN_MAX_COUNT]
-                                  [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
+        [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
     uint64_t hmeLevel2Sad[EB_HME_SEARCH_AREA_COLUMN_MAX_COUNT]
-                         [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
+        [EB_HME_SEARCH_AREA_ROW_MAX_COUNT];
 
     // Hierarchical ME Search Center
     int16_t xHmeSearchCenter = 0;
@@ -13894,19 +13894,19 @@ EbErrorType motion_estimate_lcu(
 
     oneQuadrantHME =
         sequence_control_set_ptr->input_resolution < INPUT_SIZE_4K_RANGE
-            ? 0
-            : oneQuadrantHME;
+        ? 0
+        : oneQuadrantHME;
 
     numOfListToSearch = (picture_control_set_ptr->slice_type == P_SLICE)
-                            ? (uint32_t)REF_LIST_0
-                            : (uint32_t)REF_LIST_1;
+        ? (uint32_t)REF_LIST_0
+        : (uint32_t)REF_LIST_1;
 
     EbBool is_nsq_table_used =
         (picture_control_set_ptr->pic_depth_mode <= PIC_ALL_C_DEPTH_MODE &&
          picture_control_set_ptr->nsq_search_level >= NSQ_SEARCH_LEVEL1 &&
          picture_control_set_ptr->nsq_search_level < NSQ_SEARCH_FULL)
-            ? EB_TRUE
-            : EB_FALSE;
+        ? EB_TRUE
+        : EB_FALSE;
 
     is_nsq_table_used = picture_control_set_ptr->enc_mode == ENC_M0 ?  EB_FALSE : is_nsq_table_used;
 
@@ -13922,20 +13922,20 @@ EbErrorType motion_estimate_lcu(
         } else {
             num_of_ref_pic_to_search =
                 (picture_control_set_ptr->slice_type == P_SLICE)
-                    ? picture_control_set_ptr->ref_list0_count
-                    : (listIndex == REF_LIST_0)
-                          ? picture_control_set_ptr->ref_list0_count
-                          : picture_control_set_ptr->ref_list1_count;
+                ? picture_control_set_ptr->ref_list0_count
+                : (listIndex == REF_LIST_0)
+                ? picture_control_set_ptr->ref_list0_count
+                : picture_control_set_ptr->ref_list1_count;
 
             referenceObject = (EbPaReferenceObject *)picture_control_set_ptr
-                                  ->ref_pa_pic_ptr_array[0][0]
-                                  ->object_ptr;
+                ->ref_pa_pic_ptr_array[0][0]
+                ->object_ptr;
             ref0Poc = picture_control_set_ptr->ref_pic_poc_array[0][0];
         }
 
         // Ref Picture Loop
         for (ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search;
-             ++ref_pic_index)
+                ++ref_pic_index)
         {
             if (context_ptr->me_alt_ref == EB_TRUE) {
                 referenceObject =
@@ -13944,15 +13944,15 @@ EbErrorType motion_estimate_lcu(
                 if (numOfListToSearch) {
                     referenceObject =
                         (EbPaReferenceObject *)picture_control_set_ptr
-                            ->ref_pa_pic_ptr_array[1][0]
-                            ->object_ptr;
+                        ->ref_pa_pic_ptr_array[1][0]
+                        ->object_ptr;
                     ref1Poc = picture_control_set_ptr->ref_pic_poc_array[1][0];
                 }
 
                 referenceObject =
                     (EbPaReferenceObject *)picture_control_set_ptr
-                        ->ref_pa_pic_ptr_array[listIndex][ref_pic_index]
-                        ->object_ptr;
+                    ->ref_pa_pic_ptr_array[listIndex][ref_pic_index]
+                    ->object_ptr;
             }
 
             refPicPtr = (EbPictureBufferDesc*)referenceObject->input_padded_picture_ptr;
@@ -13965,20 +13965,20 @@ EbErrorType motion_estimate_lcu(
                 (EbPictureBufferDesc*)referenceObject->sixteenth_filtered_picture_ptr:
                 (EbPictureBufferDesc*)referenceObject->sixteenth_decimated_picture_ptr;
             if (picture_control_set_ptr->temporal_layer_index > 0 ||
-                listIndex == 0) {
+                    listIndex == 0) {
                 // A - The MV center for Tier0 search could be either (0,0), or
                 // HME A - Set HME MV Center
                 if (context_ptr->update_hme_search_center_flag)
                     hme_mv_center_check(refPicPtr,
-                                        context_ptr,
-                                        &x_search_center,
-                                        &y_search_center,
-                                        listIndex,
-                                        origin_x,
-                                        origin_y,
-                                        sb_width,
-                                        sb_height,
-                                        asm_type);
+                            context_ptr,
+                            &x_search_center,
+                            &y_search_center,
+                            listIndex,
+                            origin_x,
+                            origin_y,
+                            sb_width,
+                            sb_height,
+                            asm_type);
                 else {
                     x_search_center = 0;
                     y_search_center = 0;
@@ -13988,34 +13988,34 @@ EbErrorType motion_estimate_lcu(
 
                 if (context_ptr->enable_hme_flag &&
 
-                    /*B*/ sb_height ==
-                        BLOCK_SIZE_64) {  //(searchCenterSad >
-                                          // sequence_control_set_ptr->static_config.skipTier0HmeTh))
-                                          //{
+                        /*B*/ sb_height ==
+                        BLOCK_SIZE_64) {
+
+
                     while (searchRegionNumberInHeight <
-                           context_ptr->number_hme_search_region_in_height) {
+                            context_ptr->number_hme_search_region_in_height) {
                         while (searchRegionNumberInWidth <
-                               context_ptr->number_hme_search_region_in_width) {
+                                context_ptr->number_hme_search_region_in_width) {
                             xHmeLevel0SearchCenter[searchRegionNumberInWidth]
-                                                  [searchRegionNumberInHeight] =
-                                                      x_search_center;
+                                [searchRegionNumberInHeight] =
+                                x_search_center;
                             yHmeLevel0SearchCenter[searchRegionNumberInWidth]
-                                                  [searchRegionNumberInHeight] =
-                                                      y_search_center;
+                                [searchRegionNumberInHeight] =
+                                y_search_center;
 
                             xHmeLevel1SearchCenter[searchRegionNumberInWidth]
-                                                  [searchRegionNumberInHeight] =
-                                                      x_search_center;
+                                [searchRegionNumberInHeight] =
+                                x_search_center;
                             yHmeLevel1SearchCenter[searchRegionNumberInWidth]
-                                                  [searchRegionNumberInHeight] =
-                                                      y_search_center;
+                                [searchRegionNumberInHeight] =
+                                y_search_center;
 
                             xHmeLevel2SearchCenter[searchRegionNumberInWidth]
-                                                  [searchRegionNumberInHeight] =
-                                                      x_search_center;
+                                [searchRegionNumberInHeight] =
+                                x_search_center;
                             yHmeLevel2SearchCenter[searchRegionNumberInWidth]
-                                                  [searchRegionNumberInHeight] =
-                                                      y_search_center;
+                                [searchRegionNumberInHeight] =
+                                y_search_center;
 
                             searchRegionNumberInWidth++;
                         }
@@ -14027,85 +14027,85 @@ EbErrorType motion_estimate_lcu(
 
                     if (enable_hme_level0_flag) {
                         if (oneQuadrantHME && !enable_hme_level1_flag &&
-                            !enable_hme_level2_flag) {
+                                !enable_hme_level2_flag) {
                             searchRegionNumberInHeight = 0;
                             searchRegionNumberInWidth = 0;
 
                             HmeOneQuadrantLevel0(
-                                picture_control_set_ptr,
-                                context_ptr,
-                                origin_x >> 2,
-                                origin_y >> 2,
-                                sb_width >> 2,
-                                sb_height >> 2,
-                                x_search_center >> 2,
-                                y_search_center >> 2,
-                                sixteenthRefPicPtr,
-                                &(hmeLevel0Sad[searchRegionNumberInWidth]
-                                              [searchRegionNumberInHeight]),
-                                &(xHmeLevel0SearchCenter
-                                      [searchRegionNumberInWidth]
-                                      [searchRegionNumberInHeight]),
-                                &(yHmeLevel0SearchCenter
-                                      [searchRegionNumberInWidth]
-                                      [searchRegionNumberInHeight]),
-                                hme_level_0_search_area_multiplier_x
+                                    picture_control_set_ptr,
+                                    context_ptr,
+                                    origin_x >> 2,
+                                    origin_y >> 2,
+                                    sb_width >> 2,
+                                    sb_height >> 2,
+                                    x_search_center >> 2,
+                                    y_search_center >> 2,
+                                    sixteenthRefPicPtr,
+                                    &(hmeLevel0Sad[searchRegionNumberInWidth]
+                                        [searchRegionNumberInHeight]),
+                                    &(xHmeLevel0SearchCenter
+                                        [searchRegionNumberInWidth]
+                                        [searchRegionNumberInHeight]),
+                                    &(yHmeLevel0SearchCenter
+                                        [searchRegionNumberInWidth]
+                                        [searchRegionNumberInHeight]),
+                                    hme_level_0_search_area_multiplier_x
                                     [picture_control_set_ptr
-                                         ->hierarchical_levels]
-                                    [picture_control_set_ptr
-                                         ->temporal_layer_index],
-                                hme_level_0_search_area_multiplier_y
-                                    [picture_control_set_ptr
-                                         ->hierarchical_levels]
-                                    [picture_control_set_ptr
-                                         ->temporal_layer_index],
-                                asm_type);
+                                    ->hierarchical_levels]
+                                        [picture_control_set_ptr
+                                        ->temporal_layer_index],
+                                        hme_level_0_search_area_multiplier_y
+                                            [picture_control_set_ptr
+                                            ->hierarchical_levels]
+                                                [picture_control_set_ptr
+                                                ->temporal_layer_index],
+                                                asm_type);
                         } else {
                             searchRegionNumberInHeight = 0;
                             searchRegionNumberInWidth = 0;
                             {
                                 while (
-                                    searchRegionNumberInHeight <
-                                    context_ptr
+                                        searchRegionNumberInHeight <
+                                        context_ptr
                                         ->number_hme_search_region_in_height) {
                                     while (
-                                        searchRegionNumberInWidth <
-                                        context_ptr
+                                            searchRegionNumberInWidth <
+                                            context_ptr
                                             ->number_hme_search_region_in_width) {
                                         HmeLevel0(
-                                            picture_control_set_ptr,
-                                            context_ptr,
-                                            origin_x >> 2,
-                                            origin_y >> 2,
-                                            sb_width >> 2,
-                                            sb_height >> 2,
-                                            x_search_center >> 2,
-                                            y_search_center >> 2,
-                                            sixteenthRefPicPtr,
-                                            searchRegionNumberInWidth,
-                                            searchRegionNumberInHeight,
-                                            &(hmeLevel0Sad
-                                                  [searchRegionNumberInWidth]
-                                                  [searchRegionNumberInHeight]),
-                                            &(xHmeLevel0SearchCenter
-                                                  [searchRegionNumberInWidth]
-                                                  [searchRegionNumberInHeight]),
-                                            &(yHmeLevel0SearchCenter
-                                                  [searchRegionNumberInWidth]
-                                                  [searchRegionNumberInHeight]),
-                                            hme_level_0_search_area_multiplier_x
-                                                [picture_control_set_ptr
-                                                     ->hierarchical_levels]
-                                                [picture_control_set_ptr
-                                                     ->temporal_layer_index],
-                                            hme_level_0_search_area_multiplier_y
-                                                [picture_control_set_ptr
-                                                     ->hierarchical_levels]
-                                                [picture_control_set_ptr
-                                                     ->temporal_layer_index],
-                                            asm_type);
+                                                picture_control_set_ptr,
+                                                context_ptr,
+                                                origin_x >> 2,
+                                                origin_y >> 2,
+                                                sb_width >> 2,
+                                                sb_height >> 2,
+                                                x_search_center >> 2,
+                                                y_search_center >> 2,
+                                                sixteenthRefPicPtr,
+                                                searchRegionNumberInWidth,
+                                                searchRegionNumberInHeight,
+                                                &(hmeLevel0Sad
+                                                    [searchRegionNumberInWidth]
+                                                    [searchRegionNumberInHeight]),
+                                                &(xHmeLevel0SearchCenter
+                                                    [searchRegionNumberInWidth]
+                                                    [searchRegionNumberInHeight]),
+                                                &(yHmeLevel0SearchCenter
+                                                    [searchRegionNumberInWidth]
+                                                    [searchRegionNumberInHeight]),
+                                                hme_level_0_search_area_multiplier_x
+                                                    [picture_control_set_ptr
+                                                    ->hierarchical_levels]
+                                                        [picture_control_set_ptr
+                                                        ->temporal_layer_index],
+                                                        hme_level_0_search_area_multiplier_y
+                                                            [picture_control_set_ptr
+                                                            ->hierarchical_levels]
+                                                                [picture_control_set_ptr
+                                                                ->temporal_layer_index],
+                                                                asm_type);
 
-                                        searchRegionNumberInWidth++;
+                                                                searchRegionNumberInWidth++;
                                     }
                                     searchRegionNumberInWidth = 0;
                                     searchRegionNumberInHeight++;
@@ -14121,11 +14121,11 @@ EbErrorType motion_estimate_lcu(
 
                         {
                             while (searchRegionNumberInHeight <
-                                   context_ptr
-                                       ->number_hme_search_region_in_height) {
-                                while (
-                                    searchRegionNumberInWidth <
                                     context_ptr
+                                    ->number_hme_search_region_in_height) {
+                                while (
+                                        searchRegionNumberInWidth <
+                                        context_ptr
                                         ->number_hme_search_region_in_width) {
                                     // When HME level 0 has been disabled,
                                     // increase the search area width and height
@@ -14133,40 +14133,40 @@ EbErrorType motion_estimate_lcu(
 
                                     hmeLevel1SearchAreaInWidth =
                                         (int16_t)context_ptr
-                                            ->hme_level1_search_area_in_width_array
-                                                [searchRegionNumberInWidth];
+                                        ->hme_level1_search_area_in_width_array
+                                        [searchRegionNumberInWidth];
                                     hmeLevel1SearchAreaInHeight =
                                         (int16_t)context_ptr
-                                            ->hme_level1_search_area_in_height_array
-                                                [searchRegionNumberInHeight];
+                                        ->hme_level1_search_area_in_height_array
+                                        [searchRegionNumberInHeight];
 
                                     HmeLevel1(
-                                        context_ptr,
-                                        origin_x >> 1,
-                                        origin_y >> 1,
-                                        sb_width >> 1,
-                                        sb_height >> 1,
-                                        quarterRefPicPtr,
-                                        hmeLevel1SearchAreaInWidth,
-                                        hmeLevel1SearchAreaInHeight,
-                                        xHmeLevel0SearchCenter
-                                                [searchRegionNumberInWidth]
-                                                [searchRegionNumberInHeight] >>
+                                            context_ptr,
+                                            origin_x >> 1,
+                                            origin_y >> 1,
+                                            sb_width >> 1,
+                                            sb_height >> 1,
+                                            quarterRefPicPtr,
+                                            hmeLevel1SearchAreaInWidth,
+                                            hmeLevel1SearchAreaInHeight,
+                                            xHmeLevel0SearchCenter
+                                            [searchRegionNumberInWidth]
+                                            [searchRegionNumberInHeight] >>
                                             1,
-                                        yHmeLevel0SearchCenter
-                                                [searchRegionNumberInWidth]
-                                                [searchRegionNumberInHeight] >>
+                                            yHmeLevel0SearchCenter
+                                            [searchRegionNumberInWidth]
+                                            [searchRegionNumberInHeight] >>
                                             1,
-                                        &(hmeLevel1Sad
-                                              [searchRegionNumberInWidth]
-                                              [searchRegionNumberInHeight]),
-                                        &(xHmeLevel1SearchCenter
-                                              [searchRegionNumberInWidth]
-                                              [searchRegionNumberInHeight]),
-                                        &(yHmeLevel1SearchCenter
-                                              [searchRegionNumberInWidth]
-                                              [searchRegionNumberInHeight]),
-                                        asm_type);
+                                            &(hmeLevel1Sad
+                                                [searchRegionNumberInWidth]
+                                                [searchRegionNumberInHeight]),
+                                            &(xHmeLevel1SearchCenter
+                                                [searchRegionNumberInWidth]
+                                                [searchRegionNumberInHeight]),
+                                            &(yHmeLevel1SearchCenter
+                                                    [searchRegionNumberInWidth]
+                                                    [searchRegionNumberInHeight]),
+                                            asm_type);
 
                                     searchRegionNumberInWidth++;
                                 }
@@ -14183,38 +14183,38 @@ EbErrorType motion_estimate_lcu(
 
                         {
                             while (searchRegionNumberInHeight <
-                                   context_ptr
-                                       ->number_hme_search_region_in_height) {
-                                while (
-                                    searchRegionNumberInWidth <
                                     context_ptr
+                                    ->number_hme_search_region_in_height) {
+                                while (
+                                        searchRegionNumberInWidth <
+                                        context_ptr
                                         ->number_hme_search_region_in_width) {
                                     HmeLevel2(
-                                        picture_control_set_ptr,
-                                        context_ptr,
-                                        origin_x,
-                                        origin_y,
-                                        sb_width,
-                                        sb_height,
-                                        refPicPtr,
-                                        searchRegionNumberInWidth,
-                                        searchRegionNumberInHeight,
-                                        xHmeLevel1SearchCenter
+                                            picture_control_set_ptr,
+                                            context_ptr,
+                                            origin_x,
+                                            origin_y,
+                                            sb_width,
+                                            sb_height,
+                                            refPicPtr,
+                                            searchRegionNumberInWidth,
+                                            searchRegionNumberInHeight,
+                                            xHmeLevel1SearchCenter
                                             [searchRegionNumberInWidth]
                                             [searchRegionNumberInHeight],
-                                        yHmeLevel1SearchCenter
+                                            yHmeLevel1SearchCenter
                                             [searchRegionNumberInWidth]
                                             [searchRegionNumberInHeight],
-                                        &(hmeLevel2Sad
-                                              [searchRegionNumberInWidth]
-                                              [searchRegionNumberInHeight]),
-                                        &(xHmeLevel2SearchCenter
-                                              [searchRegionNumberInWidth]
-                                              [searchRegionNumberInHeight]),
-                                        &(yHmeLevel2SearchCenter
-                                              [searchRegionNumberInWidth]
-                                              [searchRegionNumberInHeight]),
-                                        asm_type);
+                                            &(hmeLevel2Sad
+                                                [searchRegionNumberInWidth]
+                                                [searchRegionNumberInHeight]),
+                                            &(xHmeLevel2SearchCenter
+                                                [searchRegionNumberInWidth]
+                                                [searchRegionNumberInHeight]),
+                                            &(yHmeLevel2SearchCenter
+                                                    [searchRegionNumberInWidth]
+                                                    [searchRegionNumberInHeight]),
+                                            asm_type);
 
                                     searchRegionNumberInWidth++;
                                 }
@@ -14226,7 +14226,7 @@ EbErrorType motion_estimate_lcu(
 
                     // Hierarchical ME - Search Center
                     if (enable_hme_level0_flag && !enable_hme_level1_flag &&
-                        !enable_hme_level2_flag) {
+                            !enable_hme_level2_flag) {
                         if (oneQuadrantHME) {
                             xHmeSearchCenter = xHmeLevel0SearchCenter[0][0];
                             yHmeSearchCenter = yHmeLevel0SearchCenter[0][0];
@@ -14240,38 +14240,38 @@ EbErrorType motion_estimate_lcu(
                             searchRegionNumberInHeight = 0;
 
                             while (searchRegionNumberInHeight <
-                                   context_ptr
-                                       ->number_hme_search_region_in_height) {
-                                while (
-                                    searchRegionNumberInWidth <
                                     context_ptr
+                                    ->number_hme_search_region_in_height) {
+                                while (
+                                        searchRegionNumberInWidth <
+                                        context_ptr
                                         ->number_hme_search_region_in_width) {
                                     xHmeSearchCenter =
                                         (hmeLevel0Sad
-                                             [searchRegionNumberInWidth]
-                                             [searchRegionNumberInHeight] <
+                                         [searchRegionNumberInWidth]
+                                         [searchRegionNumberInHeight] <
                                          hmeMvSad)
-                                            ? xHmeLevel0SearchCenter
-                                                  [searchRegionNumberInWidth]
-                                                  [searchRegionNumberInHeight]
+                                        ? xHmeLevel0SearchCenter
+                                        [searchRegionNumberInWidth]
+                                        [searchRegionNumberInHeight]
                                             : xHmeSearchCenter;
                                     yHmeSearchCenter =
                                         (hmeLevel0Sad
-                                             [searchRegionNumberInWidth]
-                                             [searchRegionNumberInHeight] <
+                                         [searchRegionNumberInWidth]
+                                         [searchRegionNumberInHeight] <
                                          hmeMvSad)
-                                            ? yHmeLevel0SearchCenter
-                                                  [searchRegionNumberInWidth]
-                                                  [searchRegionNumberInHeight]
+                                        ? yHmeLevel0SearchCenter
+                                        [searchRegionNumberInWidth]
+                                        [searchRegionNumberInHeight]
                                             : yHmeSearchCenter;
                                     hmeMvSad =
                                         (hmeLevel0Sad
-                                             [searchRegionNumberInWidth]
-                                             [searchRegionNumberInHeight] <
+                                         [searchRegionNumberInWidth]
+                                         [searchRegionNumberInHeight] <
                                          hmeMvSad)
-                                            ? hmeLevel0Sad
-                                                  [searchRegionNumberInWidth]
-                                                  [searchRegionNumberInHeight]
+                                        ? hmeLevel0Sad
+                                        [searchRegionNumberInWidth]
+                                        [searchRegionNumberInHeight]
                                             : hmeMvSad;
                                     searchRegionNumberInWidth++;
                                 }
@@ -14290,34 +14290,34 @@ EbErrorType motion_estimate_lcu(
                         searchRegionNumberInHeight = 0;
 
                         while (
-                            searchRegionNumberInHeight <
-                            context_ptr->number_hme_search_region_in_height) {
+                                searchRegionNumberInHeight <
+                                context_ptr->number_hme_search_region_in_height) {
                             while (searchRegionNumberInWidth <
-                                   context_ptr
-                                       ->number_hme_search_region_in_width) {
+                                    context_ptr
+                                    ->number_hme_search_region_in_width) {
                                 xHmeSearchCenter =
                                     (hmeLevel1Sad[searchRegionNumberInWidth]
-                                                 [searchRegionNumberInHeight] <
+                                     [searchRegionNumberInHeight] <
                                      hmeMvSad)
-                                        ? xHmeLevel1SearchCenter
-                                              [searchRegionNumberInWidth]
-                                              [searchRegionNumberInHeight]
+                                    ? xHmeLevel1SearchCenter
+                                    [searchRegionNumberInWidth]
+                                    [searchRegionNumberInHeight]
                                         : xHmeSearchCenter;
                                 yHmeSearchCenter =
                                     (hmeLevel1Sad[searchRegionNumberInWidth]
-                                                 [searchRegionNumberInHeight] <
+                                     [searchRegionNumberInHeight] <
                                      hmeMvSad)
-                                        ? yHmeLevel1SearchCenter
-                                              [searchRegionNumberInWidth]
-                                              [searchRegionNumberInHeight]
+                                    ? yHmeLevel1SearchCenter
+                                    [searchRegionNumberInWidth]
+                                    [searchRegionNumberInHeight]
                                         : yHmeSearchCenter;
                                 hmeMvSad =
                                     (hmeLevel1Sad[searchRegionNumberInWidth]
-                                                 [searchRegionNumberInHeight] <
+                                     [searchRegionNumberInHeight] <
                                      hmeMvSad)
-                                        ? hmeLevel1Sad
-                                              [searchRegionNumberInWidth]
-                                              [searchRegionNumberInHeight]
+                                    ? hmeLevel1Sad
+                                    [searchRegionNumberInWidth]
+                                    [searchRegionNumberInHeight]
                                         : hmeMvSad;
                                 searchRegionNumberInWidth++;
                             }
@@ -14335,34 +14335,34 @@ EbErrorType motion_estimate_lcu(
                         searchRegionNumberInHeight = 0;
 
                         while (
-                            searchRegionNumberInHeight <
-                            context_ptr->number_hme_search_region_in_height) {
+                                searchRegionNumberInHeight <
+                                context_ptr->number_hme_search_region_in_height) {
                             while (searchRegionNumberInWidth <
-                                   context_ptr
-                                       ->number_hme_search_region_in_width) {
+                                    context_ptr
+                                    ->number_hme_search_region_in_width) {
                                 xHmeSearchCenter =
                                     (hmeLevel2Sad[searchRegionNumberInWidth]
-                                                 [searchRegionNumberInHeight] <
+                                     [searchRegionNumberInHeight] <
                                      hmeMvSad)
-                                        ? xHmeLevel2SearchCenter
-                                              [searchRegionNumberInWidth]
-                                              [searchRegionNumberInHeight]
+                                    ? xHmeLevel2SearchCenter
+                                    [searchRegionNumberInWidth]
+                                    [searchRegionNumberInHeight]
                                         : xHmeSearchCenter;
                                 yHmeSearchCenter =
                                     (hmeLevel2Sad[searchRegionNumberInWidth]
-                                                 [searchRegionNumberInHeight] <
+                                     [searchRegionNumberInHeight] <
                                      hmeMvSad)
-                                        ? yHmeLevel2SearchCenter
-                                              [searchRegionNumberInWidth]
-                                              [searchRegionNumberInHeight]
+                                    ? yHmeLevel2SearchCenter
+                                    [searchRegionNumberInWidth]
+                                    [searchRegionNumberInHeight]
                                         : yHmeSearchCenter;
                                 hmeMvSad =
                                     (hmeLevel2Sad[searchRegionNumberInWidth]
-                                                 [searchRegionNumberInHeight] <
+                                     [searchRegionNumberInHeight] <
                                      hmeMvSad)
-                                        ? hmeLevel2Sad
-                                              [searchRegionNumberInWidth]
-                                              [searchRegionNumberInHeight]
+                                    ? hmeLevel2Sad
+                                    [searchRegionNumberInWidth]
+                                    [searchRegionNumberInHeight]
                                         : hmeMvSad;
                                 searchRegionNumberInWidth++;
                             }
@@ -14377,56 +14377,56 @@ EbErrorType motion_estimate_lcu(
                             context_ptr->number_hme_search_region_in_width;
 
                         if ((ref0Poc == ref1Poc) && (listIndex == 1) &&
-                            (totalMeQuad > 1)) {
+                                (totalMeQuad > 1)) {
                             for (quadIndex = 0; quadIndex < totalMeQuad - 1;
-                                 ++quadIndex) {
+                                    ++quadIndex) {
                                 for (nextQuadIndex = quadIndex + 1;
-                                     nextQuadIndex < totalMeQuad;
-                                     ++nextQuadIndex) {
+                                        nextQuadIndex < totalMeQuad;
+                                        ++nextQuadIndex) {
                                     if (hmeLevel2Sad[quadIndex / numQuadInWidth]
-                                                    [quadIndex %
-                                                     numQuadInWidth] >
-                                        hmeLevel2Sad[nextQuadIndex /
-                                                     numQuadInWidth]
-                                                    [nextQuadIndex %
-                                                     numQuadInWidth]) {
+                                            [quadIndex %
+                                            numQuadInWidth] >
+                                            hmeLevel2Sad[nextQuadIndex /
+                                            numQuadInWidth]
+                                            [nextQuadIndex %
+                                            numQuadInWidth]) {
                                         tempXHmeSearchCenter =
                                             xHmeLevel2SearchCenter
-                                                [quadIndex / numQuadInWidth]
-                                                [quadIndex % numQuadInWidth];
+                                            [quadIndex / numQuadInWidth]
+                                            [quadIndex % numQuadInWidth];
                                         tempYHmeSearchCenter =
                                             yHmeLevel2SearchCenter
-                                                [quadIndex / numQuadInWidth]
-                                                [quadIndex % numQuadInWidth];
+                                            [quadIndex / numQuadInWidth]
+                                            [quadIndex % numQuadInWidth];
                                         tempXHmeSad =
                                             hmeLevel2Sad[quadIndex /
-                                                         numQuadInWidth]
-                                                        [quadIndex %
-                                                         numQuadInWidth];
+                                            numQuadInWidth]
+                                            [quadIndex %
+                                            numQuadInWidth];
 
                                         xHmeLevel2SearchCenter
                                             [quadIndex / numQuadInWidth]
                                             [quadIndex % numQuadInWidth] =
                                                 xHmeLevel2SearchCenter
                                                     [nextQuadIndex /
-                                                     numQuadInWidth]
-                                                    [nextQuadIndex %
-                                                     numQuadInWidth];
+                                                    numQuadInWidth]
+                                                        [nextQuadIndex %
+                                                        numQuadInWidth];
                                         yHmeLevel2SearchCenter
                                             [quadIndex / numQuadInWidth]
                                             [quadIndex % numQuadInWidth] =
                                                 yHmeLevel2SearchCenter
                                                     [nextQuadIndex /
-                                                     numQuadInWidth]
-                                                    [nextQuadIndex %
-                                                     numQuadInWidth];
+                                                    numQuadInWidth]
+                                                        [nextQuadIndex %
+                                                        numQuadInWidth];
                                         hmeLevel2Sad
                                             [quadIndex / numQuadInWidth]
                                             [quadIndex % numQuadInWidth] =
                                                 hmeLevel2Sad[nextQuadIndex /
-                                                             numQuadInWidth]
-                                                            [nextQuadIndex %
-                                                             numQuadInWidth];
+                                                    numQuadInWidth]
+                                                    [nextQuadIndex %
+                                                    numQuadInWidth];
 
                                         xHmeLevel2SearchCenter
                                             [nextQuadIndex / numQuadInWidth]
@@ -14437,10 +14437,10 @@ EbErrorType motion_estimate_lcu(
                                             [nextQuadIndex % numQuadInWidth] =
                                                 tempYHmeSearchCenter;
                                         hmeLevel2Sad[nextQuadIndex /
-                                                     numQuadInWidth]
-                                                    [nextQuadIndex %
-                                                     numQuadInWidth] =
-                                                        tempXHmeSad;
+                                            numQuadInWidth]
+                                            [nextQuadIndex %
+                                            numQuadInWidth] =
+                                                tempXHmeSad;
                                     }
                                 }
                             }
@@ -14463,17 +14463,17 @@ EbErrorType motion_estimate_lcu(
             search_area_width = (context_ptr->search_area_width + 7) & ~0x07;
             search_area_height = context_ptr->search_area_height;
             if ((x_search_center != 0 || y_search_center != 0) &&
-                (picture_control_set_ptr->is_used_as_reference_flag ==
-                 EB_TRUE)) {
+                    (picture_control_set_ptr->is_used_as_reference_flag ==
+                     EB_TRUE)) {
                 CheckZeroZeroCenter(refPicPtr,
-                                    context_ptr,
-                                    sb_origin_x,
-                                    sb_origin_y,
-                                    sb_width,
-                                    sb_height,
-                                    &x_search_center,
-                                    &y_search_center,
-                                    asm_type);
+                        context_ptr,
+                        sb_origin_x,
+                        sb_origin_y,
+                        sb_width,
+                        sb_height,
+                        &x_search_center,
+                        &y_search_center,
+                        asm_type);
             }
             x_search_area_origin = x_search_center - (search_area_width >> 1);
             y_search_area_origin = y_search_center - (search_area_height >> 1);
@@ -14487,69 +14487,69 @@ EbErrorType motion_estimate_lcu(
                 // reference Picture
                 x_search_area_origin =
                     ((origin_x + x_search_area_origin) < tile_start_x)
-                        ? tile_start_x - origin_x
-                        : x_search_area_origin;
+                    ? tile_start_x - origin_x
+                    : x_search_area_origin;
 
                 search_area_width =
                     ((origin_x + x_search_area_origin) < tile_start_x)
-                        ? search_area_width - (tile_start_x - (origin_x + x_search_area_origin))
-                        : search_area_width;
+                    ? search_area_width - (tile_start_x - (origin_x + x_search_area_origin))
+                    : search_area_width;
 
                 // Correct the right edge of the Search Area if its not on the
                 // reference Picture
                 x_search_area_origin =
                     ((origin_x + x_search_area_origin) > tile_end_x - 1)
-                        ? x_search_area_origin - ((origin_x + x_search_area_origin) - (tile_end_x - 1))
-                        : x_search_area_origin;
+                    ? x_search_area_origin - ((origin_x + x_search_area_origin) - (tile_end_x - 1))
+                    : x_search_area_origin;
 
                 search_area_width =
                     ((origin_x + x_search_area_origin + search_area_width) > tile_end_x)
-                        ? MAX(1, search_area_width - ((origin_x + x_search_area_origin + search_area_width) - tile_end_x))
-                        : search_area_width;
+                    ? MAX(1, search_area_width - ((origin_x + x_search_area_origin + search_area_width) - tile_end_x))
+                    : search_area_width;
 
                 // Constrain x_ME to be a multiple of 8 (round down as cropping
                 // already performed)
                 search_area_width = (search_area_width < 8)
-                                        ? search_area_width
-                                        : search_area_width & ~0x07;
+                    ? search_area_width
+                    : search_area_width & ~0x07;
             } else {
-            // Correct the left edge of the Search Area if it is not on the
-            // reference Picture
-            x_search_area_origin =
-                ((origin_x + x_search_area_origin) < -padWidth)
+                // Correct the left edge of the Search Area if it is not on the
+                // reference Picture
+                x_search_area_origin =
+                    ((origin_x + x_search_area_origin) < -padWidth)
                     ? -padWidth - origin_x
                     : x_search_area_origin;
 
-            search_area_width =
-                ((origin_x + x_search_area_origin) < -padWidth)
+                search_area_width =
+                    ((origin_x + x_search_area_origin) < -padWidth)
                     ? search_area_width -
-                          (-padWidth - (origin_x + x_search_area_origin))
+                    (-padWidth - (origin_x + x_search_area_origin))
                     : search_area_width;
 
-            // Correct the right edge of the Search Area if its not on the
-            // reference Picture
-            x_search_area_origin =
-                ((origin_x + x_search_area_origin) > picture_width - 1)
+                // Correct the right edge of the Search Area if its not on the
+                // reference Picture
+                x_search_area_origin =
+                    ((origin_x + x_search_area_origin) > picture_width - 1)
                     ? x_search_area_origin -
-                          ((origin_x + x_search_area_origin) -
-                           (picture_width - 1))
+                    ((origin_x + x_search_area_origin) -
+                     (picture_width - 1))
                     : x_search_area_origin;
 
-            search_area_width =
-                ((origin_x + x_search_area_origin + search_area_width) >
-                 picture_width)
+                search_area_width =
+                    ((origin_x + x_search_area_origin + search_area_width) >
+                     picture_width)
                     ? MAX(1,
-                          search_area_width -
-                              ((origin_x + x_search_area_origin +
-                                search_area_width) -
-                               picture_width))
+                            search_area_width -
+                            ((origin_x + x_search_area_origin +
+                              search_area_width) -
+                             picture_width))
                     : search_area_width;
 
-            // Constrain x_ME to be a multiple of 8 (round down as cropping
-            // already performed)
-            search_area_width = (search_area_width < 8)
-                                    ? search_area_width
-                                    : search_area_width & ~0x07;
+                // Constrain x_ME to be a multiple of 8 (round down as cropping
+                // already performed)
+                search_area_width = (search_area_width < 8)
+                    ? search_area_width
+                    : search_area_width & ~0x07;
             }
 
             if(sequence_control_set_ptr->static_config.unrestricted_motion_vector == 0)
@@ -14561,56 +14561,56 @@ EbErrorType motion_estimate_lcu(
                 // reference Picture
                 y_search_area_origin =
                     ((origin_y + y_search_area_origin) < tile_start_y)
-                        ? tile_start_y - origin_y
-                        : y_search_area_origin;
+                    ? tile_start_y - origin_y
+                    : y_search_area_origin;
 
                 search_area_height =
                     ((origin_y + y_search_area_origin) < tile_start_y)
-                        ? search_area_height - (tile_start_y - (origin_y + y_search_area_origin))
-                        : search_area_height;
+                    ? search_area_height - (tile_start_y - (origin_y + y_search_area_origin))
+                    : search_area_height;
 
                 // Correct the bottom edge of the Search Area if its not on the
                 // reference Picture
                 y_search_area_origin =
                     ((origin_y + y_search_area_origin) > tile_end_y - 1)
-                        ? y_search_area_origin - ((origin_y + y_search_area_origin) - (tile_end_y - 1))
-                        : y_search_area_origin;
+                    ? y_search_area_origin - ((origin_y + y_search_area_origin) - (tile_end_y - 1))
+                    : y_search_area_origin;
 
                 search_area_height =
                     (origin_y + y_search_area_origin + search_area_height > tile_end_y)
-                        ? MAX(1, search_area_height - ((origin_y + y_search_area_origin + search_area_height) - tile_end_y))
-                        : search_area_height;
+                    ? MAX(1, search_area_height - ((origin_y + y_search_area_origin + search_area_height) - tile_end_y))
+                    : search_area_height;
             } else {
-            // Correct the top edge of the Search Area if it is not on the
-            // reference Picture
-            y_search_area_origin =
-                ((origin_y + y_search_area_origin) < -padHeight)
+                // Correct the top edge of the Search Area if it is not on the
+                // reference Picture
+                y_search_area_origin =
+                    ((origin_y + y_search_area_origin) < -padHeight)
                     ? -padHeight - origin_y
                     : y_search_area_origin;
 
-            search_area_height =
-                ((origin_y + y_search_area_origin) < -padHeight)
+                search_area_height =
+                    ((origin_y + y_search_area_origin) < -padHeight)
                     ? search_area_height -
-                          (-padHeight - (origin_y + y_search_area_origin))
+                    (-padHeight - (origin_y + y_search_area_origin))
                     : search_area_height;
 
-            // Correct the bottom edge of the Search Area if its not on the
-            // reference Picture
-            y_search_area_origin =
-                ((origin_y + y_search_area_origin) > picture_height - 1)
+                // Correct the bottom edge of the Search Area if its not on the
+                // reference Picture
+                y_search_area_origin =
+                    ((origin_y + y_search_area_origin) > picture_height - 1)
                     ? y_search_area_origin -
-                          ((origin_y + y_search_area_origin) -
-                           (picture_height - 1))
+                    ((origin_y + y_search_area_origin) -
+                     (picture_height - 1))
                     : y_search_area_origin;
 
-            search_area_height =
-                (origin_y + y_search_area_origin + search_area_height >
-                 picture_height)
+                search_area_height =
+                    (origin_y + y_search_area_origin + search_area_height >
+                     picture_height)
                     ? MAX(1,
-                          search_area_height -
-                              ((origin_y + y_search_area_origin +
-                                search_area_height) -
-                               picture_height))
+                            search_area_height -
+                            ((origin_y + y_search_area_origin +
+                              search_area_height) -
+                             picture_height))
                     : search_area_height;
             }
             context_ptr->x_search_area_origin[listIndex][ref_pic_index] =
@@ -14628,7 +14628,7 @@ EbErrorType motion_estimate_lcu(
                 (int16_t)(refPicPtr->origin_y + sb_origin_y) -
                 (ME_FILTER_TAP >> 1) + y_search_area_origin;
             searchRegionIndex = (xTopLeftSearchRegion) +
-                                (yTopLeftSearchRegion)*refPicPtr->stride_y;
+                (yTopLeftSearchRegion)*refPicPtr->stride_y;
             context_ptr->integer_buffer_ptr[listIndex][ref_pic_index] =
                 &(refPicPtr->buffer_y[searchRegionIndex]);
             context_ptr->interpolated_full_stride[listIndex][ref_pic_index] =
@@ -14642,176 +14642,176 @@ EbErrorType motion_estimate_lcu(
                 (int16_t)(refPicPtr->origin_y + sb_origin_y) +
                 y_search_area_origin;
             searchRegionIndex = xTopLeftSearchRegion +
-                                yTopLeftSearchRegion * refPicPtr->stride_y;
+                yTopLeftSearchRegion * refPicPtr->stride_y;
 
             {
                 {
                     if (picture_control_set_ptr->pic_depth_mode <=
-                        PIC_ALL_C_DEPTH_MODE) {
+                            PIC_ALL_C_DEPTH_MODE) {
                         initialize_buffer32bits_func_ptr_array[asm_type](
-                            context_ptr
+                                context_ptr
                                 ->p_sb_best_sad[listIndex][ref_pic_index],
-                            52,
-                            1,
-                            MAX_SAD_VALUE);
+                                52,
+                                1,
+                                MAX_SAD_VALUE);
 
                         context_ptr->p_best_sad64x64 = &(
-                            context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_64x64]);
+                                context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_64x64]);
                         context_ptr->p_best_sad32x32 =
                             &(context_ptr
-                                  ->p_sb_best_sad[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_32x32_0]);
+                                    ->p_sb_best_sad[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_32x32_0]);
                         context_ptr->p_best_sad16x16 =
                             &(context_ptr
-                                  ->p_sb_best_sad[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_16x16_0]);
+                                    ->p_sb_best_sad[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_16x16_0]);
                         context_ptr->p_best_sad8x8 = &(
-                            context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_8x8_0]);
+                                context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_8x8_0]);
                         context_ptr->p_best_sad64x32 =
                             &(context_ptr
-                                  ->p_sb_best_sad[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_64x32_0]);
+                                    ->p_sb_best_sad[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_64x32_0]);
                         context_ptr->p_best_sad32x16 =
                             &(context_ptr
-                                  ->p_sb_best_sad[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_32x16_0]);
+                                    ->p_sb_best_sad[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_32x16_0]);
                         context_ptr->p_best_sad16x8 = &(
-                            context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_16x8_0]);
+                                context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_16x8_0]);
                         context_ptr->p_best_sad32x64 =
                             &(context_ptr
-                                  ->p_sb_best_sad[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_32x64_0]);
+                                    ->p_sb_best_sad[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_32x64_0]);
                         context_ptr->p_best_sad16x32 =
                             &(context_ptr
-                                  ->p_sb_best_sad[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_16x32_0]);
+                                    ->p_sb_best_sad[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_16x32_0]);
                         context_ptr->p_best_sad8x16 = &(
-                            context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_8x16_0]);
+                                context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_8x16_0]);
                         context_ptr->p_best_sad32x8 = &(
-                            context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_32x8_0]);
+                                context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_32x8_0]);
                         context_ptr->p_best_sad8x32 = &(
-                            context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_8x32_0]);
+                                context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_8x32_0]);
                         context_ptr->p_best_sad64x16 =
                             &(context_ptr
-                                  ->p_sb_best_sad[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_64x16_0]);
+                                    ->p_sb_best_sad[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_64x16_0]);
                         context_ptr->p_best_sad16x64 =
                             &(context_ptr
-                                  ->p_sb_best_sad[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_16x64_0]);
+                                    ->p_sb_best_sad[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_16x64_0]);
 
                         context_ptr->p_best_mv64x64 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_64x64]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_64x64]);
                         context_ptr->p_best_mv32x32 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_32x32_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_32x32_0]);
                         context_ptr->p_best_mv16x16 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_16x16_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_16x16_0]);
                         context_ptr->p_best_mv8x8 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_8x8_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_8x8_0]);
                         context_ptr->p_best_mv64x32 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_64x32_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_64x32_0]);
                         context_ptr->p_best_mv32x16 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_32x16_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_32x16_0]);
                         context_ptr->p_best_mv16x8 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_16x8_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_16x8_0]);
                         context_ptr->p_best_mv32x64 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_32x64_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_32x64_0]);
                         context_ptr->p_best_mv16x32 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_16x32_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_16x32_0]);
                         context_ptr->p_best_mv8x16 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_8x16_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_8x16_0]);
                         context_ptr->p_best_mv32x8 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_32x8_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_32x8_0]);
                         context_ptr->p_best_mv8x32 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_8x32_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_8x32_0]);
                         context_ptr->p_best_mv64x16 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_64x16_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_64x16_0]);
                         context_ptr->p_best_mv16x64 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_16x64_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_16x64_0]);
 
                         context_ptr->p_best_ssd64x64 = &(
-                            context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_64x64]);
+                                context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_64x64]);
                         context_ptr->p_best_ssd32x32 =
                             &(context_ptr
-                                  ->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_32x32_0]);
+                                    ->p_sb_best_ssd[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_32x32_0]);
                         context_ptr->p_best_ssd16x16 =
                             &(context_ptr
-                                  ->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_16x16_0]);
+                                    ->p_sb_best_ssd[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_16x16_0]);
                         context_ptr->p_best_ssd8x8 = &(
-                            context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_8x8_0]);
+                                context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_8x8_0]);
                         context_ptr->p_best_ssd64x32 =
                             &(context_ptr
-                                  ->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_64x32_0]);
+                                    ->p_sb_best_ssd[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_64x32_0]);
                         context_ptr->p_best_ssd32x16 =
                             &(context_ptr
-                                  ->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_32x16_0]);
+                                    ->p_sb_best_ssd[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_32x16_0]);
                         context_ptr->p_best_ssd16x8 = &(
-                            context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_16x8_0]);
+                                context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_16x8_0]);
                         context_ptr->p_best_ssd32x64 =
                             &(context_ptr
-                                  ->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_32x64_0]);
+                                    ->p_sb_best_ssd[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_32x64_0]);
                         context_ptr->p_best_ssd16x32 =
                             &(context_ptr
-                                  ->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_16x32_0]);
+                                    ->p_sb_best_ssd[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_16x32_0]);
                         context_ptr->p_best_ssd8x16 = &(
-                            context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_8x16_0]);
+                                context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_8x16_0]);
                         context_ptr->p_best_ssd32x8 = &(
-                            context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_32x8_0]);
+                                context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_32x8_0]);
                         context_ptr->p_best_ssd8x32 = &(
-                            context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_8x32_0]);
+                                context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_8x32_0]);
                         context_ptr->p_best_ssd64x16 =
                             &(context_ptr
-                                  ->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_64x16_0]);
+                                    ->p_sb_best_ssd[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_64x16_0]);
                         context_ptr->p_best_ssd16x64 =
                             &(context_ptr
-                                  ->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_16x64_0]);
+                                    ->p_sb_best_ssd[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_16x64_0]);
 
                         open_loop_me_fullpel_search_sblock(context_ptr,
-                                                           listIndex,
-                                                           ref_pic_index,
-                                                           x_search_area_origin,
-                                                           y_search_area_origin,
-                                                           search_area_width,
-                                                           search_area_height,
-                                                           asm_type);
+                                listIndex,
+                                ref_pic_index,
+                                x_search_area_origin,
+                                y_search_area_origin,
+                                search_area_width,
+                                search_area_height,
+                                asm_type);
                         context_ptr->full_quarter_pel_refinement = 0;
 
                         if (context_ptr->half_pel_mode ==
-                            EX_HP_MODE) {
+                                EX_HP_MODE) {
                             // Move to the top left of the search region
                             xTopLeftSearchRegion =
                                 (int16_t)(refPicPtr->origin_x + sb_origin_x) +
@@ -14825,186 +14825,186 @@ EbErrorType motion_estimate_lcu(
                             // Interpolate the search region for Half-Pel
                             // Refinements H - AVC Style
                             InterpolateSearchRegionAVC(
-                                context_ptr,
-                                listIndex,
-                                ref_pic_index,
-                                context_ptr->integer_buffer_ptr[listIndex]
-                                                               [ref_pic_index] +
+                                    context_ptr,
+                                    listIndex,
+                                    ref_pic_index,
+                                    context_ptr->integer_buffer_ptr[listIndex]
+                                    [ref_pic_index] +
                                     (ME_FILTER_TAP >> 1) +
                                     ((ME_FILTER_TAP >> 1) *
                                      context_ptr->interpolated_full_stride
-                                         [listIndex][ref_pic_index]),
-                                context_ptr
+                                     [listIndex][ref_pic_index]),
+                                    context_ptr
                                     ->interpolated_full_stride[listIndex]
-                                                              [ref_pic_index],
-                                (uint32_t)search_area_width +
+                                    [ref_pic_index],
+                                    (uint32_t)search_area_width +
                                     (BLOCK_SIZE_64 - 1),
-                                (uint32_t)search_area_height +
+                                    (uint32_t)search_area_height +
                                     (BLOCK_SIZE_64 - 1),
-                                8,
-                                asm_type);
+                                    8,
+                                    asm_type);
 
                             initialize_buffer32bits_func_ptr_array[asm_type](
-                                context_ptr
+                                    context_ptr
                                     ->p_sb_best_ssd[listIndex][ref_pic_index],
-                                52,
-                                1,
-                                MAX_SSE_VALUE);
+                                    52,
+                                    1,
+                                    MAX_SSE_VALUE);
                             memcpy(context_ptr
-                                       ->p_sb_best_full_pel_mv[listIndex]
-                                                              [ref_pic_index],
-                                   context_ptr
-                                       ->p_sb_best_mv[listIndex][ref_pic_index],
-                                   MAX_ME_PU_COUNT * sizeof(uint32_t));
+                                    ->p_sb_best_full_pel_mv[listIndex]
+                                    [ref_pic_index],
+                                    context_ptr
+                                    ->p_sb_best_mv[listIndex][ref_pic_index],
+                                    MAX_ME_PU_COUNT * sizeof(uint32_t));
                             context_ptr->full_quarter_pel_refinement = 1;
                             context_ptr->p_best_full_pel_mv64x64 =
                                 &(context_ptr->p_sb_best_full_pel_mv
-                                      [listIndex][ref_pic_index]
-                                      [ME_TIER_ZERO_PU_64x64]);
+                                        [listIndex][ref_pic_index]
+                                        [ME_TIER_ZERO_PU_64x64]);
                             context_ptr->p_best_full_pel_mv32x32 =
                                 &(context_ptr->p_sb_best_full_pel_mv
-                                      [listIndex][ref_pic_index]
-                                      [ME_TIER_ZERO_PU_32x32_0]);
+                                        [listIndex][ref_pic_index]
+                                        [ME_TIER_ZERO_PU_32x32_0]);
                             context_ptr->p_best_full_pel_mv16x16 =
                                 &(context_ptr->p_sb_best_full_pel_mv
-                                      [listIndex][ref_pic_index]
-                                      [ME_TIER_ZERO_PU_16x16_0]);
+                                        [listIndex][ref_pic_index]
+                                        [ME_TIER_ZERO_PU_16x16_0]);
                             context_ptr->p_best_full_pel_mv8x8 =
                                 &(context_ptr->p_sb_best_full_pel_mv
-                                      [listIndex][ref_pic_index]
-                                      [ME_TIER_ZERO_PU_8x8_0]);
+                                        [listIndex][ref_pic_index]
+                                        [ME_TIER_ZERO_PU_8x8_0]);
                             context_ptr->p_best_full_pel_mv64x32 =
                                 &(context_ptr->p_sb_best_full_pel_mv
-                                      [listIndex][ref_pic_index]
-                                      [ME_TIER_ZERO_PU_64x32_0]);
+                                        [listIndex][ref_pic_index]
+                                        [ME_TIER_ZERO_PU_64x32_0]);
                             context_ptr->p_best_full_pel_mv32x16 =
                                 &(context_ptr->p_sb_best_full_pel_mv
-                                      [listIndex][ref_pic_index]
-                                      [ME_TIER_ZERO_PU_32x16_0]);
+                                        [listIndex][ref_pic_index]
+                                        [ME_TIER_ZERO_PU_32x16_0]);
                             context_ptr->p_best_full_pel_mv16x8 =
                                 &(context_ptr->p_sb_best_full_pel_mv
-                                      [listIndex][ref_pic_index]
-                                      [ME_TIER_ZERO_PU_16x8_0]);
+                                        [listIndex][ref_pic_index]
+                                        [ME_TIER_ZERO_PU_16x8_0]);
                             context_ptr->p_best_full_pel_mv32x64 =
                                 &(context_ptr->p_sb_best_full_pel_mv
-                                      [listIndex][ref_pic_index]
-                                      [ME_TIER_ZERO_PU_32x64_0]);
+                                        [listIndex][ref_pic_index]
+                                        [ME_TIER_ZERO_PU_32x64_0]);
                             context_ptr->p_best_full_pel_mv16x32 =
                                 &(context_ptr->p_sb_best_full_pel_mv
-                                      [listIndex][ref_pic_index]
-                                      [ME_TIER_ZERO_PU_16x32_0]);
+                                        [listIndex][ref_pic_index]
+                                        [ME_TIER_ZERO_PU_16x32_0]);
                             context_ptr->p_best_full_pel_mv8x16 =
                                 &(context_ptr->p_sb_best_full_pel_mv
-                                      [listIndex][ref_pic_index]
-                                      [ME_TIER_ZERO_PU_8x16_0]);
+                                        [listIndex][ref_pic_index]
+                                        [ME_TIER_ZERO_PU_8x16_0]);
                             context_ptr->p_best_full_pel_mv32x8 =
                                 &(context_ptr->p_sb_best_full_pel_mv
-                                      [listIndex][ref_pic_index]
-                                      [ME_TIER_ZERO_PU_32x8_0]);
+                                        [listIndex][ref_pic_index]
+                                        [ME_TIER_ZERO_PU_32x8_0]);
                             context_ptr->p_best_full_pel_mv8x32 =
                                 &(context_ptr->p_sb_best_full_pel_mv
-                                      [listIndex][ref_pic_index]
-                                      [ME_TIER_ZERO_PU_8x32_0]);
+                                        [listIndex][ref_pic_index]
+                                        [ME_TIER_ZERO_PU_8x32_0]);
                             context_ptr->p_best_full_pel_mv64x16 =
                                 &(context_ptr->p_sb_best_full_pel_mv
-                                      [listIndex][ref_pic_index]
-                                      [ME_TIER_ZERO_PU_64x16_0]);
+                                        [listIndex][ref_pic_index]
+                                        [ME_TIER_ZERO_PU_64x16_0]);
                             context_ptr->p_best_full_pel_mv16x64 =
                                 &(context_ptr->p_sb_best_full_pel_mv
-                                      [listIndex][ref_pic_index]
-                                      [ME_TIER_ZERO_PU_16x64_0]);
+                                        [listIndex][ref_pic_index]
+                                        [ME_TIER_ZERO_PU_16x64_0]);
                             // half-Pel search
                             open_loop_me_half_pel_search_sblock(
-                                picture_control_set_ptr,
-                                context_ptr,
-                                listIndex,
-                                ref_pic_index,
-                                x_search_area_origin,
-                                y_search_area_origin,
-                                search_area_width,
-                                search_area_height,
-                                asm_type);
+                                    picture_control_set_ptr,
+                                    context_ptr,
+                                    listIndex,
+                                    ref_pic_index,
+                                    x_search_area_origin,
+                                    y_search_area_origin,
+                                    search_area_width,
+                                    search_area_height,
+                                    asm_type);
                         }
 
                         if (context_ptr->quarter_pel_mode ==
-                            EX_QP_MODE) {
+                                EX_QP_MODE) {
                             // Quarter-Pel search
                             memcpy(context_ptr
-                                       ->p_sb_best_full_pel_mv[listIndex]
-                                                              [ref_pic_index],
-                                   context_ptr
-                                       ->p_sb_best_mv[listIndex][ref_pic_index],
-                                   MAX_ME_PU_COUNT * sizeof(uint32_t));
+                                    ->p_sb_best_full_pel_mv[listIndex]
+                                    [ref_pic_index],
+                                    context_ptr
+                                    ->p_sb_best_mv[listIndex][ref_pic_index],
+                                    MAX_ME_PU_COUNT * sizeof(uint32_t));
                             open_loop_me_quarter_pel_search_sblock(
-                                context_ptr,
-                                listIndex,
-                                ref_pic_index,
-                                x_search_area_origin,
-                                y_search_area_origin,
-                                search_area_width,
-                                search_area_height,
-                                asm_type);
+                                    context_ptr,
+                                    listIndex,
+                                    ref_pic_index,
+                                    x_search_area_origin,
+                                    y_search_area_origin,
+                                    search_area_width,
+                                    search_area_height,
+                                    asm_type);
                         }
                     } else {
                         initialize_buffer32bits_func_ptr_array[asm_type](
-                            context_ptr
+                                context_ptr
                                 ->p_sb_best_sad[listIndex][ref_pic_index],
-                            21,
-                            1,
-                            MAX_SAD_VALUE);
+                                21,
+                                1,
+                                MAX_SAD_VALUE);
 
                         context_ptr->full_quarter_pel_refinement = 0;
 
                         context_ptr->p_best_sad64x64 = &(
-                            context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_64x64]);
+                                context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_64x64]);
                         context_ptr->p_best_sad32x32 =
                             &(context_ptr
-                                  ->p_sb_best_sad[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_32x32_0]);
+                                    ->p_sb_best_sad[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_32x32_0]);
                         context_ptr->p_best_sad16x16 =
                             &(context_ptr
-                                  ->p_sb_best_sad[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_16x16_0]);
+                                    ->p_sb_best_sad[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_16x16_0]);
                         context_ptr->p_best_sad8x8 = &(
-                            context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_8x8_0]);
+                                context_ptr->p_sb_best_sad[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_8x8_0]);
 
                         context_ptr->p_best_mv64x64 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_64x64]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_64x64]);
                         context_ptr->p_best_mv32x32 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_32x32_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_32x32_0]);
                         context_ptr->p_best_mv16x16 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_16x16_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_16x16_0]);
                         context_ptr->p_best_mv8x8 = &(
-                            context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
-                                                     [ME_TIER_ZERO_PU_8x8_0]);
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_8x8_0]);
 
                         context_ptr->p_best_ssd64x64 = &(
-                            context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_64x64]);
+                                context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_64x64]);
                         context_ptr->p_best_ssd32x32 =
                             &(context_ptr
-                                  ->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_32x32_0]);
+                                    ->p_sb_best_ssd[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_32x32_0]);
                         context_ptr->p_best_ssd16x16 =
                             &(context_ptr
-                                  ->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                 [ME_TIER_ZERO_PU_16x16_0]);
+                                    ->p_sb_best_ssd[listIndex][ref_pic_index]
+                                    [ME_TIER_ZERO_PU_16x16_0]);
                         context_ptr->p_best_ssd8x8 = &(
-                            context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
-                                                      [ME_TIER_ZERO_PU_8x8_0]);
+                                context_ptr->p_sb_best_ssd[listIndex][ref_pic_index]
+                                [ME_TIER_ZERO_PU_8x8_0]);
                         FullPelSearch_LCU(context_ptr,
-                                          listIndex,
-                                          ref_pic_index,
-                                          x_search_area_origin,
-                                          y_search_area_origin,
-                                          search_area_width,
-                                          search_area_height,
-                                          asm_type);
+                                listIndex,
+                                ref_pic_index,
+                                x_search_area_origin,
+                                y_search_area_origin,
+                                search_area_width,
+                                search_area_height,
+                                asm_type);
                     }
                 }
 
@@ -15015,12 +15015,12 @@ EbErrorType motion_estimate_lcu(
                     enableQuarterPel = EB_TRUE;
                 } else if (context_ptr->fractional_search_model == 1) {
                     suPelEnable(context_ptr,
-                                picture_control_set_ptr,
-                                listIndex,
-                                0,
-                                &enableHalfPel32x32,
-                                &enableHalfPel16x16,
-                                &enableHalfPel8x8);
+                            picture_control_set_ptr,
+                            listIndex,
+                            0,
+                            &enableHalfPel32x32,
+                            &enableHalfPel16x16,
+                            &enableHalfPel8x8);
                     enableQuarterPel = EB_TRUE;
                 } else {
                     enableHalfPel32x32 = EB_FALSE;
@@ -15029,9 +15029,7 @@ EbErrorType motion_estimate_lcu(
                     enableQuarterPel = EB_FALSE;
                 }
                 if (enableHalfPel32x32 || enableHalfPel16x16 ||
-                    enableHalfPel8x8 || enableQuarterPel) {
-                    // if((picture_control_set_ptr->is_used_as_reference_flag ==
-                    // EB_TRUE)) {
+                        enableHalfPel8x8 || enableQuarterPel) {
                     // Move to the top left of the search region
                     xTopLeftSearchRegion =
                         (int16_t)(refPicPtr->origin_x + sb_origin_x) +
@@ -15047,385 +15045,390 @@ EbErrorType motion_estimate_lcu(
                     // H - AVC Style
 
                     if (context_ptr->half_pel_mode ==
-                        REFINMENT_HP_MODE) {
+                            REFINMENT_HP_MODE) {
                         InterpolateSearchRegionAVC(
-                            context_ptr,
-                            listIndex,
-                            ref_pic_index,
-                            context_ptr->integer_buffer_ptr[listIndex]
-                                                           [ref_pic_index] +
+                                context_ptr,
+                                listIndex,
+                                ref_pic_index,
+                                context_ptr->integer_buffer_ptr[listIndex]
+                                [ref_pic_index] +
                                 (ME_FILTER_TAP >> 1) +
                                 ((ME_FILTER_TAP >> 1) *
                                  context_ptr
-                                     ->interpolated_full_stride[listIndex]
-                                                               [ref_pic_index]),
-                            context_ptr
+                                 ->interpolated_full_stride[listIndex]
+                                 [ref_pic_index]),
+                                context_ptr
                                 ->interpolated_full_stride[listIndex]
-                                                          [ref_pic_index],
-                            (uint32_t)search_area_width + (BLOCK_SIZE_64 - 1),
-                            (uint32_t)search_area_height + (BLOCK_SIZE_64 - 1),
-                            8,
-                            asm_type);
+                                [ref_pic_index],
+                                (uint32_t)search_area_width + (BLOCK_SIZE_64 - 1),
+                                (uint32_t)search_area_height + (BLOCK_SIZE_64 - 1),
+                                8,
+                                asm_type);
 
                         // Half-Pel Refinement [8 search positions]
                         HalfPelSearch_LCU(
-                            sequence_control_set_ptr,
-                            picture_control_set_ptr,
-                            context_ptr,
+                                sequence_control_set_ptr,
+                                picture_control_set_ptr,
+                                context_ptr,
 #if M0_HIGH_PRECISION_INTERPOLATION
-                            context_ptr->integer_buffer_ptr[listIndex]
-                                                           [ref_pic_index] +
+                                context_ptr->integer_buffer_ptr[listIndex]
+                                [ref_pic_index] +
                                 (ME_FILTER_PAD_DISTANCE >> 1) +
                                 ((ME_FILTER_PAD_DISTANCE >> 1) *
                                  context_ptr
-                                     ->interpolated_full_stride[listIndex]
-                                                               [ref_pic_index]),
-                            context_ptr
+                                 ->interpolated_full_stride[listIndex]
+                                 [ref_pic_index]),
+                                context_ptr
                                 ->interpolated_full_stride[listIndex]
-                                                          [ref_pic_index],
-                            &(context_ptr->pos_b_buffer
-                                  [listIndex][ref_pic_index]
-                                  [(ME_FILTER_PAD_DISTANCE >> 1) *
-                                   context_ptr->interpolated_stride]),
+                                [ref_pic_index],
+                                &(context_ptr->pos_b_buffer
+                                    [listIndex][ref_pic_index]
+                                    [(ME_FILTER_PAD_DISTANCE >> 1) *
+                                    context_ptr->interpolated_stride]),
 #else
-                            context_ptr->integer_buffer_ptr[listIndex]
-                                                           [ref_pic_index] +
-                                (ME_FILTER_TAP >> 1) +
-                                ((ME_FILTER_TAP >> 1) *
-                                 context_ptr
-                                     ->interpolated_full_stride[listIndex]
-                                                               [ref_pic_index]),
-                            context_ptr
-                                ->interpolated_full_stride[listIndex]
-                                                          [ref_pic_index],
-                            &(context_ptr->pos_b_buffer
-                                  [listIndex][ref_pic_index]
-                                  [(ME_FILTER_TAP >> 1) *
-                                   context_ptr->interpolated_stride]),
+                                context_ptr->integer_buffer_ptr[listIndex]
+                                    [ref_pic_index] +
+                                    (ME_FILTER_TAP >> 1) +
+                                        ((ME_FILTER_TAP >> 1) *
+                                         context_ptr
+                                         ->interpolated_full_stride[listIndex]
+                                         [ref_pic_index]),
+                                context_ptr
+                                    ->interpolated_full_stride[listIndex]
+                                    [ref_pic_index],
+                                    &(context_ptr->pos_b_buffer
+                                            [listIndex][ref_pic_index]
+                                            [(ME_FILTER_TAP >> 1) *
+                                            context_ptr->interpolated_stride]),
 #endif
-                            &(context_ptr
-                                  ->pos_h_buffer[listIndex][ref_pic_index][1]),
-                            &(context_ptr
-                                  ->pos_j_buffer[listIndex][ref_pic_index][0]),
-                            x_search_area_origin,
-                            y_search_area_origin,
-                            asm_type,
-                            picture_control_set_ptr->cu8x8_mode ==
-                                CU_8x8_MODE_1,
-                            enableHalfPel32x32,
-                            enableHalfPel16x16,
-                            enableHalfPel8x8);
+                                    &(context_ptr
+                                            ->pos_h_buffer[listIndex][ref_pic_index][1]),
+                                    &(context_ptr
+                                            ->pos_j_buffer[listIndex][ref_pic_index][0]),
+                                    x_search_area_origin,
+                                    y_search_area_origin,
+                                    asm_type,
+                                    picture_control_set_ptr->cu8x8_mode ==
+                                        CU_8x8_MODE_1,
+                                    enableHalfPel32x32,
+                                    enableHalfPel16x16,
+                                    enableHalfPel8x8);
                     }
 
                     if (context_ptr->quarter_pel_mode ==
-                        REFINMENT_QP_MODE) {
+                            REFINMENT_QP_MODE) {
                         // Quarter-Pel Refinement [8 search positions]
                         QuarterPelSearch_LCU(
-                            context_ptr,
+                                context_ptr,
 #if M0_HIGH_PRECISION_INTERPOLATION
-                            context_ptr->integer_buffer_ptr[listIndex]
-                                                           [ref_pic_index] +
+                                context_ptr->integer_buffer_ptr[listIndex]
+                                [ref_pic_index] +
                                 (ME_FILTER_PAD_DISTANCE >> 1) +
                                 ((ME_FILTER_PAD_DISTANCE >> 1) *
                                  context_ptr
-                                     ->interpolated_full_stride[listIndex]
-                                                               [ref_pic_index]),
-                            context_ptr
+                                 ->interpolated_full_stride[listIndex]
+                                 [ref_pic_index]),
+                                context_ptr
                                 ->interpolated_full_stride[listIndex]
-                                                          [ref_pic_index],
-                            &(context_ptr->pos_b_buffer
-                                  [listIndex][ref_pic_index]
-                                  [(ME_FILTER_PAD_DISTANCE >> 1) *
-                                   context_ptr
-                                       ->interpolated_stride]),  // points to b
-                                                                 // position of
-                                                                 // the figure
-                                                                 // above
+                                [ref_pic_index],
+                                &(context_ptr->pos_b_buffer
+                                    [listIndex][ref_pic_index]
+                                    [(ME_FILTER_PAD_DISTANCE >> 1) *
+                                    context_ptr
+                                    ->interpolated_stride]),  // points to b
+                                // position of
+                                // the figure
+                                // above
 #else
-                            context_ptr->integer_buffer_ptr[listIndex]
-                                                           [ref_pic_index] +
-                                (ME_FILTER_TAP >> 1) +
-                                ((ME_FILTER_TAP >> 1) *
-                                 context_ptr
-                                     ->interpolated_full_stride[listIndex]
-                                                               [ref_pic_index]),
-                            context_ptr
-                                ->interpolated_full_stride[listIndex]
-                                                          [ref_pic_index],
-                            &(context_ptr->pos_b_buffer
-                                  [listIndex][ref_pic_index]
-                                  [(ME_FILTER_TAP >> 1) *
-                                   context_ptr
-                                       ->interpolated_stride]),  // points to b
-                                                                 // position of
-                                                                 // the figure
-                                                                 // above
+                                context_ptr->integer_buffer_ptr[listIndex]
+                                    [ref_pic_index] +
+                                    (ME_FILTER_TAP >> 1) +
+                                        ((ME_FILTER_TAP >> 1) *
+                                         context_ptr
+                                         ->interpolated_full_stride[listIndex]
+                                         [ref_pic_index]),
+                                context_ptr
+                                    ->interpolated_full_stride[listIndex]
+                                    [ref_pic_index],
+                                    &(context_ptr->pos_b_buffer
+                                            [listIndex][ref_pic_index]
+                                            [(ME_FILTER_TAP >> 1) *
+                                            context_ptr
+                                            ->interpolated_stride]),  // points to b
+                                    // position of
+                                    // the figure
+                                    // above
 #endif
-                            &(context_ptr
-                                  ->pos_h_buffer[listIndex][ref_pic_index]
-                                                [1]),  // points to h position
-                                                       // of the figure above
-                            &(context_ptr
-                                  ->pos_j_buffer[listIndex][ref_pic_index]
-                                                [0]),  // points to j position
-                                                       // of the figure above
-                            x_search_area_origin,
-                            y_search_area_origin,
-                            asm_type,
-                            picture_control_set_ptr->cu8x8_mode ==
-                                CU_8x8_MODE_1,
-                            enableHalfPel32x32,
-                            enableHalfPel16x16,
-                            enableHalfPel8x8,
-                            enableQuarterPel,
+                                    &(context_ptr
+                                            ->pos_h_buffer[listIndex][ref_pic_index]
+                                            [1]),  // points to h position
+                                    // of the figure above
+                                    &(context_ptr
+                                            ->pos_j_buffer[listIndex][ref_pic_index]
+                                            [0]),  // points to j position
+                                    // of the figure above
+                                    x_search_area_origin,
+                                    y_search_area_origin,
+                                    asm_type,
+                                    picture_control_set_ptr->cu8x8_mode ==
+                                        CU_8x8_MODE_1,
+                                    enableHalfPel32x32,
+                                    enableHalfPel16x16,
+                                    enableHalfPel8x8,
+                                    enableQuarterPel,
 #if TEST5_DISABLE_NSQ_ME
-                            EB_FALSE);
+                                    EB_FALSE);
 #else
-                            picture_control_set_ptr->pic_depth_mode <=
-                                PIC_ALL_C_DEPTH_MODE);
+                                    picture_control_set_ptr->pic_depth_mode <=
+                                        PIC_ALL_C_DEPTH_MODE);
 #endif
                     }
                 }
                 if (is_nsq_table_used && ref_pic_index == 0) {
                     context_ptr->p_best_nsq64x64 =
                         &(context_ptr->p_sb_best_nsq[listIndex][0]
-                                                    [ME_TIER_ZERO_PU_64x64]);
+                                [ME_TIER_ZERO_PU_64x64]);
                     context_ptr->p_best_nsq32x32 =
                         &(context_ptr->p_sb_best_nsq[listIndex][0]
-                                                    [ME_TIER_ZERO_PU_32x32_0]);
+                                [ME_TIER_ZERO_PU_32x32_0]);
                     context_ptr->p_best_nsq16x16 =
                         &(context_ptr->p_sb_best_nsq[listIndex][0]
-                                                    [ME_TIER_ZERO_PU_16x16_0]);
+                                [ME_TIER_ZERO_PU_16x16_0]);
                     context_ptr->p_best_nsq8x8 =
                         &(context_ptr->p_sb_best_nsq[listIndex][0]
-                                                    [ME_TIER_ZERO_PU_8x8_0]);
+                                [ME_TIER_ZERO_PU_8x8_0]);
                     nsq_get_analysis_results_block(context_ptr);
                 }
-        }
-    }
-}
-
-if (context_ptr->me_alt_ref == EB_FALSE) {
-
-    // Bi-Prediction motion estimation loop
-    for (pu_index = 0; pu_index < max_number_of_pus_per_sb; ++pu_index) {
-        candidateIndex = 0;
-
-        uint32_t nIdx;
-
-        if (pu_index > 200)
-            nIdx = pu_index;
-        else if (pu_index > 184)
-            nIdx = tab8x32[pu_index - 185] + 185;
-        else if (pu_index > 168)
-            nIdx = tab32x8[pu_index - 169] + 169;
-        else if (pu_index > 136)
-            nIdx = tab8x16[pu_index - 137] + 137;
-        else if (pu_index > 128)
-            nIdx = tab16x32[pu_index - 129] + 129;
-        else if (pu_index > 126)
-            nIdx = pu_index;
-        else if (pu_index > 94)
-            nIdx = tab16x8[pu_index - 95] + 95;
-        else if (pu_index > 86)
-            nIdx = tab32x16[pu_index - 87] + 87;
-        else if (pu_index > 84)
-            nIdx = pu_index;
-        else if (pu_index > 20)
-            nIdx = tab8x8[pu_index - 21] + 21;
-        else if (pu_index > 4)
-            nIdx = tab16x16[pu_index - 5] + 5;
-        else
-            nIdx = pu_index;
-        for (listIndex = REF_LIST_0; listIndex <= numOfListToSearch;
-             ++listIndex) {
-            num_of_ref_pic_to_search =
-                (picture_control_set_ptr->slice_type == P_SLICE)
-                    ? picture_control_set_ptr->ref_list0_count
-                    : (listIndex == REF_LIST_0)
-                          ? picture_control_set_ptr->ref_list0_count
-                          : picture_control_set_ptr->ref_list1_count;
-
-            // Ref Picture Loop
-            for (ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search;
-                 ++ref_pic_index) {
-                me_candidate =
-                    &(context_ptr->me_candidate[candidateIndex].pu[pu_index]);
-                me_candidate->prediction_direction = listIndex;
-                me_candidate->ref_index[listIndex] = ref_pic_index;
-                me_candidate->ref0_list = me_candidate->prediction_direction == 0 ? listIndex : 24;
-                me_candidate->ref1_list = me_candidate->prediction_direction == 1 ? listIndex : 24;
-                me_candidate->distortion =
-                    context_ptr->p_sb_best_sad[listIndex][ref_pic_index][nIdx];
-                candidateIndex++;
             }
         }
+    }
 
-        total_me_candidate_index = candidateIndex;
-        uint8_t ref_type_table[7];
-        if (picture_control_set_ptr->prune_unipred_at_me) {
+    if (context_ptr->me_alt_ref == EB_FALSE) {
+
+        // Bi-Prediction motion estimation loop
+        for (pu_index = 0; pu_index < max_number_of_pus_per_sb; ++pu_index) {
+            candidateIndex = 0;
+
+            uint32_t nIdx;
+
+            if (pu_index > 200)
+                nIdx = pu_index;
+            else if (pu_index > 184)
+                nIdx = tab8x32[pu_index - 185] + 185;
+            else if (pu_index > 168)
+                nIdx = tab32x8[pu_index - 169] + 169;
+            else if (pu_index > 136)
+                nIdx = tab8x16[pu_index - 137] + 137;
+            else if (pu_index > 128)
+                nIdx = tab16x32[pu_index - 129] + 129;
+            else if (pu_index > 126)
+                nIdx = pu_index;
+            else if (pu_index > 94)
+                nIdx = tab16x8[pu_index - 95] + 95;
+            else if (pu_index > 86)
+                nIdx = tab32x16[pu_index - 87] + 87;
+            else if (pu_index > 84)
+                nIdx = pu_index;
+            else if (pu_index > 20)
+                nIdx = tab8x8[pu_index - 21] + 21;
+            else if (pu_index > 4)
+                nIdx = tab16x16[pu_index - 5] + 5;
+            else
+                nIdx = pu_index;
+            for (listIndex = REF_LIST_0; listIndex <= numOfListToSearch;
+                    ++listIndex) {
+                num_of_ref_pic_to_search =
+                    (picture_control_set_ptr->slice_type == P_SLICE)
+                    ? picture_control_set_ptr->ref_list0_count
+                    : (listIndex == REF_LIST_0)
+                    ? picture_control_set_ptr->ref_list0_count
+                    : picture_control_set_ptr->ref_list1_count;
+
+                // Ref Picture Loop
+                for (ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search;
+                        ++ref_pic_index) {
+                    me_candidate =
+                        &(context_ptr->me_candidate[candidateIndex].pu[pu_index]);
+                    me_candidate->prediction_direction = listIndex;
+                    me_candidate->ref_index[listIndex] = ref_pic_index;
+                    me_candidate->ref0_list = me_candidate->prediction_direction == 0 ? listIndex : 24;
+                    me_candidate->ref1_list = me_candidate->prediction_direction == 1 ? listIndex : 24;
+                    me_candidate->distortion =
+                        context_ptr->p_sb_best_sad[listIndex][ref_pic_index][nIdx];
+                    candidateIndex++;
+                }
+            }
+
+            total_me_candidate_index = candidateIndex;
+            uint8_t ref_type_table[7];
+            if (picture_control_set_ptr->prune_unipred_at_me) {
+                // Sorting of the ME candidates
+                for (candidate_index = 0;
+                        candidate_index < total_me_candidate_index - 1;
+                        ++candidate_index) {
+                    for (next_candidate_index = candidate_index + 1;
+                            next_candidate_index < total_me_candidate_index;
+                            ++next_candidate_index) {
+                        if (context_ptr->me_candidate[candidate_index]
+                                .pu[pu_index]
+                                .distortion >
+                                context_ptr->me_candidate[next_candidate_index]
+                                .pu[pu_index]
+                                .distortion) {
+                            SwapMeCandidate(
+                                    &(context_ptr->me_candidate[candidate_index]
+                                        .pu[pu_index]),
+                                    &(context_ptr->me_candidate[next_candidate_index]
+                                        .pu[pu_index]));
+                        }
+                    }
+                }
+                for (candidate_index = 0;
+                        candidate_index < total_me_candidate_index;
+                        ++candidate_index) {
+
+                    me_candidate =
+                        &(context_ptr->me_candidate[candidate_index].pu[pu_index]);
+
+                    if (me_candidate->prediction_direction == 0)
+                        ref_type_table[candidate_index] = svt_get_ref_frame_type(me_candidate->ref0_list, me_candidate->ref_index[0]);
+                    else
+                        ref_type_table[candidate_index] = svt_get_ref_frame_type(me_candidate->ref1_list, me_candidate->ref_index[1]);
+
+                }
+            }
+            if (numOfListToSearch) {
+                if (picture_control_set_ptr->cu8x8_mode == CU_8x8_MODE_0 ||
+                        pu_index < 21 ||
+                        (picture_control_set_ptr->pic_depth_mode <=
+                         PIC_ALL_C_DEPTH_MODE)) {
+                    BiPredictionSearch(
+                            sequence_control_set_ptr,
+                            context_ptr,
+                            pu_index,
+                            candidateIndex,
+                            picture_control_set_ptr->ref_list0_count,
+                            picture_control_set_ptr->ref_list1_count,
+                            &total_me_candidate_index,
+                            asm_type,
+                            ref_type_table,
+                            picture_control_set_ptr);
+                }
+            }
+
             // Sorting of the ME candidates
             for (candidate_index = 0;
-                candidate_index < total_me_candidate_index - 1;
-                ++candidate_index) {
+                    candidate_index < total_me_candidate_index - 1;
+                    ++candidate_index) {
                 for (next_candidate_index = candidate_index + 1;
-                    next_candidate_index < total_me_candidate_index;
-                    ++next_candidate_index) {
+                        next_candidate_index < total_me_candidate_index;
+                        ++next_candidate_index) {
                     if (context_ptr->me_candidate[candidate_index]
-                        .pu[pu_index]
-                        .distortion >
-                        context_ptr->me_candidate[next_candidate_index]
-                        .pu[pu_index]
-                        .distortion) {
+                            .pu[pu_index]
+                            .distortion >
+                            context_ptr->me_candidate[next_candidate_index]
+                            .pu[pu_index]
+                            .distortion) {
                         SwapMeCandidate(
-                            &(context_ptr->me_candidate[candidate_index]
-                                .pu[pu_index]),
-                            &(context_ptr->me_candidate[next_candidate_index]
-                                .pu[pu_index]));
+                                &(context_ptr->me_candidate[candidate_index]
+                                    .pu[pu_index]),
+                                &(context_ptr->me_candidate[next_candidate_index]
+                                    .pu[pu_index]));
                     }
                 }
             }
-            for (candidate_index = 0;
-                candidate_index < total_me_candidate_index;
-                ++candidate_index) {
 
+            MeLcuResults *mePuResult =
+                picture_control_set_ptr->me_results[sb_index];
+            mePuResult->total_me_candidate_index[pu_index] =
+                total_me_candidate_index;
+
+            uint8_t l0_nsq =
+                is_nsq_table_used ? context_ptr->p_sb_best_nsq[0][0][nIdx] : 0;
+            uint8_t l1_nsq =
+                is_nsq_table_used ? context_ptr->p_sb_best_nsq[1][0][nIdx] : 0;
+            mePuResult->me_nsq_0[pu_index] = l0_nsq;
+            mePuResult->me_nsq_1[pu_index] = l1_nsq;
+
+            mePuResult->total_me_candidate_index[pu_index] =
+                MIN(total_me_candidate_index, ME_RES_CAND_MRP_MODE_0);
+            // Assining the ME candidates to the me Results buffer
+            for (candidateIndex = 0; candidateIndex < total_me_candidate_index;
+                    ++candidateIndex) {
                 me_candidate =
-                    &(context_ptr->me_candidate[candidate_index].pu[pu_index]);
-
-                if (me_candidate->prediction_direction == 0)
-                    ref_type_table[candidate_index] = svt_get_ref_frame_type(me_candidate->ref0_list, me_candidate->ref_index[0]);
-                else
-                    ref_type_table[candidate_index] = svt_get_ref_frame_type(me_candidate->ref1_list, me_candidate->ref_index[1]);
-
+                    &(context_ptr->me_candidate[candidateIndex].pu[pu_index]);
+                picture_control_set_ptr->me_results[sb_index]
+                    ->me_candidate[pu_index][candidateIndex]
+                    .distortion = me_candidate->distortion;
+                picture_control_set_ptr->me_results[sb_index]
+                    ->me_candidate[pu_index][candidateIndex]
+                    .direction = me_candidate->prediction_direction;
+                picture_control_set_ptr->me_results[sb_index]
+                    ->me_candidate[pu_index][candidateIndex]
+                    .ref_idx_l0 = me_candidate->ref_index[0];
+                picture_control_set_ptr->me_results[sb_index]
+                    ->me_candidate[pu_index][candidateIndex]
+                    .ref_idx_l1 = me_candidate->ref_index[1];
+                picture_control_set_ptr->me_results[sb_index]
+                    ->me_candidate[pu_index][candidateIndex]
+                    .ref0_list = me_candidate->ref0_list;
+                picture_control_set_ptr->me_results[sb_index]
+                    ->me_candidate[pu_index][candidateIndex]
+                    .ref1_list = me_candidate->ref1_list;
             }
-        }
-        if (numOfListToSearch) {
-            if (picture_control_set_ptr->cu8x8_mode == CU_8x8_MODE_0 ||
-                pu_index < 21 ||
-                (picture_control_set_ptr->pic_depth_mode <=
-                 PIC_ALL_C_DEPTH_MODE)) {
-                BiPredictionSearch(
-                    sequence_control_set_ptr,
-                    context_ptr,
-                    pu_index,
-                    candidateIndex,
-                    picture_control_set_ptr->ref_list0_count,
-                    picture_control_set_ptr->ref_list1_count,
-                    &total_me_candidate_index,
-                    asm_type,
-                    ref_type_table,
-                    picture_control_set_ptr);
-            }
-        }
 
-        // Sorting of the ME candidates
-        for (candidate_index = 0;
-             candidate_index < total_me_candidate_index - 1;
-             ++candidate_index) {
-            for (next_candidate_index = candidate_index + 1;
-                 next_candidate_index < total_me_candidate_index;
-                 ++next_candidate_index) {
-                if (context_ptr->me_candidate[candidate_index]
-                        .pu[pu_index]
-                        .distortion >
-                    context_ptr->me_candidate[next_candidate_index]
-                        .pu[pu_index]
-                        .distortion) {
-                    SwapMeCandidate(
-                        &(context_ptr->me_candidate[candidate_index]
-                              .pu[pu_index]),
-                        &(context_ptr->me_candidate[next_candidate_index]
-                              .pu[pu_index]));
+            for (listIndex = REF_LIST_0; listIndex <= numOfListToSearch;
+                    ++listIndex) {
+                num_of_ref_pic_to_search =
+                    (picture_control_set_ptr->slice_type == P_SLICE)
+                    ? picture_control_set_ptr->ref_list0_count
+                    : (listIndex == REF_LIST_0)
+                    ? picture_control_set_ptr->ref_list0_count
+                    : picture_control_set_ptr->ref_list1_count;
+
+                // Ref Picture Loop
+                for (ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search;
+                        ++ref_pic_index) {
+                    picture_control_set_ptr->me_results[sb_index]
+                        ->me_mv_array[pu_index]
+                        [((listIndex &&
+                                    sequence_control_set_ptr->mrp_mode == 0)
+                                ? 4
+                                : listIndex ? 2 : 0) +
+                        ref_pic_index]
+                        .x_mv = _MVXT(
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index][nIdx]);
+                    picture_control_set_ptr->me_results[sb_index]
+                        ->me_mv_array[pu_index]
+                        [((listIndex &&
+                                    sequence_control_set_ptr->mrp_mode == 0)
+                                ? 4
+                                : listIndex ? 2 : 0) +
+                        ref_pic_index]
+                        .y_mv = _MVYT(
+                                context_ptr->p_sb_best_mv[listIndex][ref_pic_index][nIdx]);
                 }
             }
         }
-
-        MeLcuResults *mePuResult =
-            picture_control_set_ptr->me_results[sb_index];
-        mePuResult->total_me_candidate_index[pu_index] =
-            total_me_candidate_index;
-
-        uint8_t l0_nsq =
-            is_nsq_table_used ? context_ptr->p_sb_best_nsq[0][0][nIdx] : 0;
-        uint8_t l1_nsq =
-            is_nsq_table_used ? context_ptr->p_sb_best_nsq[1][0][nIdx] : 0;
-        mePuResult->me_nsq_0[pu_index] = l0_nsq;
-        mePuResult->me_nsq_1[pu_index] = l1_nsq;
-
-        mePuResult->total_me_candidate_index[pu_index] =
-            MIN(total_me_candidate_index, ME_RES_CAND_MRP_MODE_0);
-        // Assining the ME candidates to the me Results buffer
-        for (candidateIndex = 0; candidateIndex < total_me_candidate_index;
-             ++candidateIndex) {
-            me_candidate =
-                &(context_ptr->me_candidate[candidateIndex].pu[pu_index]);
-            picture_control_set_ptr->me_results[sb_index]
-                ->me_candidate[pu_index][candidateIndex]
-                .distortion = me_candidate->distortion;
-            picture_control_set_ptr->me_results[sb_index]
-                ->me_candidate[pu_index][candidateIndex]
-                .direction = me_candidate->prediction_direction;
-            picture_control_set_ptr->me_results[sb_index]
-                ->me_candidate[pu_index][candidateIndex]
-                .ref_idx_l0 = me_candidate->ref_index[0];
-            picture_control_set_ptr->me_results[sb_index]
-                ->me_candidate[pu_index][candidateIndex]
-                .ref_idx_l1 = me_candidate->ref_index[1];
-            picture_control_set_ptr->me_results[sb_index]
-                ->me_candidate[pu_index][candidateIndex]
-                .ref0_list = me_candidate->ref0_list;
-            picture_control_set_ptr->me_results[sb_index]
-                ->me_candidate[pu_index][candidateIndex]
-                .ref1_list = me_candidate->ref1_list;
-        }
-
-        for (listIndex = REF_LIST_0; listIndex <= numOfListToSearch;
-             ++listIndex) {
-            num_of_ref_pic_to_search =
-                (picture_control_set_ptr->slice_type == P_SLICE)
-                    ? picture_control_set_ptr->ref_list0_count
-                    : (listIndex == REF_LIST_0)
-                          ? picture_control_set_ptr->ref_list0_count
-                          : picture_control_set_ptr->ref_list1_count;
-
-            // Ref Picture Loop
-            for (ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search;
-                 ++ref_pic_index) {
-                picture_control_set_ptr->me_results[sb_index]
-                    ->me_mv_array[pu_index]
-                                 [((listIndex &&
-                                    sequence_control_set_ptr->mrp_mode == 0)
-                                       ? 4
-                                       : listIndex ? 2 : 0) +
-                                  ref_pic_index]
-                    .x_mv = _MVXT(
-                    context_ptr->p_sb_best_mv[listIndex][ref_pic_index][nIdx]);
-                picture_control_set_ptr->me_results[sb_index]
-                    ->me_mv_array[pu_index]
-                                 [((listIndex &&
-                                    sequence_control_set_ptr->mrp_mode == 0)
-                                       ? 4
-                                       : listIndex ? 2 : 0) +
-                                  ref_pic_index]
-                    .y_mv = _MVYT(
-                    context_ptr->p_sb_best_mv[listIndex][ref_pic_index][nIdx]);
-            }
-        }
-    }
-    {
-        // Compute the sum of the distortion of all 16 16x16 (best) blocks
-        // in the LCU
-        picture_control_set_ptr->rc_me_distortion[sb_index] = 0;
-        for (i = 0; i < 16; i++)
-            picture_control_set_ptr->rc_me_distortion[sb_index] +=
-                picture_control_set_ptr->me_results[sb_index]
+        {
+            // Compute the sum of the distortion of all 16 16x16 (best) blocks
+            // in the LCU
+            picture_control_set_ptr->rc_me_distortion[sb_index] = 0;
+            for (i = 0; i < 16; i++)
+                picture_control_set_ptr->rc_me_distortion[sb_index] +=
+                    picture_control_set_ptr->me_results[sb_index]
                     ->me_candidate[5 + i][0]
                     .distortion;
+        }
+
+        //if (picture_control_set_ptr->picture_number == 16) {
+        //    printf("ME, POC %d, sb_index %d, pos (%d, %d), total_me_candidate %d\n",
+        //            picture_control_set_ptr->picture_number,
+        //            sb_index, sb_origin_x, sb_origin_y, total_me_candidate_index);
+        //}
     }
 
-}
-
-return return_error;
+    return return_error;
 }
 
 /*******************************************
