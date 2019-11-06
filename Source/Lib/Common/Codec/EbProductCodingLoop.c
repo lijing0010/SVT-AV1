@@ -7767,12 +7767,14 @@ void md_encode_block(
                 // Distortion-based NIC proning to CLASS_1, CLASS_2, CLASS_3
                 if (cand_class_it == CAND_CLASS_1 || cand_class_it == CAND_CLASS_2 || cand_class_it == CAND_CLASS_3) {
                     uint32_t *cand_buff_indices = context_ptr->cand_buff_indices[cand_class_it];
-                    if (*(context_ptr->candidate_buffer_ptr_array[cand_buff_indices[0]]->fast_cost_ptr) < *(context_ptr->candidate_buffer_ptr_array[context_ptr->cand_buff_indices[CAND_CLASS_0][0]]->fast_cost_ptr)) {
-                        uint32_t fast1_cand_count = 1;
-                        while (fast1_cand_count < context_ptr->md_stage_1_count[cand_class_it] && ((((*(context_ptr->candidate_buffer_ptr_array[cand_buff_indices[fast1_cand_count]]->fast_cost_ptr) - *(context_ptr->candidate_buffer_ptr_array[cand_buff_indices[0]]->fast_cost_ptr)) * 100) / (*(context_ptr->candidate_buffer_ptr_array[cand_buff_indices[0]]->fast_cost_ptr))) < context_ptr->dist_base_md_stage_0_count_th)) {
-                            fast1_cand_count++;
+                    if (context_ptr->md_stage_0_count[CAND_CLASS_0] > 0 && context_ptr->md_stage_1_count[CAND_CLASS_0] > 0) {
+                        if (*(context_ptr->candidate_buffer_ptr_array[cand_buff_indices[0]]->fast_cost_ptr) < *(context_ptr->candidate_buffer_ptr_array[context_ptr->cand_buff_indices[CAND_CLASS_0][0]]->fast_cost_ptr)) {
+                            uint32_t fast1_cand_count = 1;
+                            while (fast1_cand_count < context_ptr->md_stage_1_count[cand_class_it] && ((((*(context_ptr->candidate_buffer_ptr_array[cand_buff_indices[fast1_cand_count]]->fast_cost_ptr) - *(context_ptr->candidate_buffer_ptr_array[cand_buff_indices[0]]->fast_cost_ptr)) * 100) / (*(context_ptr->candidate_buffer_ptr_array[cand_buff_indices[0]]->fast_cost_ptr))) < context_ptr->dist_base_md_stage_0_count_th)) {
+                                fast1_cand_count++;
+                            }
+                            context_ptr->md_stage_1_count[cand_class_it] = fast1_cand_count;
                         }
-                        context_ptr->md_stage_1_count[cand_class_it] = fast1_cand_count;
                     }
                 }
 #endif
