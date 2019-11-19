@@ -1356,6 +1356,7 @@ void  Av1GenerateRpsInfo(
     Av1RpsNode *av1Rps = &picture_control_set_ptr->av1_ref_signal;
     FrameHeader *frm_hdr = &picture_control_set_ptr->frm_hdr;
 
+    SequenceControlSet *sequence_control_set_ptr = (SequenceControlSet*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
     PredictionStructureEntry *predPositionPtr = picture_control_set_ptr->pred_struct_ptr->pred_struct_entry_ptr_array[picture_control_set_ptr->pred_struct_index];
     //set Frame Type
     if (picture_control_set_ptr->slice_type == I_SLICE)
@@ -1658,7 +1659,6 @@ void  Av1GenerateRpsInfo(
             else
                 printf("Error in GOp indexing\n");
 #if PRED_CHANGE
-            //if (pictureIndex == 0 && !is_trailing_frames)
             if (pictureIndex == 0 )
                 av1Rps->refresh_frame_mask = 1 << (lay3_idx);
             else
@@ -1792,9 +1792,12 @@ void  Av1GenerateRpsInfo(
         //mini GOP toggling since last Key Frame.
         //a regular I keeps the toggling process and does not reset the toggle.  K-0-1-0-1-0-K-0-1-0-1-K-0-1.....
         //whoever needs a miniGOP Level toggling, this is the time
-        if (pictureIndex == (context_ptr->mini_gop_end_index[mini_gop_index] % 8) && !picture_control_set_ptr->is_overlay)
+        
+        if ((pictureIndex == (context_ptr->mini_gop_end_index[mini_gop_index] % 8) && !picture_control_set_ptr->is_overlay && sequence_control_set_ptr->static_config.pred_structure == EB_PRED_RANDOM_ACCESS) ||
+                (sequence_control_set_ptr->static_config.pred_structure == EB_PRED_LOW_DELAY_P && pictureIndex == picture_control_set_ptr->pred_struct_ptr->pred_struct_period - 1))
         //if (pictureIndex == (context_ptr->mini_gop_end_index[mini_gop_index]) && !picture_control_set_ptr->is_overlay)
         {
+            printf("\n\ntoggling...\n");
             //Layer0 toggle 0->1->2
             context_ptr->lay0_toggle = circ_inc(3, 1, context_ptr->lay0_toggle);
             //Layer1 toggle 3->4
