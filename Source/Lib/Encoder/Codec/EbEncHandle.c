@@ -2007,7 +2007,7 @@ void CopyApiFromApp(
     sequence_control_set_ptr->general_interlaced_source_flag = 0;
 
     // SB Definitions
-    sequence_control_set_ptr->static_config.pred_structure = 2; // Hardcoded(Cleanup)
+    sequence_control_set_ptr->static_config.pred_structure = pComponentParameterStructure->pred_structure;
     sequence_control_set_ptr->static_config.enable_qp_scaling_flag = 1;
 
     sequence_control_set_ptr->max_cu_size = (uint8_t)64;
@@ -2251,7 +2251,7 @@ static EbErrorType VerifySettings(
         return_error = EB_ErrorBadParameter;
     }
 
-    if (config->pred_structure != 2) {
+    if (config->pred_structure > 2) {
         SVT_LOG("Error instance %u: Pred Structure must be [2]\n", channelNumber + 1);
         return_error = EB_ErrorBadParameter;
     }

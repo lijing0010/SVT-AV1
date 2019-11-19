@@ -759,7 +759,7 @@ EbErrorType GenerateMiniGopRps(
         for (pictureIndex = context_ptr->mini_gop_start_index[mini_gop_index]; pictureIndex <= context_ptr->mini_gop_end_index[mini_gop_index]; pictureIndex++) {
             picture_control_set_ptr = (PictureParentControlSet*)encode_context_ptr->pre_assignment_buffer[pictureIndex]->object_ptr;
             sequence_control_set_ptr = (SequenceControlSet*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
-            picture_control_set_ptr->pred_structure = EB_PRED_RANDOM_ACCESS;
+            picture_control_set_ptr->pred_structure = sequence_control_set_ptr->static_config.pred_structure;
             picture_control_set_ptr->hierarchical_levels = (uint8_t)context_ptr->mini_gop_hierarchical_levels[mini_gop_index];
 
             picture_control_set_ptr->pred_struct_ptr = get_prediction_structure(
@@ -1372,10 +1372,11 @@ void  Av1GenerateRpsInfo(
             picture_control_set_ptr->pred_struct_ptr->pred_type,
             encode_context_ptr->previous_mini_gop_length,
             context_ptr->mini_gop_length[mini_gop_index]);
-    printf("\t\tpred_structure_index %d, ref_list0_count %d, ref_list1_count %d\n",
+    printf("\t\tpred_structure_index %d, ref_list0_count %d, ref_list1_count %d, picture index %d\n",
             picture_control_set_ptr->pred_struct_index,
             predPositionPtr->ref_list0.reference_list_count,
-            predPositionPtr->ref_list1.reference_list_count);
+            predPositionPtr->ref_list1.reference_list_count,
+            pictureIndex);
 
     //RPS for Flat GOP
     if (picture_control_set_ptr->hierarchical_levels == 0)
@@ -2434,7 +2435,11 @@ void  Av1GenerateRpsInfo(
             //mini GOP toggling since last Key Frame.
             //a regular I keeps the toggling process and does not reset the toggle.  K-0-1-0-1-0-K-0-1-0-1-K-0-1.....
             //whoever needs a miniGOP Level toggling, this is the time
-            if (pictureIndex == context_ptr->mini_gop_end_index[0] && !picture_control_set_ptr->is_overlay) {
+            //Jing: TODO
+            //For low_delay_P or low_delay_B case, need a little change here
+            if (picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_RANDOM_ACCESS && pictureIndex == context_ptr->mini_gop_end_index[0] && !picture_control_set_ptr->is_overlay ||
+                    picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_LOW_DELAY_P && pictureIndex == picture_control_set_ptr->pred_struct_ptr->pred_struct_period - 1) {
+                printf("\n---------------toggleing...-----------------\n");
                 //Layer0 toggle 0->1->2
                 context_ptr->lay0_toggle = circ_inc(3, 1, context_ptr->lay0_toggle);
                 //Layer1 toggle 3->4
@@ -3000,7 +3005,7 @@ void* picture_decision_kernel(void *input_ptr)
                 picture_control_set_ptr->picture_number = (encode_context_ptr->current_input_poc + 1) /*& ((1 << sequence_control_set_ptr->bits_for_picture_order_count)-1)*/;
                 encode_context_ptr->current_input_poc = picture_control_set_ptr->picture_number;
 
-                picture_control_set_ptr->pred_structure = EB_PRED_RANDOM_ACCESS;
+                picture_control_set_ptr->pred_structure = sequence_control_set_ptr->static_config.pred_structure;
 
                 picture_control_set_ptr->hierarchical_layers_diff = 0;
 
@@ -3345,11 +3350,19 @@ void* picture_decision_kernel(void *input_ptr)
                                     if (!(*fgn_random_seed_ptr))     // Random seed should not be zero
                                         *fgn_random_seed_ptr += 7391;
                                 }
+
+                                uint8_t pic_index = 0;
+                                if (picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_RANDOM_ACCESS) {
+                                    pic_index = pictureIndex - context_ptr->mini_gop_start_index[mini_gop_index];
+                                } else {
+                                    pic_index = picture_control_set_ptr->picture_number == 0 ? 0 :
+                                        (picture_control_set_ptr->picture_number - 1)% picture_control_set_ptr->pred_struct_ptr->pred_struct_period;
+                                }
                                 Av1GenerateRpsInfo(
                                     picture_control_set_ptr,
                                     encode_context_ptr,
                                     context_ptr,
-                                    pictureIndex - context_ptr->mini_gop_start_index[mini_gop_index],
+                                    pic_index,
                                     mini_gop_index);
                                 picture_control_set_ptr->allow_comp_inter_inter = 0;
                                 picture_control_set_ptr->is_skip_mode_allowed = 0;
@@ -3558,6 +3571,7 @@ void* picture_decision_kernel(void *input_ptr)
                             picture_control_set_ptr = cur_picture_control_set_ptr;
 
                             if( sequence_control_set_ptr->enable_altrefs == EB_TRUE &&
+                                    sequence_control_set_ptr->static_config.pred_structure == EB_PRED_RANDOM_ACCESS &&
                                 ( (picture_control_set_ptr->idr_flag && picture_control_set_ptr->sc_content_detected == 0) ||
                                   (picture_control_set_ptr->slice_type != I_SLICE && picture_control_set_ptr->temporal_layer_index == 0) ) ) {
                                 int altref_nframes = picture_control_set_ptr->sequence_control_set_ptr->static_config.altref_nframes;

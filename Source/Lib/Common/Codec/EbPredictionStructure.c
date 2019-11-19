@@ -946,7 +946,7 @@ static EbErrorType PredictionStructureCtor(
             leadingPicCount +
             initPicCount +
             steadyStatePicCount;
-        if (numberOfReferences ==4 && (predictionStructureConfigPtr->entry_count == 8 || predictionStructureConfigPtr->entry_count == 16))
+        if (numberOfReferences ==4 && predType == 0 && (predictionStructureConfigPtr->entry_count == 80 || predictionStructureConfigPtr->entry_count == 16))
         {
             printf("predType %d, numberOfReferences %d, entry count %d, pred entry count %d, leadingPicCount %d, initPicCount %d, steadyStatePicCount %d\n",
                     predType, numberOfReferences, predictionStructureConfigPtr->entry_count,
@@ -1433,7 +1433,9 @@ static EbErrorType PredictionStructureCtor(
             EB_FALSE;
     }
 
-    if (((predictionStructureConfigPtr->entry_count == 8 || (predictionStructureConfigPtr->entry_count == 16 && predType == 2)) && numberOfReferences == 4)) {
+    if ((predictionStructureConfigPtr->entry_count == 80 || predictionStructureConfigPtr->entry_count == 16)
+                && predType == 0
+                && numberOfReferences == 4) {
            for (int i=0; i<predictionStructurePtr->pred_struct_entry_count;i++) {
                printf("pred_struct_position %d, pointer is %p, pred_struct_entry_ptr_array is %p\n",
                        i, predictionStructurePtr->pred_struct_entry_ptr_array[i],
