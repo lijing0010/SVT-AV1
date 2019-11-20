@@ -126,30 +126,30 @@ static PredictionStructureConfigEntry two_level_hierarchical_pred_struct[] = {
  *  0   3 2 4   1   7 6 8   5   1 1 1   9
  *                              1 0 2
  ************************************************/
-static PredictionStructureConfigEntry three_level_hierarchical_pred_struct[] = {
+PredictionStructureConfigEntry three_level_hierarchical_pred_struct[] = {
     {
         0,                  // GOP Index 0 - Temporal Layer
         0,                  // GOP Index 0 - Decode Order
-        {4, 8, 12, 16},     // GOP Index 0 - Ref List 0
-        {4, 8, 12, 16}      // GOP Index 0 - Ref List 1
+        {4, 8, 0, 0},     // GOP Index 0 - Ref List 0
+        {4, 8, 0, 0}       // GOP Index 0 - Ref List 1
     },
     {
         2,                  // GOP Index 1 - Temporal Layer
         2,                  // GOP Index 1 - Decode Order
-        { 1,  3, 5, 0},     // GOP Index 1 - Ref List 0
-        {-1, -3, 1, 3}      // GOP Index 1 - Ref List 1
+        { 1,  3, 5, 4},     // GOP Index 1 - Ref List 0
+        {-1, -3, 0, 0}      // GOP Index 1 - Ref List 1
     },
     {
         1,                  // GOP Index 2 - Temporal Layer
         1,                  // GOP Index 2 - Decode Order
-        { 2, 6, 10, 14},    // GOP Index 2 - Ref List 0
-        {-2, 2,  6, 10}     // GOP Index 2 - Ref List 1
+        { 2, 4, 6, 0},    // GOP Index 2 - Ref List 0
+        {-2, 0, 0, 0}     // GOP Index 2 - Ref List 1
     },
     {
         2,                  // GOP Index 3 - Temporal Layer
         3,                  // GOP Index 3 - Decode Order
-        { 1, 3, 5, 7},      // GOP Index 3 - Ref List 0
-        {-1, 1, 3, 5}       // GOP Index 3 - Ref List 1
+        { 1, 3, 2, 5},      // GOP Index 3 - Ref List 0
+        {-1, 0, 0, 0}       // GOP Index 3 - Ref List 1
     }
 };
 
@@ -946,7 +946,7 @@ static EbErrorType PredictionStructureCtor(
             leadingPicCount +
             initPicCount +
             steadyStatePicCount;
-        if (numberOfReferences ==4 && predType == 0 && (predictionStructureConfigPtr->entry_count == 80 || predictionStructureConfigPtr->entry_count == 16))
+        if (numberOfReferences ==4 && predType == 2 && (predictionStructureConfigPtr->entry_count == 4 || predictionStructureConfigPtr->entry_count == 160))
         {
             printf("predType %d, numberOfReferences %d, entry count %d, pred entry count %d, leadingPicCount %d, initPicCount %d, steadyStatePicCount %d\n",
                     predType, numberOfReferences, predictionStructureConfigPtr->entry_count,
@@ -1433,8 +1433,8 @@ static EbErrorType PredictionStructureCtor(
             EB_FALSE;
     }
 
-    if ((predictionStructureConfigPtr->entry_count == 80 || predictionStructureConfigPtr->entry_count == 16)
-                && predType == 0
+    if ((predictionStructureConfigPtr->entry_count == 4 || predictionStructureConfigPtr->entry_count == 160)
+                && predType == 2
                 && numberOfReferences == 4) {
            for (int i=0; i<predictionStructurePtr->pred_struct_entry_count;i++) {
                printf("pred_struct_position %d, pointer is %p, pred_struct_entry_ptr_array is %p\n",
@@ -1787,6 +1787,13 @@ EbErrorType prediction_structure_group_ctor(
     // Jing: TODO
     // Check for >= ENC_M0 for single pass case, crash?
     if (enc_mode > ENC_M0) {
+        for (int gop_i = 1; gop_i < 4; ++gop_i) {
+            for (int i = 1; i < 4; ++i) {
+                three_level_hierarchical_pred_struct[gop_i].ref_list0[i] = 0;
+                three_level_hierarchical_pred_struct[gop_i].ref_list1[i] = 0;
+            }
+        }
+
         for (int gop_i = 1; gop_i < 8; ++gop_i) {
             for (int i = 1; i < 4; ++i) {
                 four_level_hierarchical_pred_struct[gop_i].ref_list0[i] = 0;
