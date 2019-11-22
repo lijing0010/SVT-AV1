@@ -72,12 +72,12 @@
   *  0 1 2 3 4 5 6 7 8
   *
   ************************************************/
-static PredictionStructureConfigEntry flat_pred_struct[] = {
+PredictionStructureConfigEntry flat_pred_struct[] = {
     {
         0,               // GOP Index 0 - Temporal Layer
         0,               // GOP Index 0 - Decode Order
-        {1, 2, 3, 4},    // GOP Index 0 - Ref List 0
-        {1, 2, 3, 4}     // GOP Index 0 - Ref List 1
+        {1, 2, 0, 0},    // GOP Index 0 - Ref List 0
+        {1, 2, 0, 0}     // GOP Index 0 - Ref List 1
     }
 };
 
