@@ -541,62 +541,59 @@ void* picture_manager_kernel(void *input_ptr)
                     // Check RefList0 Availability
                     uint8_t refIdx;
                     for (refIdx = 0; refIdx < entryPictureControlSetPtr->ref_list0_count; ++refIdx) {
-                        //if (entryPictureControlSetPtr->ref_list0_count)  // NM: to double check.
-                        {
-                            // hardcode the reference for the overlay frame
-                            if (entryPictureControlSetPtr->is_overlay) {
-                                referenceQueueIndex = (uint32_t)CIRCULAR_ADD(
+                        // hardcode the reference for the overlay frame
+                        if (entryPictureControlSetPtr->is_overlay) {
+                            referenceQueueIndex = (uint32_t)CIRCULAR_ADD(
                                     ((int32_t)inputEntryPtr->reference_entry_index),
                                     REFERENCE_QUEUE_MAX_DEPTH);
 
-                                referenceEntryPtr = encode_context_ptr->reference_picture_queue[referenceQueueIndex];
+                            referenceEntryPtr = encode_context_ptr->reference_picture_queue[referenceQueueIndex];
 
-                                CHECK_REPORT_ERROR(
+                            CHECK_REPORT_ERROR(
                                     (referenceEntryPtr),
                                     encode_context_ptr->app_callback_ptr,
                                     EB_ENC_PM_ERROR10);
 
-                                ref_poc = POC_CIRCULAR_ADD(
+                            ref_poc = POC_CIRCULAR_ADD(
                                     entryPictureControlSetPtr->picture_number,
                                     0);
-                            }
-                            else {
-                                referenceQueueIndex = (uint32_t)CIRCULAR_ADD(
+                        }
+                        else {
+                            referenceQueueIndex = (uint32_t)CIRCULAR_ADD(
                                     ((int32_t)inputEntryPtr->reference_entry_index) -     // Base
                                     inputEntryPtr->list0_ptr->reference_list[refIdx],     // Offset
                                     REFERENCE_QUEUE_MAX_DEPTH);                         // Max
 
-                                referenceEntryPtr = encode_context_ptr->reference_picture_queue[referenceQueueIndex];
+                            referenceEntryPtr = encode_context_ptr->reference_picture_queue[referenceQueueIndex];
 
-                                CHECK_REPORT_ERROR(
+                            CHECK_REPORT_ERROR(
                                     (referenceEntryPtr),
                                     encode_context_ptr->app_callback_ptr,
                                     EB_ENC_PM_ERROR10);
 
-                                ref_poc = POC_CIRCULAR_ADD(
+                            ref_poc = POC_CIRCULAR_ADD(
                                     entryPictureControlSetPtr->picture_number,
                                     -inputEntryPtr->list0_ptr->reference_list[refIdx]/*,
-                                    entrySequenceControlSetPtr->bits_for_picture_order_count*/);
-                            }
-                                // Increment the current_input_poc is the case of POC rollover
-                            current_input_poc = encode_context_ptr->current_input_poc;
-                            //current_input_poc += ((current_input_poc < ref_poc) && (inputEntryPtr->list0_ptr->reference_list[refIdx] > 0)) ?
-                            //    (1 << entrySequenceControlSetPtr->bits_for_picture_order_count) :
-                            //    0;
-
-                            availabilityFlag =
-                                (availabilityFlag == EB_FALSE) ? EB_FALSE :   // Don't update if already False
-                                (ref_poc > current_input_poc) ? EB_FALSE :   // The Reference has not been received as an Input Picture yet, then its availability is false
-                                (!encode_context_ptr->terminating_sequence_flag_received &&
-                                (sequence_control_set_ptr->static_config.rate_control_mode && entryPictureControlSetPtr->slice_type != I_SLICE
-                                    && entryPictureControlSetPtr->temporal_layer_index == 0 && !referenceEntryPtr->feedback_arrived)) ? EB_FALSE :
-                                    (entryPictureControlSetPtr->frame_end_cdf_update_mode && !referenceEntryPtr->frame_context_updated) ? EB_FALSE :
-                                (referenceEntryPtr->reference_available) ? EB_TRUE :   // The Reference has been completed
-                                EB_FALSE;     // The Reference has not been completed
+                                                                                       entrySequenceControlSetPtr->bits_for_picture_order_count*/);
                         }
+                        // Increment the current_input_poc is the case of POC rollover
+                        current_input_poc = encode_context_ptr->current_input_poc;
+                        //current_input_poc += ((current_input_poc < ref_poc) && (inputEntryPtr->list0_ptr->reference_list[refIdx] > 0)) ?
+                        //    (1 << entrySequenceControlSetPtr->bits_for_picture_order_count) :
+                        //    0;
+
+                        availabilityFlag =
+                            (availabilityFlag == EB_FALSE) ? EB_FALSE :   // Don't update if already False
+                            (ref_poc > current_input_poc) ? EB_FALSE :   // The Reference has not been received as an Input Picture yet, then its availability is false
+                            (!encode_context_ptr->terminating_sequence_flag_received &&
+                             (sequence_control_set_ptr->static_config.rate_control_mode && entryPictureControlSetPtr->slice_type != I_SLICE
+                              && entryPictureControlSetPtr->temporal_layer_index == 0 && !referenceEntryPtr->feedback_arrived)) ? EB_FALSE :
+                            (entryPictureControlSetPtr->frame_end_cdf_update_mode && !referenceEntryPtr->frame_context_updated) ? EB_FALSE :
+                            (referenceEntryPtr->reference_available) ? EB_TRUE :   // The Reference has been completed
+                            EB_FALSE;     // The Reference has not been completed
                     }
                     // Check RefList1 Availability
-                    if (entryPictureControlSetPtr->slice_type == B_SLICE) {
+                    if (entryPictureControlSetPtr->slice_type == B_SLICE && sequence_control_set_ptr->static_config.pred_structure == EB_PRED_RANDOM_ACCESS) {
                         uint8_t refIdx;
                         for (refIdx = 0; refIdx < entryPictureControlSetPtr->ref_list1_count; ++refIdx) {
                             // if (entryPictureControlSetPtr->ref_list1_count) // NM: To double check

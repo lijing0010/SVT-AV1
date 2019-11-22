@@ -94,18 +94,18 @@ static PredictionStructureConfigEntry flat_pred_struct[] = {
  * Coding Order:
  *  0 2 1 4 3 6 5 8 7
  ************************************************/
-static PredictionStructureConfigEntry two_level_hierarchical_pred_struct[] = {
+PredictionStructureConfigEntry two_level_hierarchical_pred_struct[] = {
     {
         0,                // GOP Index 0 - Temporal Layer
         0,                // GOP Index 0 - Decode Order
-        {2, 4, 6, 8},     // GOP Index 0 - Ref List 0
-        {2, 4, 6, 8}      // GOP Index 0 - Ref List 1
+        {2, 4, 0, 0},     // GOP Index 0 - Ref List 0
+        {2, 4, 0, 0}      // GOP Index 0 - Ref List 1
     },
     {
         1,                // GOP Index 1 - Temporal Layer
         1,                // GOP Index 1 - Decode Order
-        { 1, 3, 5, 7},    // GOP Index 1 - Ref List 0
-        {-1, 1, 3, 5}     // GOP Index 1 - Ref List 1
+        { 1, 3, 0, 0},    // GOP Index 1 - Ref List 0
+        {-1, 1, 0, 0}     // GOP Index 1 - Ref List 1
     }
 };
 
@@ -946,7 +946,7 @@ static EbErrorType PredictionStructureCtor(
             leadingPicCount +
             initPicCount +
             steadyStatePicCount;
-        if (numberOfReferences ==4 && predType == 2 && (predictionStructureConfigPtr->entry_count == 4 || predictionStructureConfigPtr->entry_count == 160))
+        if (numberOfReferences ==4 && (predictionStructureConfigPtr->entry_count == 4 || predictionStructureConfigPtr->entry_count == 160))
         {
             printf("predType %d, numberOfReferences %d, entry count %d, pred entry count %d, leadingPicCount %d, initPicCount %d, steadyStatePicCount %d\n",
                     predType, numberOfReferences, predictionStructureConfigPtr->entry_count,
@@ -1052,6 +1052,7 @@ static EbErrorType PredictionStructureCtor(
                 break;
 
             case EB_PRED_LOW_DELAY_B:
+                //Jing:TODO List1 should <=3
 
                 // Copy List 0 => List 1
 
@@ -1434,7 +1435,6 @@ static EbErrorType PredictionStructureCtor(
     }
 
     if ((predictionStructureConfigPtr->entry_count == 4 || predictionStructureConfigPtr->entry_count == 160)
-                && predType == 2
                 && numberOfReferences == 4) {
            for (int i=0; i<predictionStructurePtr->pred_struct_entry_count;i++) {
                printf("pred_struct_position %d, pointer is %p, pred_struct_entry_ptr_array is %p\n",
