@@ -1807,6 +1807,9 @@ EbErrorType prediction_structure_group_ctor(
                 five_level_hierarchical_pred_struct[gop_i].ref_list1[i] = 0;
             }
         }
+    } else {
+        //Jing:TODO
+        //For low delay B case, if ref_list0_count == 4, need to cut it to 3
     }
 
     // Count the number of Prediction Structures

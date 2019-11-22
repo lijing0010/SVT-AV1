@@ -1587,6 +1587,28 @@ void  Av1GenerateRpsInfo(
             //P frames
             av1Rps->ref_dpb_index[4] = av1Rps->ref_dpb_index[5] = av1Rps->ref_dpb_index[6] = av1Rps->ref_dpb_index[0];
             av1Rps->ref_poc_array[4] = av1Rps->ref_poc_array[5] = av1Rps->ref_poc_array[6] = av1Rps->ref_poc_array[0];
+            printf("set ref_dpb_index to %d,%d,%d\n",
+                    av1Rps->ref_dpb_index[4],
+                    av1Rps->ref_dpb_index[5],
+                    av1Rps->ref_dpb_index[6]);
+
+            frm_hdr->show_frame = EB_TRUE;
+            picture_control_set_ptr->has_show_existing = EB_FALSE;
+        } else if (picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_LOW_DELAY_B) {
+            av1Rps->ref_dpb_index[4] = av1Rps->ref_dpb_index[0];
+            av1Rps->ref_dpb_index[5] = av1Rps->ref_dpb_index[1];
+            av1Rps->ref_dpb_index[6] = av1Rps->ref_dpb_index[2];
+            av1Rps->ref_poc_array[4] = av1Rps->ref_poc_array[0];
+            av1Rps->ref_poc_array[5] = av1Rps->ref_poc_array[1];
+            av1Rps->ref_poc_array[6] = av1Rps->ref_poc_array[2];
+            printf("set ref_dpb_index to %d,%d,%d, POC %d, %d, %d\n",
+                    av1Rps->ref_dpb_index[4],
+                    av1Rps->ref_dpb_index[5],
+                    av1Rps->ref_dpb_index[6],
+                    av1Rps->ref_poc_array[4],
+                    av1Rps->ref_poc_array[5],
+                    av1Rps->ref_poc_array[6]
+                    );
 
             frm_hdr->show_frame = EB_TRUE;
             picture_control_set_ptr->has_show_existing = EB_FALSE;
@@ -1623,7 +1645,7 @@ void  Av1GenerateRpsInfo(
         }
 
         if ((pictureIndex == (context_ptr->mini_gop_end_index[mini_gop_index] % 8) && !picture_control_set_ptr->is_overlay && sequence_control_set_ptr->static_config.pred_structure == EB_PRED_RANDOM_ACCESS) ||
-                (sequence_control_set_ptr->static_config.pred_structure == EB_PRED_LOW_DELAY_P && pictureIndex == picture_control_set_ptr->pred_struct_ptr->pred_struct_period - 1))
+                ((sequence_control_set_ptr->static_config.pred_structure == EB_PRED_LOW_DELAY_P || sequence_control_set_ptr->static_config.pred_structure == EB_PRED_LOW_DELAY_B)&& pictureIndex == picture_control_set_ptr->pred_struct_ptr->pred_struct_period - 1))
         {
             printf("\n\ntoggling...\n");
             //Layer0 toggle 0->1->2
@@ -1951,6 +1973,24 @@ void  Av1GenerateRpsInfo(
 
             frm_hdr->show_frame = EB_TRUE;
             picture_control_set_ptr->has_show_existing = EB_FALSE;
+        } else if (picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_LOW_DELAY_B) {
+            av1Rps->ref_dpb_index[4] = av1Rps->ref_dpb_index[0];
+            av1Rps->ref_dpb_index[5] = av1Rps->ref_dpb_index[1];
+            av1Rps->ref_dpb_index[6] = av1Rps->ref_dpb_index[2];
+            av1Rps->ref_poc_array[4] = av1Rps->ref_poc_array[0];
+            av1Rps->ref_poc_array[5] = av1Rps->ref_poc_array[1];
+            av1Rps->ref_poc_array[6] = av1Rps->ref_poc_array[2];
+            printf("set ref_dpb_index to %d,%d,%d, POC %d, %d, %d\n",
+                    av1Rps->ref_dpb_index[4],
+                    av1Rps->ref_dpb_index[5],
+                    av1Rps->ref_dpb_index[6],
+                    av1Rps->ref_poc_array[4],
+                    av1Rps->ref_poc_array[5],
+                    av1Rps->ref_poc_array[6]
+                    );
+
+            frm_hdr->show_frame = EB_TRUE;
+            picture_control_set_ptr->has_show_existing = EB_FALSE;
         }
         else if (picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_RANDOM_ACCESS)
         {
@@ -2039,7 +2079,7 @@ void  Av1GenerateRpsInfo(
         //whoever needs a miniGOP Level toggling, this is the time
         
         if ((pictureIndex == (context_ptr->mini_gop_end_index[mini_gop_index] % 8) && !picture_control_set_ptr->is_overlay && sequence_control_set_ptr->static_config.pred_structure == EB_PRED_RANDOM_ACCESS) ||
-                (sequence_control_set_ptr->static_config.pred_structure == EB_PRED_LOW_DELAY_P && pictureIndex == picture_control_set_ptr->pred_struct_ptr->pred_struct_period - 1))
+                ((sequence_control_set_ptr->static_config.pred_structure == EB_PRED_LOW_DELAY_P || sequence_control_set_ptr->static_config.pred_structure == EB_PRED_LOW_DELAY_B) && pictureIndex == picture_control_set_ptr->pred_struct_ptr->pred_struct_period - 1))
         {
             printf("\n\ntoggling...\n");
             //Layer0 toggle 0->1->2
@@ -2611,6 +2651,24 @@ void  Av1GenerateRpsInfo(
                 av1Rps->ref_poc_array[4] = av1Rps->ref_poc_array[5] = av1Rps->ref_poc_array[6] = av1Rps->ref_poc_array[0];
                 frm_hdr->show_frame = EB_TRUE;
                 picture_control_set_ptr->has_show_existing = EB_FALSE;
+            } else if (picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_LOW_DELAY_B) {
+                av1Rps->ref_dpb_index[4] = av1Rps->ref_dpb_index[0];
+                av1Rps->ref_dpb_index[5] = av1Rps->ref_dpb_index[1];
+                av1Rps->ref_dpb_index[6] = av1Rps->ref_dpb_index[2];
+                av1Rps->ref_poc_array[4] = av1Rps->ref_poc_array[0];
+                av1Rps->ref_poc_array[5] = av1Rps->ref_poc_array[1];
+                av1Rps->ref_poc_array[6] = av1Rps->ref_poc_array[2];
+                printf("set ref_dpb_index to %d,%d,%d, POC %d, %d, %d\n",
+                        av1Rps->ref_dpb_index[4],
+                        av1Rps->ref_dpb_index[5],
+                        av1Rps->ref_dpb_index[6],
+                        av1Rps->ref_poc_array[4],
+                        av1Rps->ref_poc_array[5],
+                        av1Rps->ref_poc_array[6]
+                      );
+
+                frm_hdr->show_frame = EB_TRUE;
+                picture_control_set_ptr->has_show_existing = EB_FALSE;
             }
             else if (picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_RANDOM_ACCESS)
             {
@@ -2685,7 +2743,7 @@ void  Av1GenerateRpsInfo(
             //Jing: TODO
             //For low_delay_P or low_delay_B case, need a little change here
             if (picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_RANDOM_ACCESS && pictureIndex == context_ptr->mini_gop_end_index[0] && !picture_control_set_ptr->is_overlay ||
-                    picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_LOW_DELAY_P && pictureIndex == picture_control_set_ptr->pred_struct_ptr->pred_struct_period - 1) {
+                    ((sequence_control_set_ptr->static_config.pred_structure == EB_PRED_LOW_DELAY_P || sequence_control_set_ptr->static_config.pred_structure == EB_PRED_LOW_DELAY_B) && pictureIndex == picture_control_set_ptr->pred_struct_ptr->pred_struct_period - 1)) {
                 printf("\n---------------toggleing...-----------------\n");
                 //Layer0 toggle 0->1->2
                 context_ptr->lay0_toggle = circ_inc(3, 1, context_ptr->lay0_toggle);
