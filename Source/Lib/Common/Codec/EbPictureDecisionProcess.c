@@ -1337,7 +1337,7 @@ void set_all_ref_frame_type(SequenceControlSet *sequence_control_set_ptr, Pictur
         }
     }
 
-static validate_rps(PredictionStructureEntry *predPositionPtr, Av1RpsNode *av1Rps)
+static amend_rps(PredictionStructureEntry *predPositionPtr, Av1RpsNode *av1Rps)
 {
     if (predPositionPtr->ref_list0.reference_list_count < 4) {
         av1Rps->ref_dpb_index[GOLD] = av1Rps->ref_dpb_index[LAST];
@@ -1360,6 +1360,14 @@ static validate_rps(PredictionStructureEntry *predPositionPtr, Av1RpsNode *av1Rp
         av1Rps->ref_dpb_index[ALT] = av1Rps->ref_dpb_index[BWD];
         av1Rps->ref_poc_array[ALT] = av1Rps->ref_poc_array[BWD];
     }
+
+    int tmp = av1Rps->ref_dpb_index[ALT];
+    av1Rps->ref_dpb_index[ALT] = av1Rps->ref_dpb_index[ALT2];
+    av1Rps->ref_dpb_index[ALT2] = tmp;
+
+    uint64_t tmp1 = av1Rps->ref_poc_array[ALT];
+    av1Rps->ref_poc_array[ALT] = av1Rps->ref_poc_array[ALT2];
+    av1Rps->ref_poc_array[ALT2] = tmp1;
 }
 
 /*************************************************
@@ -1454,8 +1462,21 @@ void  Av1GenerateRpsInfo(
         av1Rps->ref_poc_array[ALT] = get_ref_poc(context_ptr, picture_control_set_ptr->picture_number, two_level_hierarchical_pred_struct[gop_i].ref_list1[1]);
         av1Rps->ref_poc_array[ALT2] = av1Rps->ref_poc_array[BWD];
 
+        amend_rps(predPositionPtr, av1Rps);
         av1Rps->refresh_frame_mask = 1 << context_ptr->lay0_toggle;
 
+        if (picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_LOW_DELAY_P || picture_control_set_ptr->is_overlay) {
+            //P frames
+            av1Rps->ref_dpb_index[4] = av1Rps->ref_dpb_index[5] = av1Rps->ref_dpb_index[6] = av1Rps->ref_dpb_index[0];
+            av1Rps->ref_poc_array[4] = av1Rps->ref_poc_array[5] = av1Rps->ref_poc_array[6] = av1Rps->ref_poc_array[0];
+        } else if (picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_LOW_DELAY_B) {
+            av1Rps->ref_dpb_index[4] = av1Rps->ref_dpb_index[0];
+            av1Rps->ref_dpb_index[5] = av1Rps->ref_dpb_index[1];
+            av1Rps->ref_dpb_index[6] = av1Rps->ref_dpb_index[2];
+            av1Rps->ref_poc_array[4] = av1Rps->ref_poc_array[0];
+            av1Rps->ref_poc_array[5] = av1Rps->ref_poc_array[1];
+            av1Rps->ref_poc_array[6] = av1Rps->ref_poc_array[2];
+        }
         frm_hdr->show_frame = EB_TRUE;
         picture_control_set_ptr->has_show_existing = EB_FALSE;
         context_ptr->lay0_toggle = circ_inc(3, 1, context_ptr->lay0_toggle);
@@ -1534,17 +1555,8 @@ void  Av1GenerateRpsInfo(
             break;
         }
 
-        validate_rps(predPositionPtr, av1Rps);
+        amend_rps(predPositionPtr, av1Rps);
 
-        {
-            int tmp = av1Rps->ref_dpb_index[ALT];
-            av1Rps->ref_dpb_index[ALT] = av1Rps->ref_dpb_index[ALT2];
-            av1Rps->ref_dpb_index[ALT2] = tmp;
-
-            uint64_t tmp1 = av1Rps->ref_poc_array[ALT];
-            av1Rps->ref_poc_array[ALT] = av1Rps->ref_poc_array[ALT2];
-            av1Rps->ref_poc_array[ALT2] = tmp1;
-        }
 
         if (picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_LOW_DELAY_P || picture_control_set_ptr->is_overlay) {
             //P frames
@@ -1763,17 +1775,7 @@ void  Av1GenerateRpsInfo(
             break;
         }
 
-        validate_rps(predPositionPtr, av1Rps);
-
-        {
-            int tmp = av1Rps->ref_dpb_index[ALT];
-            av1Rps->ref_dpb_index[ALT] = av1Rps->ref_dpb_index[ALT2];
-            av1Rps->ref_dpb_index[ALT2] = tmp;
-
-            uint64_t tmp1 = av1Rps->ref_poc_array[ALT];
-            av1Rps->ref_poc_array[ALT] = av1Rps->ref_poc_array[ALT2];
-            av1Rps->ref_poc_array[ALT2] = tmp1;
-        }
+        amend_rps(predPositionPtr, av1Rps);
 
         if (picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_LOW_DELAY_P || picture_control_set_ptr->is_overlay) {
             //P frames
@@ -2131,30 +2133,7 @@ void  Av1GenerateRpsInfo(
             break;
         }
 
-        // Jing: Check for reference number, remove invalid dependancy
-        if (predPositionPtr->ref_list0.reference_list_count < 4) {
-            av1Rps->ref_dpb_index[GOLD] = av1Rps->ref_dpb_index[LAST];
-            av1Rps->ref_poc_array[GOLD] = av1Rps->ref_poc_array[LAST];
-        }
-        if (predPositionPtr->ref_list0.reference_list_count < 3) {
-            av1Rps->ref_dpb_index[LAST3] = av1Rps->ref_dpb_index[LAST];
-            av1Rps->ref_poc_array[LAST3] = av1Rps->ref_poc_array[LAST];
-        }
-        if (predPositionPtr->ref_list0.reference_list_count < 2) {
-            av1Rps->ref_dpb_index[LAST2] = av1Rps->ref_dpb_index[LAST];
-            av1Rps->ref_poc_array[LAST2] = av1Rps->ref_poc_array[LAST];
-        }
-        ////////////////
-
-        {
-            int tmp = av1Rps->ref_dpb_index[ALT];
-            av1Rps->ref_dpb_index[ALT] = av1Rps->ref_dpb_index[ALT2];
-            av1Rps->ref_dpb_index[ALT2] = tmp;
-
-            uint64_t tmp1 = av1Rps->ref_poc_array[ALT];
-            av1Rps->ref_poc_array[ALT] = av1Rps->ref_poc_array[ALT2];
-            av1Rps->ref_poc_array[ALT2] = tmp1;
-        }
+        amend_rps(predPositionPtr, av1Rps);
 
         // update RPS for the overlay frame.
         if (picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_LOW_DELAY_P || picture_control_set_ptr->is_overlay)
@@ -2776,28 +2755,7 @@ void  Av1GenerateRpsInfo(
                     break;
             }
 
-            // Jing: Check for reference number, remove invalid dependancy
-            if (predPositionPtr->ref_list0.reference_list_count < 4) {
-                av1Rps->ref_dpb_index[GOLD] = av1Rps->ref_dpb_index[LAST];
-                av1Rps->ref_poc_array[GOLD] = av1Rps->ref_poc_array[LAST];
-            }
-            if (predPositionPtr->ref_list0.reference_list_count < 3) {
-                av1Rps->ref_dpb_index[LAST3] = av1Rps->ref_dpb_index[LAST];
-                av1Rps->ref_poc_array[LAST3] = av1Rps->ref_poc_array[LAST];
-            }
-            if (predPositionPtr->ref_list0.reference_list_count < 2) {
-                av1Rps->ref_dpb_index[LAST2] = av1Rps->ref_dpb_index[LAST];
-                av1Rps->ref_poc_array[LAST2] = av1Rps->ref_poc_array[LAST];
-            }
-
-            //Only for layer0 in five layer case
-            if (predPositionPtr->ref_list1.reference_list_count < 2) {
-                av1Rps->ref_dpb_index[ALT] = av1Rps->ref_dpb_index[BWD];
-                av1Rps->ref_dpb_index[ALT2] = av1Rps->ref_dpb_index[BWD];
-                av1Rps->ref_poc_array[ALT] = av1Rps->ref_poc_array[BWD];
-                av1Rps->ref_poc_array[ALT2] = av1Rps->ref_poc_array[BWD];
-            }
-            ////////////////
+            amend_rps(predPositionPtr, av1Rps);
 
             printf("\t\tfive_level_hierarchical_pred_struct, L0 [%d, %d, %d, %d], L1 [%d, %d, %d, %d]\n",
                     five_level_hierarchical_pred_struct[gop_i].ref_list0[0],
@@ -2825,16 +2783,6 @@ void  Av1GenerateRpsInfo(
                     av1Rps->ref_poc_array[6]);
             printf("\t\trefresh_frame_mask is 0x%x\n", av1Rps->refresh_frame_mask);
 
-
-            {
-                int tmp = av1Rps->ref_dpb_index[ALT];
-                av1Rps->ref_dpb_index[ALT] = av1Rps->ref_dpb_index[ALT2];
-                av1Rps->ref_dpb_index[ALT2] = tmp;
-
-                uint64_t tmp1 = av1Rps->ref_poc_array[ALT];
-                av1Rps->ref_poc_array[ALT] = av1Rps->ref_poc_array[ALT2];
-                av1Rps->ref_poc_array[ALT2] = tmp1;
-            }
 
             // update RPS for the overlay frame.
             if (picture_control_set_ptr->pred_struct_ptr->pred_type == EB_PRED_LOW_DELAY_P || picture_control_set_ptr->is_overlay)
@@ -4298,10 +4246,17 @@ void* picture_decision_kernel(void *input_ptr)
                             }
                             picture_control_set_ptr->picture_number_alt = encode_context_ptr->picture_number_alt++;
 
-                            printf("2nd loop over minigop, ");
+                            printf("2nd loop over minigop, idr_count %d, gop len %d, pred_struct period %d, overlay %d\n ",
+                                    context_ptr->mini_gop_idr_count[mini_gop_index],
+                                    context_ptr->mini_gop_length[mini_gop_index],
+                                    picture_control_set_ptr->pred_struct_ptr->pred_struct_period,
+                                    picture_control_set_ptr->is_overlay
+                                    );
                             // Set the Decode Order
                             if ((context_ptr->mini_gop_idr_count[mini_gop_index] == 0) &&
-                                (context_ptr->mini_gop_length[mini_gop_index] == picture_control_set_ptr->pred_struct_ptr->pred_struct_period) && !picture_control_set_ptr->is_overlay){
+                                (context_ptr->mini_gop_length[mini_gop_index] == picture_control_set_ptr->pred_struct_ptr->pred_struct_period) &&
+                                (sequence_control_set_ptr->static_config.pred_structure == EB_PRED_RANDOM_ACCESS) &&
+                                !picture_control_set_ptr->is_overlay){
                                 picture_control_set_ptr->decode_order = encode_context_ptr->decode_base_number + picture_control_set_ptr->pred_struct_ptr->pred_struct_entry_ptr_array[picture_control_set_ptr->pred_struct_index]->decode_order;
                                 printf("set POC %d, decode order %d, encode_context_ptr->decode_base_number is %d\n",
                                         picture_control_set_ptr->picture_number, picture_control_set_ptr->decode_order,
