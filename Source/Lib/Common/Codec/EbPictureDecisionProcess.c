@@ -3851,19 +3851,59 @@ void* picture_decision_kernel(void *input_ptr)
                                 {
                                 int num_past_pics = altref_nframes / 2;
                                 int num_future_pics = altref_nframes - num_past_pics - 1;
+
+#if NON_KF_INTRA_TF_FIX
+                                int dist_to_next_cra = (sequence_control_set_ptr->intra_period_length + 1) -
+                                    (picture_control_set_ptr->picture_number % (sequence_control_set_ptr->intra_period_length+1)) - 1;
+
+#endif
+
                                 assert(altref_nframes <= ALTREF_MAX_NFRAMES);
+
 
                                 //initilize list
                                 for (int pic_itr = 0; pic_itr < ALTREF_MAX_NFRAMES; pic_itr++)
                                     picture_control_set_ptr->temp_filt_pcs_list[pic_itr] = NULL;
+#if NON_KF_INTRA_TF_FIX
+                                // Jing: Intra CRA case
+                                num_past_pics = MIN(num_past_pics, (int)encode_context_ptr->pre_assignment_buffer_count -1);
+                                int actual_past_pics = num_past_pics;
+                                num_future_pics = MIN(num_future_pics, dist_to_next_cra);
 
+                                // Jing: traling frames, should not use them
+                                // Take miniGop16 for example, if intra-period is set as 19
+                                // B    P    P    I
+                                // 16   17   18   19
+                                // While calculating altref for POC16, should only use 17,18 for future(shall not use 19)
+                                // While calculating altref for POC19, should not use 17,18 for past, which will only refer to 16
+                                // If POC19 is an intra inserted through SCD
+                                // The following calculation for histogram difference should be able to detect it
+                                for (int pic_itr = 0; pic_itr <= num_past_pics; pic_itr++) {
+                                    PictureParentControlSet* pcs_itr = (PictureParentControlSet*)encode_context_ptr->pre_assignment_buffer[pictureIndex - num_past_pics + pic_itr]->object_ptr;
+                                    if (pcs_itr->pred_struct_ptr->pred_type == EB_PRED_LOW_DELAY_P) {
+                                        actual_past_pics--;
+                                    }
+                                }
+                                num_past_pics = actual_past_pics;
+
+                                //get previous+current pictures from the the pre-assign buffer
+                                for (int pic_itr = 0; pic_itr <= actual_past_pics; pic_itr++) {
+                                    PictureParentControlSet* pcs_itr = (PictureParentControlSet*)encode_context_ptr->pre_assignment_buffer[pictureIndex - actual_past_pics + pic_itr]->object_ptr;
+                                    picture_control_set_ptr->temp_filt_pcs_list[pic_itr] = pcs_itr;
+                                }
+
+#else
                                 //get previous+current pictures from the the pre-assign buffer
                                 for (int pic_itr = 0; pic_itr <= num_past_pics; pic_itr++) {
                                     PictureParentControlSet* pcs_itr = (PictureParentControlSet*)encode_context_ptr->pre_assignment_buffer[pictureIndex - num_past_pics + pic_itr]->object_ptr;
                                     picture_control_set_ptr->temp_filt_pcs_list[pic_itr] = pcs_itr;
                                 }
+#endif
+
 #if FIX_ALTREF
+#if !NON_KF_INTRA_TF_FIX
                                 int actual_past_pics = num_past_pics;
+#endif
                                 int actual_future_pics = 0;
                                 int pic_i;
                                 //search reord-queue to get the future pictures
@@ -3871,7 +3911,7 @@ void* picture_decision_kernel(void *input_ptr)
                                     int32_t q_index = QUEUE_GET_NEXT_SPOT(picture_control_set_ptr->pic_decision_reorder_queue_idx, pic_i + 1);
                                     if (encode_context_ptr->picture_decision_reorder_queue[q_index]->parent_pcs_wrapper_ptr != NULL) {
                                         PictureParentControlSet* pcs_itr = (PictureParentControlSet *)encode_context_ptr->picture_decision_reorder_queue[q_index]->parent_pcs_wrapper_ptr->object_ptr;
-                                        picture_control_set_ptr->temp_filt_pcs_list[pic_i + num_past_pics + 1] = pcs_itr;
+                                        picture_control_set_ptr->temp_filt_pcs_list[pic_i + actual_past_pics + 1] = pcs_itr;
                                         actual_future_pics++;
                                     }
                                     else
@@ -3930,7 +3970,11 @@ void* picture_decision_kernel(void *input_ptr)
                                 actual_past_pics = actual_future_pics;
                                 actual_past_pics += (altref_nframes + 1) & 0x1;
 #endif
+#if NON_KF_INTRA_TF_FIX
+                                int index_center = actual_past_pics;
+#else
                                 int index_center = (uint8_t)(picture_control_set_ptr->sequence_control_set_ptr->static_config.altref_nframes / 2);
+#endif
                                 int pic_itr;
                                 int ahd;
 
@@ -3956,7 +4000,7 @@ void* picture_decision_kernel(void *input_ptr)
                                         break;
                                 }
                                 picture_control_set_ptr->future_altref_nframes = pic_itr - index_center;
-                                //printf("\nPOC %d\t PAST %d\t FUTURE %d\n", picture_control_set_ptr->picture_number, picture_control_set_ptr->past_altref_nframes, picture_control_set_ptr->future_altref_nframes);
+                                //printf("\nPOC %ld\t PAST %d\t FUTURE %d\n", picture_control_set_ptr->picture_number, picture_control_set_ptr->past_altref_nframes, picture_control_set_ptr->future_altref_nframes);
 
                                 // adjust the temporal filtering pcs buffer to remove unused past pictures
                                 if(actual_past_pics != num_past_pics) {
