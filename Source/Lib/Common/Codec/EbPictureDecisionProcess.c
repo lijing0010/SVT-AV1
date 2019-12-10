@@ -3868,23 +3868,6 @@ void* picture_decision_kernel(void *input_ptr)
                                 // Jing: Intra CRA case
                                 num_past_pics = MIN(num_past_pics, (int)encode_context_ptr->pre_assignment_buffer_count -1);
                                 int actual_past_pics = num_past_pics;
-                                num_future_pics = MIN(num_future_pics, dist_to_next_cra);
-
-                                // Jing: traling frames, should not use them
-                                // Take miniGop16 for example, if intra-period is set as 19
-                                // B    P    P    I
-                                // 16   17   18   19
-                                // While calculating altref for POC16, should only use 17,18 for future(shall not use 19)
-                                // While calculating altref for POC19, should not use 17,18 for past, which will only refer to 16
-                                // If POC19 is an intra inserted through SCD
-                                // The following calculation for histogram difference should be able to detect it
-                                for (int pic_itr = 0; pic_itr <= num_past_pics; pic_itr++) {
-                                    PictureParentControlSet* pcs_itr = (PictureParentControlSet*)encode_context_ptr->pre_assignment_buffer[pictureIndex - num_past_pics + pic_itr]->object_ptr;
-                                    if (pcs_itr->pred_struct_ptr->pred_type == EB_PRED_LOW_DELAY_P) {
-                                        actual_past_pics--;
-                                    }
-                                }
-                                num_past_pics = actual_past_pics;
 
                                 //get previous+current pictures from the the pre-assign buffer
                                 for (int pic_itr = 0; pic_itr <= actual_past_pics; pic_itr++) {
