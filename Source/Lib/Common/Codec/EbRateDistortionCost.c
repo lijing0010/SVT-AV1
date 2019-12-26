@@ -122,9 +122,10 @@ void eb_av1_txb_init_levels_c(
     uint8_t *const levels) {
     const int32_t stride = width + TX_PAD_HOR;
     uint8_t *ls = levels;
-
+#if !RDOQ_FIX
     memset(levels - TX_PAD_TOP * stride, 0,
         sizeof(*levels) * TX_PAD_TOP * stride);
+#endif
     memset(levels + stride * height, 0,
         sizeof(*levels) * (TX_PAD_BOTTOM * stride + TX_PAD_END));
 
@@ -322,17 +323,32 @@ void eb_av1_update_eob_context(int eob, TX_SIZE tx_size, TxClass tx_class,
     }
 }
 static int32_t get_eob_cost(int32_t eob, const LvMapEobCost *txb_eob_costs,
+#if RDOQ_FIX
+    const LvMapCoeffCost *txb_costs, TxClass tx_class) {
+#else
     const LvMapCoeffCost *txb_costs, TxType tx_type) {
+#endif
     int32_t eob_extra;
     const int32_t eob_pt = get_eob_pos_token(eob, &eob_extra);
     int32_t eob_cost = 0;
+#if RDOQ_FIX
+    const int32_t eob_multi_ctx = (tx_class == TX_CLASS_2D) ? 0 : 1;
+#else
     const int32_t eob_multi_ctx = (tx_type_to_class[tx_type] == TX_CLASS_2D) ? 0 : 1;
+#endif
     eob_cost = txb_eob_costs->eob_cost[eob_multi_ctx][eob_pt - 1];
 
     if (eb_k_eob_offset_bits[eob_pt] > 0) {
+#if RDOQ_FIX
+        const int32_t eob_ctx = eob_pt - 3;
+#endif
         const int32_t eob_shift = eb_k_eob_offset_bits[eob_pt] - 1;
         const int32_t bit = (eob_extra & (1 << eob_shift)) ? 1 : 0;
+#if RDOQ_FIX
+        eob_cost += txb_costs->eob_extra_cost[eob_ctx][bit];
+#else
         eob_cost += txb_costs->eob_extra_cost[eob_pt][bit];
+#endif
         const int32_t offset_bits = eb_k_eob_offset_bits[eob_pt];
         if (offset_bits > 1) eob_cost += av1_cost_literal(offset_bits - 1);
     }
@@ -368,6 +384,9 @@ static INLINE int32_t av1_cost_coeffs_txb_loop_cost_eob(uint16_t eob,
     const uint32_t cost_literal = av1_cost_literal(1);
     int32_t cost = 0;
     int32_t c;
+#if RDOQ_FIX
+    const TxClass tx_class = tx_type_to_class[transform_type];
+#endif
 
     /* Loop reduced to touch only first (eob - 1) and last (0) index */
     int32_t decr = eob - 1;
@@ -401,7 +420,11 @@ static INLINE int32_t av1_cost_coeffs_txb_loop_cost_eob(uint16_t eob,
 
             if (level > NUM_BASE_LEVELS) {
                 int32_t ctx;
+#if RDOQ_FIX
+                ctx = get_br_ctx(levels, pos, bwl, tx_class);
+#else
                 ctx = get_br_ctx(levels, pos, bwl, transform_type);
+#endif
 
                 const int32_t base_range = level - 1 - NUM_BASE_LEVELS;
 
@@ -422,7 +445,11 @@ static INLINE int32_t av1_cost_coeffs_txb_loop_cost_eob(uint16_t eob,
         const int32_t pos = scan[c];
         const int32_t level = abs(qcoeff[pos]);
         if (level > NUM_BASE_LEVELS) {
+#if RDOQ_FIX
+            const int32_t ctx = get_br_ctx(levels, pos, bwl, tx_class);
+#else
             const int32_t ctx = get_br_ctx(levels, pos, bwl, transform_type);
+#endif
             const int32_t base_range = level - 1 - NUM_BASE_LEVELS;
 
             if (base_range < COEFF_BASE_RANGE) {
@@ -503,7 +530,11 @@ uint64_t eb_av1_cost_coeffs_txb(
             reducedTransformSetFlag);
 
     // Transform ebo bit estimation
+#if RDOQ_FIX
+    int32_t eob_cost = get_eob_cost(eob, eobBits, coeff_costs, tx_class);
+#else
     int32_t eob_cost = get_eob_cost(eob, eobBits, coeff_costs, transform_type);
+#endif
     cost += eob_cost;
     if (allow_update_cdf)
         eb_av1_update_eob_context(eob, transform_size, tx_class,
@@ -554,7 +585,11 @@ uint64_t eb_av1_cost_coeffs_txb(
 
             if (level > NUM_BASE_LEVELS) {
                 const int base_range = level - 1 - NUM_BASE_LEVELS;
+#if RDOQ_FIX
+                const int br_ctx = get_br_ctx(levels, pos, bwl, tx_class);
+#else
                 const int br_ctx = get_br_ctx(levels, pos, bwl, (const TxType)tx_class);
+#endif
 
                 for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
                     const int k = AOMMIN(base_range - idx, BR_CDF_SIZE - 1);

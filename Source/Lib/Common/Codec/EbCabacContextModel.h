@@ -691,7 +691,11 @@ extern "C" {
 
 #define TXB_SKIP_CONTEXTS 13
 
+#if RDOQ_FIX
+#define EOB_COEF_CONTEXTS 9
+#else
 #define EOB_COEF_CONTEXTS 22
+#endif
 
 #define SIG_COEF_CONTEXTS_2D 26
 #define SIG_COEF_CONTEXTS_1D 16
@@ -710,7 +714,11 @@ extern "C" {
 #define BR_CDF_SIZE (4)
 #define COEFF_BASE_RANGE (4 * (BR_CDF_SIZE - 1))
 
+#if RDOQ_FIX
+#define COEFF_CONTEXT_BITS 3
+#else
 #define COEFF_CONTEXT_BITS 6
+#endif
 #define COEFF_CONTEXT_MASK ((1 << COEFF_CONTEXT_BITS) - 1)
 #define MAX_BASE_BR_RANGE (COEFF_BASE_RANGE + NUM_BASE_LEVELS + 1)
 

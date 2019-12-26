@@ -36,6 +36,8 @@ extern "C" {
 #define MUS_ME                 1 //MUlti-Stage ME
 
 
+#define RDOQ_FIX 0  // Fix RDOQ defects
+
 #define LOW_DELAY_TUNE 1 // Tuning the 0B, 1B and 3B settings
                                       // 0. tunr OFF AVX512
 #define FIXED_QP_M                  1 // 1. core only
@@ -409,13 +411,21 @@ one more than the minimum. */
 #define TX_PAD_HOR 4
 // Pad 6 extra rows (2 on top and 4 on bottom) to remove vertical availability
 // check.
+#if RDOQ_FIX
+#define TX_PAD_TOP 0
+#else
 #define TX_PAD_TOP 2
+#endif
 #define TX_PAD_BOTTOM 4
 #define TX_PAD_VER (TX_PAD_TOP + TX_PAD_BOTTOM)
 // Pad 16 extra bytes to avoid reading overflow in SIMD optimization.
 #define TX_PAD_END 16
+#if RDOQ_FIX
+#define TX_PAD_2D ((32 + TX_PAD_HOR) * (32 + TX_PAD_VER) + TX_PAD_END)
+#else
 #define TX_PAD_2D \
 ((MAX_TX_SIZE + TX_PAD_HOR) * (MAX_TX_SIZE + TX_PAD_VER) + TX_PAD_END)
+#endif
 #define COMPOUND_WEIGHT_MODE DIST
 #define DIST_PRECISION_BITS 4
 #define DIST_PRECISION (1 << DIST_PRECISION_BITS)  // 16

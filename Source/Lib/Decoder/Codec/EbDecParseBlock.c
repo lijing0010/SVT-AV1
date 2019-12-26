@@ -1927,7 +1927,11 @@ static INLINE void read_coeffs_reverse(SvtReader *r, TxSize tx_size,
         const int nsymbs = 4;
         int level = svt_read_symbol(r, base_cdf[coeff_ctx], nsymbs, ACCT_STR);
         if (level > NUM_BASE_LEVELS) {
+#if RDOQ_FIX
+            const int br_ctx = get_br_ctx(levels, pos, bwl, tx_class);
+#else
             const int br_ctx = get_br_ctx(levels, pos, bwl, tx_type);
+#endif
             AomCdfProb *cdf = br_cdf[br_ctx];
             for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
                 const int k = svt_read_symbol(r, cdf, BR_CDF_SIZE, ACCT_STR);
@@ -2043,7 +2047,11 @@ uint16_t parse_coeffs(ParseCtxt *parse_ctxt, PartitionInfo_t *xd,
 
     int eob_shift = eb_k_eob_offset_bits[eob_pt];
     if (eob_shift > 0) {
+#if RDOQ_FIX
+        const int eob_ctx = eob_pt - 3;
+#else
         const int eob_ctx = eob_pt;
+#endif
         int bit = svt_read_symbol(
             r, frm_ctx->eob_extra_cdf[txs_ctx][plane_type][eob_ctx], 2, ACCT_STR);
         if (bit)

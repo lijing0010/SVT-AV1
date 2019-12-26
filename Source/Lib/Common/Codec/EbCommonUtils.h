@@ -107,14 +107,22 @@ static AOM_FORCE_INLINE int get_br_ctx_eob(const int c,  // raster order
     return 14;
 }
 
+#if RDOQ_FIX
+static INLINE int32_t get_br_ctx(const uint8_t *const levels,
+    const int32_t c,  // raster order
+    const int32_t bwl, const TxClass tx_class)
+#else
 static INLINE int32_t get_br_ctx(const uint8_t *const levels,
     const int32_t c,  // raster order
     const int32_t bwl, const TxType tx_type)
+#endif
 {
     const int32_t row = c >> bwl;
     const int32_t col = c - (row << bwl);
     const int32_t stride = (1 << bwl) + TX_PAD_HOR;
+#if !RDOQ_FIX
     const TxClass tx_class = tx_type_to_class[tx_type];
+#endif
     const int32_t pos = row * stride + col;
     int32_t mag = levels[pos + 1];
     mag += levels[pos + stride];

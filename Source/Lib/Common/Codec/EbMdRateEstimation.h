@@ -151,7 +151,11 @@ extern "C" {
         { 1, 1, 1, 1 },  // unused
         { 1, 1, 0, 0 },
         { 0, 0, 1, 0 },
+#if RDOQ_FIX
+        { 0, 1, 1, 1 },
+#else
         { 0, 0, 0, 1 },
+#endif
     };
 
     static const int32_t use_intra_ext_tx_for_txsize[EXT_TX_SETS_INTRA][EXT_TX_SIZES] =

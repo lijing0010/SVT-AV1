@@ -48,7 +48,9 @@ void eb_av1_txb_init_levels_avx512(const TranLow *const coeff,
     if (width == 4) {
         const __m256i y_zeros = _mm256_setzero_si256();
 
+#if !RDOQ_FIX
         xx_storeu_128(ls - 16, x_zeros);
+#endif
 
         do {
             const __m256i c0 = yy_loadu_256(cf);
@@ -69,7 +71,9 @@ void eb_av1_txb_init_levels_avx512(const TranLow *const coeff,
     else if (width == 8) {
         const __m256i y_zeros = _mm256_setzero_si256();
 
+#if !RDOQ_FIX
         yy_storeu_256(ls - 24, y_zeros);
+#endif
 
         do {
             const __m256i res = txb_init_levels_32_avx512(cf);
@@ -92,11 +96,15 @@ void eb_av1_txb_init_levels_avx512(const TranLow *const coeff,
         xx_storeu_128(ls + 1 * 32, x_zeros);
     }
     else if (width == 16) {
+#if !RDOQ_FIX
         const __m256i y_zeros = _mm256_setzero_si256();
+#endif
         const __m512i z_zeros = _mm512_setzero_si512();
 
+#if !RDOQ_FIX
         yy_storeu_256(ls - 40, y_zeros);
         xx_storel_64(ls - 8, x_zeros);
+#endif
 
         do {
             const __m512i res = txb_init_levels_64_avx512(cf);
@@ -125,8 +133,10 @@ void eb_av1_txb_init_levels_avx512(const TranLow *const coeff,
     else {
         const __m512i z_zeros = _mm512_setzero_si512();
 
+#if !RDOQ_FIX
         _mm512_storeu_si512((__m512i *)(ls - 72), z_zeros);
         xx_storel_64(ls - 8, x_zeros);
+#endif
 
         do {
             const __m512i res = txb_init_levels_64_avx512(cf);

@@ -39,7 +39,9 @@ void eb_av1_txb_init_levels_avx2(const TranLow *const coeff,
     int32_t i = height;
 
     if (width == 4) {
+#if !RDOQ_FIX
         xx_storeu_128(ls - 16, x_zeros);
+#endif
 
         do {
             const __m256i idx = _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7);
@@ -58,7 +60,9 @@ void eb_av1_txb_init_levels_avx2(const TranLow *const coeff,
         yy_storeu_256(ls, y_zeros);
     }
     else if (width == 8) {
+#if !RDOQ_FIX
         yy_storeu_256(ls - 24, y_zeros);
+#endif
 
         do {
             const __m256i res = txb_init_levels_avx2(cf);
@@ -81,8 +85,10 @@ void eb_av1_txb_init_levels_avx2(const TranLow *const coeff,
         xx_storeu_128(ls + 1 * 32, x_zeros);
     }
     else if (width == 16) {
+#if !RDOQ_FIX
         yy_storeu_256(ls - 40, y_zeros);
         xx_storel_64(ls - 8, x_zeros);
+#endif
 
         do {
             const __m256i res = txb_init_levels_avx2(cf);
@@ -102,9 +108,11 @@ void eb_av1_txb_init_levels_avx2(const TranLow *const coeff,
         xx_storeu_128(ls + 2 * 32, x_zeros);
     }
     else {
+#if !RDOQ_FIX
         yy_storeu_256(ls - 72, y_zeros);
         yy_storeu_256(ls - 40, y_zeros);
         xx_storel_64(ls - 8, x_zeros);
+#endif
 
         do {
             const __m256i res = txb_init_levels_avx2(cf);

@@ -321,8 +321,10 @@ static INLINE void av1TxbInitLevels(
     const int16_t stride = width + TX_PAD_HOR;
     uint8_t *ls = levels;
 
+#if !RDOQ_FIX
     memset(levels - TX_PAD_TOP * stride, 0,
         sizeof(*levels) * TX_PAD_TOP * stride);
+#endif
     memset(levels + stride * height, 0,
         sizeof(*levels) * (TX_PAD_BOTTOM * stride + TX_PAD_END));
 
@@ -439,11 +441,24 @@ void get_txb_ctx(
         if (plane_bsize == txsize_to_bsize[tx_size])
             *txb_skip_ctx = 0;
         else {
+#if RDOQ_FIX
+            static const uint8_t skip_contexts[5][5] = { { 1, 2, 2, 2, 3 },
+            { 2, 4, 4, 4, 5 },
+            { 2, 4, 4, 4, 5 },
+            { 2, 4, 4, 4, 5 },
+            { 3, 5, 5, 5, 6 } };
+            // For top and left, we only care about which of the following three
+            // categories they belong to: { 0 }, { 1, 2, 3 }, or { 4, 5, ... }. The
+            // spec calculates top and left with the Max() function. We can calculate
+            // an approximate max with bitwise OR because the real max and the
+            // approximate max belong to the same category.
+#else
             static const uint8_t skip_contexts[5][5] = { { 1, 2, 2, 2, 3 },
             { 1, 4, 4, 4, 5 },
             { 1, 4, 4, 4, 5 },
             { 1, 4, 4, 4, 5 },
             { 1, 4, 4, 4, 6 } };
+#endif
             int32_t top = 0;
             int32_t left = 0;
 
@@ -453,7 +468,10 @@ void get_txb_ctx(
                     top |= (int32_t)(dc_sign_level_coeff_neighbor_array->top_array[k + dcSignLevelCoeffTopNeighborIndex]);
                 } while (++k < txb_w_unit);
             }
-            top &= COEFF_CONTEXT_MASK;
+			top &= COEFF_CONTEXT_MASK;
+#if RDOQ_FIX
+			top = AOMMIN(top, 4);
+#endif
 
             if (dc_sign_level_coeff_neighbor_array->left_array[dcSignLevelCoeffLeftNeighborIndex] != INVALID_NEIGHBOR_DATA) {
                 k = 0;
@@ -462,6 +480,9 @@ void get_txb_ctx(
                 } while (++k < txb_h_unit);
             }
             left &= COEFF_CONTEXT_MASK;
+#if RDOQ_FIX
+			left = AOMMIN(left, 4);
+#endif
             //do {
             //    top |= a[k];
             //} while (++k < txb_w_unit);
@@ -472,10 +493,14 @@ void get_txb_ctx(
             //    left |= l[k];
             //} while (++k < txb_h_unit);
             //left &= COEFF_CONTEXT_MASK;
+#if RDOQ_FIX
+            *txb_skip_ctx = skip_contexts[top][left];
+#else
             const int32_t max = AOMMIN(top | left, 4);
             const int32_t min = AOMMIN(AOMMIN(top, left), 4);
 
             *txb_skip_ctx = skip_contexts[min][max];
+#endif
         }
     }
     else {
@@ -670,9 +695,16 @@ int32_t  Av1WriteCoeffsTxb1D(
 
     uint8_t eobOffsetBits = KEobOffsetBits[eobPt];
     if (eobOffsetBits > 0) {
+#if RDOQ_FIX
+        int16_t eob_ctx = eobPt - 3;
+#endif
         int32_t eobShift = eobOffsetBits - 1;
         int32_t bit = (eobExtra & (1 << eobShift)) ? 1 : 0;
+#if RDOQ_FIX
+        aom_write_symbol(ec_writer, bit, frameContext->eob_extra_cdf[txs_ctx][component_type][eob_ctx], 2);
+#else
         aom_write_symbol(ec_writer, bit, frameContext->eob_extra_cdf[txs_ctx][component_type][eobPt], 2);
+#endif
         for (int32_t i = 1; i < eobOffsetBits; i++) {
             eobShift = eobOffsetBits - 1 - i;
             bit = (eobExtra & (1 << eobShift)) ? 1 : 0;
