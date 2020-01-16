@@ -1613,6 +1613,38 @@ EbErrorType copy_payload(Bitstream *bitstream_ptr, EbByte output_buffer,
     return return_error;
 }
 
+#if TILES_PARALLEL
+static void entropy_tile_info_dctor(EbPtr p)
+{
+    EntropyTileInfo *obj = (EntropyTileInfo*)p;
+    EB_DELETE(obj->entropy_coder_ptr);
+    EB_DESTROY_MUTEX(obj->entropy_coding_mutex);
+}
+
+EbErrorType entropy_tile_info_ctor(
+    EntropyTileInfo *eti,
+    uint32_t buf_size)
+{
+    EbErrorType return_error = EB_ErrorNone;
+    eti->dctor = entropy_tile_info_dctor;
+    EB_CREATE_MUTEX(eti->entropy_coding_mutex);
+    EB_NEW(eti->entropy_coder_ptr,
+                entropy_coder_ctor,
+                buf_size);
+    eti->entropy_coding_current_available_row = 0;
+    for(unsigned rowIndex=0; rowIndex < MAX_SB_ROWS; ++rowIndex) {
+        eti->entropy_coding_row_array[rowIndex] = EB_FALSE;
+    }
+    eti->entropy_coding_current_row = 0;
+    eti->entropy_coding_row_count = 0;
+    eti->entropy_coding_in_progress = 0;
+    eti->entropy_coding_tile_done = EB_FALSE;
+    return return_error;
+}
+
+#endif
+
+
 static void bitstream_dctor(EbPtr p) {
     Bitstream *          obj                  = (Bitstream *)p;
     OutputBitstreamUnit *output_bitstream_ptr = (OutputBitstreamUnit *)obj->output_bitstream_ptr;
@@ -3041,12 +3073,20 @@ static void write_tile_info_max_tile(const PictureParentControlSet *const pcs_pt
 void eb_av1_get_tile_limits(PictureParentControlSet *pcs_ptr) {
     Av1Common *cm = pcs_ptr->av1_cm;
 
+#if TILES_PARALLEL
+    int32_t mi_cols = ALIGN_POWER_OF_TWO(cm->mi_cols, pcs_ptr->log2_sb_sz);
+    int32_t mi_rows = ALIGN_POWER_OF_TWO(cm->mi_rows, pcs_ptr->log2_sb_sz);
+    int32_t sb_cols = mi_cols >> pcs_ptr->log2_sb_sz;
+    int32_t sb_rows = mi_rows >> pcs_ptr->log2_sb_sz;
+    int32_t sb_size_log2 = pcs_ptr->log2_sb_sz + MI_SIZE_LOG2;
+#else
     int32_t mi_cols = ALIGN_POWER_OF_TWO(cm->mi_cols, pcs_ptr->scs_ptr->seq_header.sb_size_log2);
     int32_t mi_rows = ALIGN_POWER_OF_TWO(cm->mi_rows, pcs_ptr->scs_ptr->seq_header.sb_size_log2);
     int32_t sb_cols = mi_cols >> pcs_ptr->scs_ptr->seq_header.sb_size_log2;
     int32_t sb_rows = mi_rows >> pcs_ptr->scs_ptr->seq_header.sb_size_log2;
 
     int32_t sb_size_log2             = pcs_ptr->scs_ptr->seq_header.sb_size_log2 + MI_SIZE_LOG2;
+#endif
     cm->tiles_info.max_tile_width_sb = MAX_TILE_WIDTH >> sb_size_log2;
     int32_t max_tile_area_sb         = MAX_TILE_AREA >> (2 * sb_size_log2);
 
@@ -3062,12 +3102,20 @@ void eb_av1_get_tile_limits(PictureParentControlSet *pcs_ptr) {
 void eb_av1_calculate_tile_cols(PictureParentControlSet *pcs_ptr) {
     Av1Common *const cm = pcs_ptr->av1_cm;
 
+#if TILES_PARALLEL
+    int mi_cols = ALIGN_POWER_OF_TWO(cm->mi_cols, pcs_ptr->log2_sb_sz);
+    int mi_rows = ALIGN_POWER_OF_TWO(cm->mi_rows, pcs_ptr->log2_sb_sz);
+    int sb_cols = mi_cols >> pcs_ptr->log2_sb_sz;
+    int sb_rows = mi_rows >> pcs_ptr->log2_sb_sz;
+    int sb_size_log2 = pcs_ptr->log2_sb_sz;
+#else
     int mi_cols = ALIGN_POWER_OF_TWO(cm->mi_cols, pcs_ptr->scs_ptr->seq_header.sb_size_log2);
     int mi_rows = ALIGN_POWER_OF_TWO(cm->mi_rows, pcs_ptr->scs_ptr->seq_header.sb_size_log2);
     int sb_cols = mi_cols >> pcs_ptr->scs_ptr->seq_header.sb_size_log2;
     int sb_rows = mi_rows >> pcs_ptr->scs_ptr->seq_header.sb_size_log2;
-    int i;
     int sb_size_log2 = pcs_ptr->scs_ptr->seq_header.sb_size_log2;
+#endif
+    int i;
 
     if (cm->tiles_info.uniform_tile_spacing_flag) {
         int start_sb;
@@ -3084,12 +3132,20 @@ void eb_av1_calculate_tile_cols(PictureParentControlSet *pcs_ptr) {
             AOMMAX(cm->tiles_info.min_log2_tiles - cm->log2_tile_cols, 0);
         cm->tiles_info.max_tile_height_sb = sb_rows >> cm->tiles_info.min_log2_tile_rows;
 
+#if TILES_PARALLEL
+        cm->tile_width = size_sb << pcs_ptr->log2_sb_sz;
+#else
         cm->tile_width = size_sb << pcs_ptr->scs_ptr->seq_header.sb_size_log2;
+#endif
         cm->tile_width = AOMMIN(cm->tile_width, cm->mi_cols);
     } else {
         int max_tile_area_sb = (sb_rows * sb_cols);
         int widest_tile_sb   = 1;
-        int sb_size_log2     = pcs_ptr->scs_ptr->seq_header.sb_size_log2;
+#if TILES_PARALLEL
+        int sb_size_log2 = pcs_ptr->log2_sb_sz;
+#else
+        int sb_size_log2 = pcs_ptr->scs_ptr->seq_header.sb_size_log2;
+#endif
         cm->log2_tile_cols   = tile_log2(1, cm->tiles_info.tile_cols);
         for (i = 0; i < cm->tiles_info.tile_cols; i++) {
             int size_sb =
@@ -3106,10 +3162,16 @@ void eb_av1_calculate_tile_cols(PictureParentControlSet *pcs_ptr) {
 void eb_av1_calculate_tile_rows(PictureParentControlSet *pcs_ptr) {
     Av1Common *const cm = pcs_ptr->av1_cm;
 
+#if TILES_PARALLEL
+    int mi_rows = ALIGN_POWER_OF_TWO(cm->mi_rows, pcs_ptr->log2_sb_sz);
+    int sb_rows = mi_rows >> pcs_ptr->log2_sb_sz;
+    int sb_size_log2 = pcs_ptr->log2_sb_sz;
+#else
     int mi_rows = ALIGN_POWER_OF_TWO(cm->mi_rows, pcs_ptr->scs_ptr->seq_header.sb_size_log2);
     int sb_rows = mi_rows >> pcs_ptr->scs_ptr->seq_header.sb_size_log2;
-    int start_sb, size_sb, i;
     int sb_size_log2 = pcs_ptr->scs_ptr->seq_header.sb_size_log2;
+#endif
+    int start_sb, size_sb, i;
 
     if (cm->tiles_info.uniform_tile_spacing_flag) {
         size_sb = ALIGN_POWER_OF_TWO(sb_rows, cm->log2_tile_rows);
@@ -3122,7 +3184,11 @@ void eb_av1_calculate_tile_rows(PictureParentControlSet *pcs_ptr) {
         cm->tiles_info.tile_rows            = i;
         cm->tiles_info.tile_row_start_mi[i] = sb_rows << sb_size_log2;
 
+#if TILES_PARALLEL
+        cm->tile_height = size_sb << pcs_ptr->log2_sb_sz;
+#else
         cm->tile_height = size_sb << pcs_ptr->scs_ptr->seq_header.sb_size_log2;
+#endif
         cm->tile_height = AOMMIN(cm->tile_height, cm->mi_rows);
     } else
         cm->log2_tile_rows = tile_log2(1, cm->tiles_info.tile_rows);
@@ -3154,12 +3220,22 @@ void set_tile_info(PictureParentControlSet *pcs_ptr) {
     // configure tile columns
     if (tile_width_count == 0 || tile_height_count == 0) {
         cm->tiles_info.uniform_tile_spacing_flag = 1;
+#if TILES_PARALLEL
+        cm->log2_tile_cols =
+            AOMMAX(pcs_ptr->log2_tile_cols, cm->tiles_info.min_log2_tile_cols);
+#else
         cm->log2_tile_cols =
             AOMMAX(pcs_ptr->scs_ptr->static_config.tile_columns, cm->tiles_info.min_log2_tile_cols);
+#endif
         cm->log2_tile_cols = AOMMIN(cm->log2_tile_cols, cm->tiles_info.max_log2_tile_cols);
     } else {
+#if TILES_PARALLEL
+        int mi_cols = ALIGN_POWER_OF_TWO(cm->mi_cols, pcs_ptr->log2_sb_sz);
+        int sb_cols = mi_cols >> pcs_ptr->log2_sb_sz;
+#else
         int mi_cols = ALIGN_POWER_OF_TWO(cm->mi_cols, pcs_ptr->scs_ptr->seq_header.sb_size_log2);
         int sb_cols = mi_cols >> pcs_ptr->scs_ptr->seq_header.sb_size_log2;
+#endif
         int size_sb, j = 0;
         int sb_size_log2                         = pcs_ptr->scs_ptr->seq_header.sb_size_log2;
         cm->tiles_info.uniform_tile_spacing_flag = 0;
@@ -3176,12 +3252,22 @@ void set_tile_info(PictureParentControlSet *pcs_ptr) {
 
     // configure tile rows
     if (cm->tiles_info.uniform_tile_spacing_flag) {
+#if TILES_PARALLEL
+        cm->log2_tile_rows =
+            AOMMAX(pcs_ptr->log2_tile_rows, cm->tiles_info.min_log2_tile_rows);
+#else
         cm->log2_tile_rows =
             AOMMAX(pcs_ptr->scs_ptr->static_config.tile_rows, cm->tiles_info.min_log2_tile_rows);
+#endif
         cm->log2_tile_rows = AOMMIN(cm->log2_tile_rows, cm->tiles_info.max_log2_tile_rows);
     } else {
+#if TILES_PARALLEL
+        int mi_rows = ALIGN_POWER_OF_TWO(cm->mi_rows, pcs_ptr->log2_sb_sz);
+        int sb_rows = mi_rows >> pcs_ptr->log2_sb_sz;
+#else
         int mi_rows = ALIGN_POWER_OF_TWO(cm->mi_rows, pcs_ptr->scs_ptr->seq_header.sb_size_log2);
         int sb_rows = mi_rows >> pcs_ptr->scs_ptr->seq_header.sb_size_log2;
+#endif
         int size_sb, j = 0;
         int sb_size_log2 = pcs_ptr->scs_ptr->seq_header.sb_size_log2;
         for (i = 0, start_sb = 0; start_sb < sb_rows && i < MAX_TILE_ROWS; i++) {
@@ -3827,6 +3913,10 @@ static void write_uncompressed_header_obu(SequenceControlSet *     scs_ptr /*Av1
                                           struct AomWriteBitBuffer *wb, uint8_t show_existing) {
     // Av1Common *const cm = &cpi->common;
     // MacroBlockD *const xd = &cpi->td.mb.e_mbd;
+#if TILES_PARALLEL
+    Av1Common *const cm = pcs_ptr->av1_cm;
+    uint16_t tile_cnt = cm->tiles_info.tile_rows * cm->tiles_info.tile_cols;
+#endif
 
     // NOTE: by default all coded frames to be used as a reference
     pcs_ptr->is_reference_frame = 1;
@@ -4064,7 +4154,13 @@ static void write_uncompressed_header_obu(SequenceControlSet *     scs_ptr /*Av1
         eb_aom_wb_write_bit(wb, frm_hdr->delta_q_params.delta_q_present);
         if (frm_hdr->delta_q_params.delta_q_present) {
             eb_aom_wb_write_literal(wb, OD_ILOG_NZ(frm_hdr->delta_q_params.delta_q_res) - 1, 2);
+#if TILES_PARALLEL
+            for (uint16_t tile_idx = 0; tile_idx < tile_cnt; tile_idx++) {
+                pcs_ptr->prev_qindex[tile_idx] = frm_hdr->quantization_params.base_q_idx;
+            }
+#else
             pcs_ptr->prev_qindex = frm_hdr->quantization_params.base_q_idx;
+#endif
             if (frm_hdr->allow_intrabc)
                 assert(frm_hdr->delta_lf_params.delta_lf_present == 0);
             else
@@ -4285,6 +4381,10 @@ EbErrorType write_frame_header_av1(Bitstream *bitstream_ptr, SequenceControlSet 
     OutputBitstreamUnit *output_bitstream_ptr =
         (OutputBitstreamUnit *)bitstream_ptr->output_bitstream_ptr;
     PictureParentControlSet *parent_pcs_ptr  = pcs_ptr->parent_pcs_ptr;
+#if TILES_PARALLEL
+    Av1Common *const cm = parent_pcs_ptr->av1_cm;
+    uint16_t tile_cnt = cm->tiles_info.tile_rows * cm->tiles_info.tile_cols;
+#endif
     uint8_t *                data            = output_bitstream_ptr->buffer_av1;
     uint32_t                 obu_header_size = 0;
 
@@ -4310,6 +4410,16 @@ EbErrorType write_frame_header_av1(Bitstream *bitstream_ptr, SequenceControlSet 
 
     if (!show_existing) {
         // Add data from EC stream to Picture Stream.
+#if TILES_PARALLEL
+        int32_t tile_size = 0;
+        for (int tile_idx = 0; tile_idx < tile_cnt; tile_idx++) {
+            tile_size = pcs_ptr->entropy_coding_info[tile_idx]->entropy_coder_ptr->ec_writer.pos;
+            tile_size += (tile_idx != tile_cnt - 1) ? 4 : 0;
+            OutputBitstreamUnit *ec_output_bitstream_ptr = (OutputBitstreamUnit*)pcs_ptr->entropy_coding_info[tile_idx]->entropy_coder_ptr->ec_output_bitstream_ptr;
+            memcpy(data + curr_data_size, ec_output_bitstream_ptr->buffer_begin_av1, tile_size);
+            curr_data_size += (tile_size);
+        }
+#else
         int32_t              frame_size = (int32_t)(parent_pcs_ptr->av1_cm->tiles_info.tile_cols *
                                                    parent_pcs_ptr->av1_cm->tiles_info.tile_rows ==
                                                1
@@ -4321,6 +4431,7 @@ EbErrorType write_frame_header_av1(Bitstream *bitstream_ptr, SequenceControlSet 
         // Copy from EC stream to frame stream
         memcpy(data + curr_data_size, ec_output_bitstream_ptr->buffer_begin_av1, frame_size);
         curr_data_size += (frame_size);
+#endif
     }
     const uint32_t obu_payload_size  = curr_data_size - obu_header_size;
     const size_t   length_field_size = obu_mem_move(obu_header_size, obu_payload_size, data);
@@ -4402,10 +4513,18 @@ static void av1_write_delta_q_index(FRAME_CONTEXT *frame_context, int32_t delta_
     }
     if (abs > 0) aom_write_bit(w, sign);
 }
+#if TILES_PARALLEL
+static void write_cdef(SequenceControlSet *seqCSetPtr, PictureControlSet *p_pcs_ptr,
+                       //Av1Common *cm,
+                       uint16_t tile_idx, MacroBlockD *const xd,
+                       AomWriter *w, int32_t skip, int32_t mi_col,
+                       int32_t mi_row) {
+#else
 static void write_cdef(SequenceControlSet *seqCSetPtr, PictureControlSet *p_pcs_ptr,
                        //Av1Common *cm,
                        MacroBlockD *const xd, AomWriter *w, int32_t skip, int32_t mi_col,
                        int32_t mi_row) {
+#endif
     (void)xd;
     Av1Common *  cm      = p_pcs_ptr->parent_pcs_ptr->av1_cm;
     FrameHeader *frm_hdr = &p_pcs_ptr->parent_pcs_ptr->frm_hdr;
@@ -4426,8 +4545,13 @@ static void write_cdef(SequenceControlSet *seqCSetPtr, PictureControlSet *p_pcs_
     // Initialise when at top left part of the superblock
     if (!(mi_row & (seqCSetPtr->seq_header.sb_mi_size - 1)) &&
         !(mi_col & (seqCSetPtr->seq_header.sb_mi_size - 1))) { // Top left?
+#if TILES_PARALLEL
+        p_pcs_ptr->cdef_preset[tile_idx][0] = p_pcs_ptr->cdef_preset[tile_idx][1] = p_pcs_ptr->cdef_preset[tile_idx][2] =
+            p_pcs_ptr->cdef_preset[tile_idx][3] = -1;
+#else
         p_pcs_ptr->cdef_preset[0] = p_pcs_ptr->cdef_preset[1] = p_pcs_ptr->cdef_preset[2] =
             p_pcs_ptr->cdef_preset[3]                         = -1;
+#endif
     }
 
     // Emit CDEF param at first non-skip coding block
@@ -4436,18 +4560,35 @@ static void write_cdef(SequenceControlSet *seqCSetPtr, PictureControlSet *p_pcs_
                               ? !!(mi_col & mask) + 2 * !!(mi_row & mask)
                               : 0;
 
+#if TILES_PARALLEL
+    if (p_pcs_ptr->cdef_preset[tile_idx][index] == -1 && !skip) {
+        aom_write_literal(w, mi->mbmi.cdef_strength, frm_hdr->cdef_params.cdef_bits);
+        p_pcs_ptr->cdef_preset[tile_idx][index] = mi->mbmi.cdef_strength;
+    }
+#else
     if (p_pcs_ptr->cdef_preset[index] == -1 && !skip) {
         aom_write_literal(w, mi->mbmi.cdef_strength, frm_hdr->cdef_params.cdef_bits);
         p_pcs_ptr->cdef_preset[index] = mi->mbmi.cdef_strength;
     }
+#endif
 }
 
+#if TILES_PARALLEL
+void eb_av1_reset_loop_restoration(PictureControlSet *piCSetPtr, uint16_t tile_idx) {
+    for (int32_t p = 0; p < 3; ++p) {
+        set_default_wiener(piCSetPtr->wiener_info[tile_idx] + p);
+        set_default_sgrproj(piCSetPtr->sgrproj_info[tile_idx] + p);
+    }
+}
+#else
 void eb_av1_reset_loop_restoration(PictureControlSet *piCSetPtr) {
     for (int32_t p = 0; p < 3; ++p) {
         set_default_wiener(piCSetPtr->wiener_info + p);
         set_default_sgrproj(piCSetPtr->sgrproj_info + p);
     }
 }
+#endif
+
 static void write_wiener_filter(int32_t wiener_win, const WienerInfo *wiener_info,
                                 WienerInfo *ref_wiener_info, AomWriter *wb) {
     if (wiener_win == WIENER_WIN)
@@ -4523,6 +4664,9 @@ static void write_sgrproj_filter(const SgrprojInfo *sgrproj_info, SgrprojInfo *r
     memcpy(ref_sgrproj_info, sgrproj_info, sizeof(*sgrproj_info));
 }
 static void loop_restoration_write_sb_coeffs(PictureControlSet     *piCSetPtr, FRAME_CONTEXT           *frame_context, const Av1Common *const cm,
+#if TILES_PARALLEL
+    uint16_t tile_idx,
+#endif
     //MacroBlockD *xd,
     const RestorationUnitInfo *rui,
     AomWriter *const w, int32_t plane/*,
@@ -4536,8 +4680,13 @@ static void loop_restoration_write_sb_coeffs(PictureControlSet     *piCSetPtr, F
     //    assert(!cm->all_lossless);
 
     const int32_t   wiener_win   = (plane > 0) ? WIENER_WIN_CHROMA : WIENER_WIN;
+#if TILES_PARALLEL
+    WienerInfo *wiener_info = piCSetPtr->wiener_info[tile_idx] + plane;
+    SgrprojInfo *sgrproj_info = piCSetPtr->sgrproj_info[tile_idx] + plane;
+#else
     WienerInfo *    wiener_info  = piCSetPtr->wiener_info + plane;
     SgrprojInfo *   sgrproj_info = piCSetPtr->sgrproj_info + plane;
+#endif
     RestorationType unit_rtype   = rui->restoration_type;
 
     assert(unit_rtype < CDF_SIZE(RESTORE_SWITCHABLE_TYPES));
@@ -4598,9 +4747,28 @@ static void loop_restoration_write_sb_coeffs(PictureControlSet     *piCSetPtr, F
 
 EbErrorType ec_update_neighbors(PictureControlSet *pcs_ptr, EntropyCodingContext *context_ptr,
                                 uint32_t blk_origin_x, uint32_t blk_origin_y, BlkStruct *blk_ptr,
+#if TILES_PARALLEL
+                                uint16_t tile_idx,
+#endif
                                 BlockSize bsize, EbPictureBufferDesc *coeff_ptr) {
     UNUSED(coeff_ptr);
     EbErrorType        return_error                     = EB_ErrorNone;
+#if TILES_PARALLEL
+    NeighborArrayUnit *mode_type_neighbor_array         = pcs_ptr->mode_type_neighbor_array[tile_idx];
+    NeighborArrayUnit *partition_context_neighbor_array = pcs_ptr->partition_context_neighbor_array[tile_idx];
+    NeighborArrayUnit *skip_flag_neighbor_array         = pcs_ptr->skip_flag_neighbor_array[tile_idx];
+    NeighborArrayUnit *skip_coeff_neighbor_array        = pcs_ptr->skip_coeff_neighbor_array[tile_idx];
+    NeighborArrayUnit *luma_dc_sign_level_coeff_neighbor_array =
+        pcs_ptr->luma_dc_sign_level_coeff_neighbor_array[tile_idx];
+    NeighborArrayUnit *cr_dc_sign_level_coeff_neighbor_array =
+        pcs_ptr->cr_dc_sign_level_coeff_neighbor_array[tile_idx];
+    NeighborArrayUnit *cb_dc_sign_level_coeff_neighbor_array =
+        pcs_ptr->cb_dc_sign_level_coeff_neighbor_array[tile_idx];
+    NeighborArrayUnit *  inter_pred_dir_neighbor_array = pcs_ptr->inter_pred_dir_neighbor_array[tile_idx];
+    NeighborArrayUnit *  ref_frame_type_neighbor_array = pcs_ptr->ref_frame_type_neighbor_array[tile_idx];
+    NeighborArrayUnit32 *interpolation_type_neighbor_array =
+        pcs_ptr->interpolation_type_neighbor_array[tile_idx];
+#else
     NeighborArrayUnit *mode_type_neighbor_array         = pcs_ptr->mode_type_neighbor_array;
     NeighborArrayUnit *partition_context_neighbor_array = pcs_ptr->partition_context_neighbor_array;
     NeighborArrayUnit *skip_flag_neighbor_array         = pcs_ptr->skip_flag_neighbor_array;
@@ -4615,6 +4783,7 @@ EbErrorType ec_update_neighbors(PictureControlSet *pcs_ptr, EntropyCodingContext
     NeighborArrayUnit *  ref_frame_type_neighbor_array = pcs_ptr->ref_frame_type_neighbor_array;
     NeighborArrayUnit32 *interpolation_type_neighbor_array =
         pcs_ptr->interpolation_type_neighbor_array;
+#endif
     const BlockGeom *blk_geom   = get_blk_geom_mds(blk_ptr->mds_idx);
     EbBool           skip_coeff = EB_FALSE;
     PartitionContext partition;
@@ -5419,6 +5588,9 @@ int is_interintra_wedge_used(BlockSize sb_type);
 
 EbErrorType write_modes_b(PictureControlSet *pcs_ptr, EntropyCodingContext *context_ptr,
                           EntropyCoder *entropy_coder_ptr, SuperBlock *tb_ptr, BlkStruct *blk_ptr,
+#if TILES_PARALLEL
+                          uint16_t tile_idx,
+#endif
                           EbPictureBufferDesc *coeff_ptr) {
     UNUSED(tb_ptr);
     EbErrorType         return_error  = EB_ErrorNone;
@@ -5427,6 +5599,22 @@ EbErrorType write_modes_b(PictureControlSet *pcs_ptr, EntropyCodingContext *cont
     SequenceControlSet *scs_ptr       = (SequenceControlSet *)pcs_ptr->scs_wrapper_ptr->object_ptr;
     FrameHeader *       frm_hdr       = &pcs_ptr->parent_pcs_ptr->frm_hdr;
 
+#if TILES_PARALLEL
+    NeighborArrayUnit *mode_type_neighbor_array       = pcs_ptr->mode_type_neighbor_array[tile_idx];
+    NeighborArrayUnit *intra_luma_mode_neighbor_array = pcs_ptr->intra_luma_mode_neighbor_array[tile_idx];
+    NeighborArrayUnit *skip_flag_neighbor_array       = pcs_ptr->skip_flag_neighbor_array[tile_idx];
+    NeighborArrayUnit *skip_coeff_neighbor_array      = pcs_ptr->skip_coeff_neighbor_array[tile_idx];
+    NeighborArrayUnit *luma_dc_sign_level_coeff_neighbor_array =
+        pcs_ptr->luma_dc_sign_level_coeff_neighbor_array[tile_idx];
+    NeighborArrayUnit *cr_dc_sign_level_coeff_neighbor_array =
+        pcs_ptr->cr_dc_sign_level_coeff_neighbor_array[tile_idx];
+    NeighborArrayUnit *cb_dc_sign_level_coeff_neighbor_array =
+        pcs_ptr->cb_dc_sign_level_coeff_neighbor_array[tile_idx];
+    NeighborArrayUnit *  ref_frame_type_neighbor_array = pcs_ptr->ref_frame_type_neighbor_array[tile_idx];
+    NeighborArrayUnit32 *interpolation_type_neighbor_array =
+        pcs_ptr->interpolation_type_neighbor_array[tile_idx];
+    NeighborArrayUnit *txfm_context_array = pcs_ptr->txfm_context_array[tile_idx];
+#else
     NeighborArrayUnit *mode_type_neighbor_array       = pcs_ptr->mode_type_neighbor_array;
     NeighborArrayUnit *intra_luma_mode_neighbor_array = pcs_ptr->intra_luma_mode_neighbor_array;
     NeighborArrayUnit *skip_flag_neighbor_array       = pcs_ptr->skip_flag_neighbor_array;
@@ -5441,6 +5629,7 @@ EbErrorType write_modes_b(PictureControlSet *pcs_ptr, EntropyCodingContext *cont
     NeighborArrayUnit32 *interpolation_type_neighbor_array =
         pcs_ptr->interpolation_type_neighbor_array;
     NeighborArrayUnit *txfm_context_array = pcs_ptr->txfm_context_array;
+#endif
     const BlockGeom *  blk_geom           = get_blk_geom_mds(blk_ptr->mds_idx);
     uint32_t           blk_origin_x       = context_ptr->sb_origin_x + blk_geom->origin_x;
     uint32_t           blk_origin_y       = context_ptr->sb_origin_y + blk_geom->origin_y;
@@ -5505,6 +5694,9 @@ EbErrorType write_modes_b(PictureControlSet *pcs_ptr, EntropyCodingContext *cont
 
         write_cdef(scs_ptr,
                    pcs_ptr,
+#if TILES_PARALLEL
+                   tile_idx,
+#endif
                    blk_ptr->av1xd,
                    ec_writer,
                    skip_coeff,
@@ -5518,9 +5710,15 @@ EbErrorType write_modes_b(PictureControlSet *pcs_ptr, EntropyCodingContext *cont
             if ((bsize != scs_ptr->seq_header.sb_size || skip_coeff == 0) &&
                 super_block_upper_left) {
                 assert(current_q_index > 0);
+#if TILES_PARALLEL
+                int32_t reduced_delta_qindex =
+                    (current_q_index - pcs_ptr->parent_pcs_ptr->prev_qindex[tile_idx]) /
+                    frm_hdr->delta_q_params.delta_q_res;
+#else
                 int32_t reduced_delta_qindex =
                     (current_q_index - pcs_ptr->parent_pcs_ptr->prev_qindex) /
                     frm_hdr->delta_q_params.delta_q_res;
+#endif
 
                 //write_delta_qindex(xd, reduced_delta_qindex, w);
                 av1_write_delta_q_index(frame_context, reduced_delta_qindex, ec_writer);
@@ -5531,7 +5729,11 @@ EbErrorType write_modes_b(PictureControlSet *pcs_ptr, EntropyCodingContext *cont
                 current_q_index,
                 pcs_ptr->parent_pcs_ptr->prev_qindex);
                 }*/
+#if TILES_PARALLEL
+                pcs_ptr->parent_pcs_ptr->prev_qindex[tile_idx] = current_q_index;
+#else
                 pcs_ptr->parent_pcs_ptr->prev_qindex = current_q_index;
+#endif
             }
         }
 
@@ -5694,6 +5896,9 @@ EbErrorType write_modes_b(PictureControlSet *pcs_ptr, EntropyCodingContext *cont
                                0);
         write_cdef(scs_ptr,
                    pcs_ptr, /*cm,*/
+#if TILES_PARALLEL
+                   tile_idx,
+#endif
                    blk_ptr->av1xd,
                    ec_writer,
                    blk_ptr->skip_flag ? 1 : skip_coeff,
@@ -5707,11 +5912,21 @@ EbErrorType write_modes_b(PictureControlSet *pcs_ptr, EntropyCodingContext *cont
             if ((bsize != scs_ptr->seq_header.sb_size || skip_coeff == 0) &&
                 super_block_upper_left) {
                 assert(current_q_index > 0);
+#if TILES_PARALLEL
+                int32_t reduced_delta_qindex =
+                    (current_q_index - pcs_ptr->parent_pcs_ptr->prev_qindex[tile_idx]) /
+                    frm_hdr->delta_q_params.delta_q_res;
+#else
                 int32_t reduced_delta_qindex =
                     (current_q_index - pcs_ptr->parent_pcs_ptr->prev_qindex) /
                     frm_hdr->delta_q_params.delta_q_res;
+#endif
                 av1_write_delta_q_index(frame_context, reduced_delta_qindex, ec_writer);
+#if TILES_PARALLEL
+                pcs_ptr->parent_pcs_ptr->prev_qindex[tile_idx] = current_q_index;
+#else
                 pcs_ptr->parent_pcs_ptr->prev_qindex = current_q_index;
+#endif
             }
         }
         if (frm_hdr->tx_mode == TX_MODE_SELECT) {
@@ -6058,7 +6273,11 @@ EbErrorType write_modes_b(PictureControlSet *pcs_ptr, EntropyCodingContext *cont
     }
     // Update the neighbors
     ec_update_neighbors(
+#if TILES_PARALLEL
+        pcs_ptr, context_ptr, blk_origin_x, blk_origin_y, blk_ptr, tile_idx, bsize, coeff_ptr);
+#else
         pcs_ptr, context_ptr, blk_origin_x, blk_origin_y, blk_ptr, bsize, coeff_ptr);
+#endif
 
     if (svt_av1_allow_palette(pcs_ptr->parent_pcs_ptr->palette_mode, blk_geom->bsize)) {
         assert(blk_ptr->palette_info.color_idx_map != NULL && "free palette:Null");
@@ -6071,14 +6290,25 @@ EbErrorType write_modes_b(PictureControlSet *pcs_ptr, EntropyCodingContext *cont
 /**********************************************
 * Write sb
 **********************************************/
+#if TILES_PARALLEL
+EB_EXTERN EbErrorType write_sb(EntropyCodingContext *context_ptr, SuperBlock *tb_ptr,
+                            PictureControlSet *pcs_ptr, uint16_t tile_idx,
+                            EntropyCoder *entropy_coder_ptr,
+                            EbPictureBufferDesc *coeff_ptr) {
+#else
 EB_EXTERN EbErrorType write_sb(EntropyCodingContext *context_ptr, SuperBlock *tb_ptr,
                                PictureControlSet *pcs_ptr, EntropyCoder *entropy_coder_ptr,
                                EbPictureBufferDesc *coeff_ptr) {
+#endif
     EbErrorType         return_error  = EB_ErrorNone;
     FRAME_CONTEXT *     frame_context = entropy_coder_ptr->fc;
     AomWriter *         ec_writer     = &entropy_coder_ptr->ec_writer;
     SequenceControlSet *scs_ptr       = (SequenceControlSet *)pcs_ptr->scs_wrapper_ptr->object_ptr;
+#if TILES_PARALLEL
+    NeighborArrayUnit *partition_context_neighbor_array = pcs_ptr->partition_context_neighbor_array[tile_idx];
+#else
     NeighborArrayUnit *partition_context_neighbor_array = pcs_ptr->partition_context_neighbor_array;
+#endif
 
     // CU Varaiables
     const BlockGeom *blk_geom;
@@ -6143,8 +6373,13 @@ EB_EXTERN EbErrorType write_sb(EntropyCodingContext *context_ptr, SuperBlock *tb
                                 const int32_t runit_idx = tile_tl_idx + rcol + rrow * rstride;
                                 const RestorationUnitInfo *rui =
                                     &cm->rst_info[plane].unit_info[runit_idx];
+#if TILES_PARALLEL
+                                loop_restoration_write_sb_coeffs(
+                                    pcs_ptr, frame_context, cm, tile_idx, /*xd,*/ rui, ec_writer, plane);
+#else
                                 loop_restoration_write_sb_coeffs(
                                     pcs_ptr, frame_context, cm, /*xd,*/ rui, ec_writer, plane);
+#endif
                             }
                         }
                     }
@@ -6163,76 +6398,146 @@ EB_EXTERN EbErrorType write_sb(EntropyCodingContext *context_ptr, SuperBlock *tb
 
             switch (tb_ptr->cu_partition_array[blk_index]) {
             case PARTITION_NONE:
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
                 break;
 
             case PARTITION_HORZ:
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
 
                 if (mi_row + hbs < cm->mi_rows) {
                     final_blk_index++;
                     blk_ptr = &tb_ptr->final_blk_arr[final_blk_index];
+#if TILES_PARALLEL
+                    write_modes_b(
+                        pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                     write_modes_b(
                         pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
                 }
                 break;
 
             case PARTITION_VERT:
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
                 if (mi_col + hbs < cm->mi_cols) {
                     final_blk_index++;
                     blk_ptr = &tb_ptr->final_blk_arr[final_blk_index];
+#if TILES_PARALLEL
+                    write_modes_b(
+                        pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                     write_modes_b(
                         pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
                 }
                 break;
             case PARTITION_SPLIT: break;
             case PARTITION_HORZ_A:
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
 
                 final_blk_index++;
                 blk_ptr = &tb_ptr->final_blk_arr[final_blk_index];
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
 
                 final_blk_index++;
                 blk_ptr = &tb_ptr->final_blk_arr[final_blk_index];
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
 
                 break;
             case PARTITION_HORZ_B:
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
 
                 final_blk_index++;
                 blk_ptr = &tb_ptr->final_blk_arr[final_blk_index];
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
 
                 final_blk_index++;
                 blk_ptr = &tb_ptr->final_blk_arr[final_blk_index];
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
 
                 break;
             case PARTITION_VERT_A:
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
 
                 final_blk_index++;
                 blk_ptr = &tb_ptr->final_blk_arr[final_blk_index];
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
 
                 final_blk_index++;
                 blk_ptr = &tb_ptr->final_blk_arr[final_blk_index];
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
 
                 break;
             case PARTITION_VERT_B:
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
 
                 final_blk_index++;
                 blk_ptr = &tb_ptr->final_blk_arr[final_blk_index];
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
 
                 final_blk_index++;
                 blk_ptr = &tb_ptr->final_blk_arr[final_blk_index];
+#if TILES_PARALLEL
+                write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                 write_modes_b(pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
 
                 break;
             case PARTITION_HORZ_4:
@@ -6244,8 +6549,13 @@ EB_EXTERN EbErrorType write_sb(EntropyCodingContext *context_ptr, SuperBlock *tb
                         final_blk_index++;
                         blk_ptr = &tb_ptr->final_blk_arr[final_blk_index];
                     }
+#if TILES_PARALLEL
+                    write_modes_b(
+                        pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                     write_modes_b(
                         pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
                 }
                 break;
             case PARTITION_VERT_4:
@@ -6256,8 +6566,13 @@ EB_EXTERN EbErrorType write_sb(EntropyCodingContext *context_ptr, SuperBlock *tb
                         final_blk_index++;
                         blk_ptr = &tb_ptr->final_blk_arr[final_blk_index];
                     }
+#if TILES_PARALLEL
+                    write_modes_b(
+                        pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, tile_idx, coeff_ptr);
+#else
                     write_modes_b(
                         pcs_ptr, context_ptr, entropy_coder_ptr, tb_ptr, blk_ptr, coeff_ptr);
+#endif
                 }
                 break;
             default: assert(0);
