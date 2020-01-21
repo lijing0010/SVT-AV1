@@ -361,6 +361,16 @@ static __inline void mem_put_le16(void *vmem, MEM_VALUE_T val) {
     mem[1] = (MAU_T)((val >> 8) & 0xff);
 }
 
+#if TILES_PARALLEL
+static __inline void mem_put_le24(void *vmem, MEM_VALUE_T val) {
+    MAU_T *mem = (MAU_T *)vmem;
+
+    mem[0] = (MAU_T)((val >>  0) & 0xff);
+    mem[1] = (MAU_T)((val >>  8) & 0xff);
+    mem[2] = (MAU_T)((val >> 16) & 0xff);
+}
+#endif
+
 static __inline void mem_put_le32(void *vmem, MEM_VALUE_T val) {
     MAU_T *mem = (MAU_T *)vmem;
 

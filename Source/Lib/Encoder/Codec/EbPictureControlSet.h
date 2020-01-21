@@ -311,6 +311,7 @@ typedef struct PictureControlSet {
         EntropyTileInfo                     **entropy_coding_info;
         EbHandle                              entropy_coding_pic_mutex;
         EbBool                                entropy_coding_pic_reset_flag;
+        uint8_t                               tile_size_bytes_minus_1;
 #else
     int8_t   entropy_coding_current_available_row;
     EbBool   entropy_coding_row_array[MAX_SB_ROWS];

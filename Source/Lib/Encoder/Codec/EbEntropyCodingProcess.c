@@ -235,10 +235,6 @@ static void reset_entropy_coding_picture(EntropyCodingContext *context_ptr,
         pcs_ptr->entropy_coding_info[tile_idx]->entropy_coder_ptr->ec_writer.allow_update_cdf =
             pcs_ptr->entropy_coding_info[tile_idx]->entropy_coder_ptr->ec_writer.allow_update_cdf && !frm_hdr->disable_cdf_update;
 
-        if (tile_idx != tile_cnt - 1) {
-            data += 4;
-        }
-
         aom_start_encode(&pcs_ptr->entropy_coding_info[tile_idx]->entropy_coder_ptr->ec_writer, data);
 
         // ADD Reset here
@@ -656,15 +652,6 @@ void *entropy_coding_kernel(void *input_ptr) {
 
                         // Current tile ready
                         encode_slice_finish(pcs_ptr->entropy_coding_info[tile_idx]->entropy_coder_ptr);
-                        int tile_size = pcs_ptr->entropy_coding_info[tile_idx]->entropy_coder_ptr->ec_writer.pos;
-                        assert(tile_size >= AV1_MIN_TILE_SIZE_BYTES);
-
-                        if (tile_idx != tile_cnt - 1) {
-                            //last tile, write tile_size_minus_1
-                            OutputBitstreamUnit *output_bitstream_ptr = (OutputBitstreamUnit*)(pcs_ptr->entropy_coding_info[tile_idx]->entropy_coder_ptr->ec_output_bitstream_ptr);
-                            uint8_t *buf_data = output_bitstream_ptr->buffer_av1;
-                            mem_put_le32(buf_data, tile_size - AV1_MIN_TILE_SIZE_BYTES);
-                        }
 
                         eb_block_on_mutex(pcs_ptr->entropy_coding_pic_mutex);
                         pcs_ptr->entropy_coding_info[tile_idx]->entropy_coding_tile_done = EB_TRUE;

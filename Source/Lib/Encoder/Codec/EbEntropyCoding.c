@@ -34,6 +34,18 @@
 #define S8 8 * 8
 #define S4 4 * 4
 
+#if TILES_PARALLEL
+static void mem_put_varsize(uint8_t *const dst, const int sz, const int val) {
+    switch (sz) {
+        case 1: dst[0] = (uint8_t)(val & 0xff); break;
+        case 2: mem_put_le16(dst, val); break;
+        case 3: mem_put_le24(dst, val); break;
+        case 4: mem_put_le32(dst, val); break;
+        default: assert(0 && "Invalid size"); break;
+    }
+}
+#endif
+
 int     svt_av1_allow_palette(int allow_palette, BlockSize sb_type);
 int32_t eb_av1_loop_restoration_corners_in_sb(Av1Common *cm, int32_t plane, int32_t mi_row,
                                               int32_t mi_col, BlockSize bsize, int32_t *rcol0,
@@ -3306,6 +3318,11 @@ void eb_av1_tile_set_col(TileInfo *tile, const TilesInfo *tiles_info, int32_t mi
 static void write_tile_info(const PictureParentControlSet *const pcs_ptr,
                             //struct AomWriteBitBuffer *saved_wb,
                             struct AomWriteBitBuffer *wb) {
+#if TILES_PARALLEL
+    Av1Common *const cm = pcs_ptr->av1_cm;
+    uint16_t tile_cnt = cm->tiles_info.tile_rows * cm->tiles_info.tile_cols;
+    pcs_ptr->child_pcs->tile_size_bytes_minus_1 = 0;
+#endif
     eb_av1_get_tile_limits((PictureParentControlSet *)pcs_ptr);
     write_tile_info_max_tile(pcs_ptr, wb);
 
@@ -3317,8 +3334,26 @@ static void write_tile_info(const PictureParentControlSet *const pcs_ptr,
                 ? pcs_ptr->av1_cm->tiles_info.tile_rows * pcs_ptr->av1_cm->tiles_info.tile_cols - 1
                 : 0,
             pcs_ptr->av1_cm->log2_tile_cols + pcs_ptr->av1_cm->log2_tile_rows);
+
         // Number of bytes in tile size - 1
+#if TILES_PARALLEL
+        uint32_t max_tile_size = 0;
+        for (int tile_idx = 0; tile_idx < tile_cnt - 1; tile_idx++) {
+            max_tile_size = AOMMAX(max_tile_size, pcs_ptr->child_pcs->entropy_coding_info[tile_idx]->entropy_coder_ptr->ec_writer.pos);
+        }
+        if (max_tile_size >> 24 != 0)
+            pcs_ptr->child_pcs->tile_size_bytes_minus_1 = 3;
+        else if (max_tile_size >> 16 != 0)
+            pcs_ptr->child_pcs->tile_size_bytes_minus_1 = 2;
+        else if (max_tile_size >> 8 != 0)
+            pcs_ptr->child_pcs->tile_size_bytes_minus_1 = 1;
+        else
+            pcs_ptr->child_pcs->tile_size_bytes_minus_1 = 0;
+
+        eb_aom_wb_write_literal(wb, pcs_ptr->child_pcs->tile_size_bytes_minus_1, 2); //Jing: Change 3 to smaller size
+#else
         eb_aom_wb_write_literal(wb, 3, 2);
+#endif
     }
 }
 
@@ -4412,12 +4447,20 @@ EbErrorType write_frame_header_av1(Bitstream *bitstream_ptr, SequenceControlSet 
         // Add data from EC stream to Picture Stream.
 #if TILES_PARALLEL
         int32_t tile_size = 0;
+        uint8_t tile_size_bytes = 0;
         for (int tile_idx = 0; tile_idx < tile_cnt; tile_idx++) {
             tile_size = pcs_ptr->entropy_coding_info[tile_idx]->entropy_coder_ptr->ec_writer.pos;
-            tile_size += (tile_idx != tile_cnt - 1) ? 4 : 0;
+            //tile_size += (tile_idx != tile_cnt - 1) ? 4 : 0;
+            if (tile_idx != tile_cnt - 1 && tile_cnt > 1) {
+                tile_size_bytes = pcs_ptr->tile_size_bytes_minus_1 + 1;
+                mem_put_varsize(data + curr_data_size, tile_size_bytes, tile_size - 1);
+            } else {
+                tile_size_bytes = 0;
+            }
             OutputBitstreamUnit *ec_output_bitstream_ptr = (OutputBitstreamUnit*)pcs_ptr->entropy_coding_info[tile_idx]->entropy_coder_ptr->ec_output_bitstream_ptr;
-            memcpy(data + curr_data_size, ec_output_bitstream_ptr->buffer_begin_av1, tile_size);
-            curr_data_size += (tile_size);
+            memcpy(data + curr_data_size + tile_size_bytes,
+                    ec_output_bitstream_ptr->buffer_begin_av1, tile_size);
+            curr_data_size += (tile_size + tile_size_bytes);
         }
 #else
         int32_t              frame_size = (int32_t)(parent_pcs_ptr->av1_cm->tiles_info.tile_cols *
