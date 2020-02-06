@@ -3259,29 +3259,36 @@ static EbErrorType copy_frame_buffer(
         uint16_t     source_luma_stride = (uint16_t)(input_ptr->y_stride);
         uint16_t     source_cr_stride = (uint16_t)(input_ptr->cr_stride);
         uint16_t     source_cb_stride = (uint16_t)(input_ptr->cb_stride);
+        uint16_t source_chroma_height =
+            (luma_height >> (input_picture_ptr->color_format == EB_YUV420));
 
-        //uint16_t     luma_height  = input_picture_ptr->max_height;
-        // Y
-        for (input_row_index = 0; input_row_index < luma_height; input_row_index++) {
-            EB_MEMCPY((input_picture_ptr->buffer_y + luma_buffer_offset + luma_stride * input_row_index),
-                (input_ptr->luma + source_luma_stride * input_row_index),
-                luma_width);
+        uint8_t *src, *dst;
+
+        src = input_ptr->luma;
+        dst = input_picture_ptr->buffer_y + luma_buffer_offset;
+        for (unsigned i = 0; i < luma_height; i++) {
+            EB_MEMCPY(dst, src, source_luma_stride);
+            src += source_luma_stride;
+            dst += luma_stride;
         }
 
-        // U
-        for (input_row_index = 0; input_row_index < luma_height >> 1; input_row_index++) {
-            EB_MEMCPY((input_picture_ptr->buffer_cb + chroma_buffer_offset + chroma_stride * input_row_index),
-                (input_ptr->cb + (source_cb_stride*input_row_index)),
-                chroma_width);
+        src = input_ptr->cb;
+        dst = input_picture_ptr->buffer_cb + chroma_buffer_offset;
+        for (unsigned i = 0; i < source_chroma_height; i++) {
+            EB_MEMCPY(dst, src, source_cb_stride);
+            src += source_cb_stride;
+            dst += chroma_stride;
         }
 
-        // V
-        for (input_row_index = 0; input_row_index < luma_height >> 1; input_row_index++) {
-            EB_MEMCPY((input_picture_ptr->buffer_cr + chroma_buffer_offset + chroma_stride * input_row_index),
-                (input_ptr->cr + (source_cr_stride*input_row_index)),
-                chroma_width);
+        src = input_ptr->cr;
+        dst = input_picture_ptr->buffer_cr + chroma_buffer_offset;
+        for (unsigned i = 0; i < source_chroma_height; i++) {
+            EB_MEMCPY(dst, src, source_cr_stride);
+            src += source_cr_stride;
+            dst += chroma_stride;
         }
     }
+
     else if (is_16bit_input && config->compressed_ten_bit_format == 1)
     {
         {
@@ -3296,28 +3303,34 @@ static EbErrorType copy_frame_buffer(
             uint16_t  source_luma_stride = (uint16_t)(input_ptr->y_stride);
             uint16_t  source_cr_stride = (uint16_t)(input_ptr->cr_stride);
             uint16_t  source_cb_stride = (uint16_t)(input_ptr->cb_stride);
+            uint16_t source_chroma_height =
+                (luma_height >> (input_picture_ptr->color_format == EB_YUV420));
 
-            // Y 8bit
-            for (input_row_index = 0; input_row_index < luma_height; input_row_index++) {
-                EB_MEMCPY((input_picture_ptr->buffer_y + luma_buffer_offset + luma_stride * input_row_index),
-                    (input_ptr->luma + source_luma_stride * input_row_index),
-                    luma_width);
+            uint8_t *src, *dst;
+
+            src = input_ptr->luma;
+            dst = input_picture_ptr->buffer_y + luma_buffer_offset;
+            for (unsigned i = 0; i < luma_height; i++) {
+                EB_MEMCPY(dst, src, source_luma_stride);
+                src += source_luma_stride;
+                dst += luma_stride;
             }
 
-            // U 8bit
-            for (input_row_index = 0; input_row_index < luma_height >> 1; input_row_index++) {
-                EB_MEMCPY((input_picture_ptr->buffer_cb + chroma_buffer_offset + chroma_stride * input_row_index),
-                    (input_ptr->cb + (source_cb_stride*input_row_index)),
-                    chroma_width);
+            src = input_ptr->cb;
+            dst = input_picture_ptr->buffer_cb + chroma_buffer_offset;
+            for (unsigned i = 0; i < source_chroma_height; i++) {
+                EB_MEMCPY(dst, src, source_cb_stride);
+                src += source_cb_stride;
+                dst += chroma_stride;
             }
 
-            // V 8bit
-            for (input_row_index = 0; input_row_index < luma_height >> 1; input_row_index++) {
-                EB_MEMCPY((input_picture_ptr->buffer_cr + chroma_buffer_offset + chroma_stride * input_row_index),
-                    (input_ptr->cr + (source_cr_stride*input_row_index)),
-                    chroma_width);
+            src = input_ptr->cr;
+            dst = input_picture_ptr->buffer_cr + chroma_buffer_offset;
+            for (unsigned i = 0; i < source_chroma_height; i++) {
+                EB_MEMCPY(dst, src, source_cr_stride);
+                src += source_cr_stride;
+                dst += chroma_stride;
             }
-
             //efficient copy - final
             //compressed 2Bit in 1D format
             {
@@ -3612,6 +3625,7 @@ EbErrorType init_svt_av1_encoder_handle(
 
     return return_error;
 }
+
 static EbErrorType allocate_frame_buffer(
     SequenceControlSet       *scs_ptr,
     EbBufferHeaderType        *input_buffer)
@@ -3620,9 +3634,17 @@ static EbErrorType allocate_frame_buffer(
     EbPictureBufferDescInitData input_pic_buf_desc_init_data;
     EbSvtAv1EncConfiguration   * config = &scs_ptr->static_config;
     uint8_t is_16bit = config->encoder_bit_depth > 8 ? 1 : 0;
-    // Init Picture Init data
-    input_pic_buf_desc_init_data.max_width = (uint16_t)scs_ptr->max_input_luma_width;
-    input_pic_buf_desc_init_data.max_height = (uint16_t)scs_ptr->max_input_luma_height;
+
+    input_pic_buf_desc_init_data.max_width =
+        !scs_ptr->max_input_luma_width % 8 ?
+        scs_ptr->max_input_luma_width :
+        scs_ptr->max_input_luma_width + (scs_ptr->max_input_luma_width % 8);
+
+    input_pic_buf_desc_init_data.max_height =
+        !scs_ptr->max_input_luma_height % 8 ?
+        scs_ptr->max_input_luma_height :
+        scs_ptr->max_input_luma_height + (scs_ptr->max_input_luma_height % 8);
+
     input_pic_buf_desc_init_data.bit_depth = (EbBitDepthEnum)config->encoder_bit_depth;
     input_pic_buf_desc_init_data.color_format = (EbColorFormat)config->encoder_color_format;
 
@@ -3631,6 +3653,7 @@ static EbErrorType allocate_frame_buffer(
     else
         input_pic_buf_desc_init_data.buffer_enable_mask = is_16bit ?
              PICTURE_BUFFER_DESC_FULL_MASK : 0;
+
     input_pic_buf_desc_init_data.left_padding = scs_ptr->left_padding;
     input_pic_buf_desc_init_data.right_padding = scs_ptr->right_padding;
     input_pic_buf_desc_init_data.top_padding = scs_ptr->top_padding;
@@ -3652,6 +3675,7 @@ static EbErrorType allocate_frame_buffer(
             eb_picture_buffer_desc_ctor,
             (EbPtr)&input_pic_buf_desc_init_data);
         input_buffer->p_buffer = (uint8_t*)buf;
+
         if (is_16bit && config->compressed_ten_bit_format == 1) {
             //pack 4 2bit pixels into 1Byte
             EB_MALLOC_ALIGNED_ARRAY(buf->buffer_bit_inc_y,
