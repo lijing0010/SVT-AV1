@@ -2224,7 +2224,7 @@ static void  Av1GenerateRpsInfo(
             av1_rps->ref_poc_array[GOLD] = av1_rps->ref_poc_array[LAST];
 
             av1_rps->ref_poc_array[BWD] = get_ref_poc(context_ptr, picture_control_set_ptr->picture_number, three_level_hierarchical_pred_struct[gop_i].ref_list1[0]);
-            av1_rps->ref_poc_array[ALT2] = av1_rps->ref_poc_array[BWD];
+            av1_rps->ref_poc_array[ALT2] = get_ref_poc(context_ptr, picture_control_set_ptr->picture_number, three_level_hierarchical_pred_struct[gop_i].ref_list1[1]);
             av1_rps->ref_poc_array[ALT] = av1_rps->ref_poc_array[BWD];
 #else
             //{4, 8, 0, 0},     // GOP Index 0 - Ref List 0
