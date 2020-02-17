@@ -63,6 +63,7 @@ extern "C" {
 #define NON_AVX512_SUPPORT
 #endif
 
+#define MRP_31B_SUPPORT 1
 #define TILES_PARALLEL 1
 
 #if TILES_PARALLEL
