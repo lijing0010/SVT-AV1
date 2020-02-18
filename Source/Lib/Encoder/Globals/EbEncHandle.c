@@ -3253,7 +3253,6 @@ static EbErrorType copy_frame_buffer(
         uint16_t     luma_stride = input_picture_ptr->stride_y << is_16bit_input;
         uint16_t     chroma_stride = input_picture_ptr->stride_cb << is_16bit_input;
         uint16_t     luma_width = (uint16_t)(input_picture_ptr->width - scs_ptr->max_input_pad_right) << is_16bit_input;
-        uint16_t     chroma_width = (luma_width >> 1) << is_16bit_input;
         uint16_t     luma_height = (uint16_t)(input_picture_ptr->height - scs_ptr->max_input_pad_bottom);
 
         uint16_t     source_luma_stride = (uint16_t)(input_ptr->y_stride);
@@ -3297,7 +3296,6 @@ static EbErrorType copy_frame_buffer(
             uint16_t  luma_stride = input_picture_ptr->stride_y;
             uint16_t  chroma_stride = input_picture_ptr->stride_cb;
             uint16_t  luma_width = (uint16_t)(input_picture_ptr->width - scs_ptr->max_input_pad_right);
-            uint16_t  chroma_width = (luma_width >> 1);
             uint16_t  luma_height = (uint16_t)(input_picture_ptr->height - scs_ptr->max_input_pad_bottom);
 
             uint16_t  source_luma_stride = (uint16_t)(input_ptr->y_stride);
