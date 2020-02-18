@@ -172,6 +172,9 @@ typedef struct PredictionStructureGroup {
     EbDctor               dctor;
     PredictionStructure **prediction_structure_ptr_array;
     uint32_t              prediction_structure_count;
+#if LOW_DELAY_TUNE
+    uint8_t               ref_count_used;
+#endif
 } PredictionStructureGroup;
 
 /************************************************

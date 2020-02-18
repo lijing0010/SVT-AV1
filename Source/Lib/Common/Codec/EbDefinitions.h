@@ -101,6 +101,7 @@ extern "C" {
 #define MRP_31B_SUPPORT 1
 #define TILES_PARALLEL 1
 #define R2R_FIX 1
+#define LOW_DELAY_TUNE 1 // Tuning the 0B, 1B and 3B settings
 
 #if TILES_PARALLEL
 #define MAX_TILE_CNTS 128 // Annex A.3

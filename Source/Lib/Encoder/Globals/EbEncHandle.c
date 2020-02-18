@@ -2413,10 +2413,12 @@ static EbErrorType verify_settings(
         SVT_LOG("Error instance %u: QP must be [0 - %d]\n", channel_number + 1, MAX_QP_VALUE);
         return_error = EB_ErrorBadParameter;
     }
+#if !LOW_DELAY_TUNE
     if (config->hierarchical_levels != 3 && config->hierarchical_levels != 4 && config->hierarchical_levels != 5) {
         SVT_LOG("Error instance %u: Hierarchical Levels supported [3-5]\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
+#endif
     if (config->intra_period_length < -2 || config->intra_period_length > 255) {
         SVT_LOG("Error Instance %u: The intra period must be [-2 - 255] \n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
