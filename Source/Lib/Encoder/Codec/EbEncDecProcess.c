@@ -696,9 +696,9 @@ void psnr_calculations(PictureControlSet *pcs_ptr, SequenceControlSet *scs_ptr) 
 
         residual_distortion = 0;
 
-        while (row_index < input_picture_ptr->height) {
+        while (row_index < input_picture_ptr->height - scs_ptr->max_input_pad_bottom) {
             column_index = 0;
-            while (column_index < input_picture_ptr->width) {
+            while (column_index < input_picture_ptr->width - scs_ptr->max_input_pad_right) {
                 residual_distortion += (int64_t)SQR((int64_t)(input_buffer[column_index]) -
                                                     (recon_coeff_buffer[column_index]));
                 ++column_index;
@@ -719,9 +719,9 @@ void psnr_calculations(PictureControlSet *pcs_ptr, SequenceControlSet *scs_ptr) 
 
         residual_distortion = 0;
         row_index           = 0;
-        while (row_index < (uint32_t)(input_picture_ptr->height >> ss_y)) {
+        while (row_index < (uint32_t)((input_picture_ptr->height - scs_ptr->max_input_pad_bottom) >> ss_y)) {
             column_index = 0;
-            while (column_index < (uint32_t)(input_picture_ptr->width >> ss_x)) {
+            while (column_index < (uint32_t)((input_picture_ptr->width - scs_ptr->max_input_pad_bottom) >> ss_x)) {
                 residual_distortion += (int64_t)SQR((int64_t)(input_buffer[column_index]) -
                                                     (recon_coeff_buffer[column_index]));
                 ++column_index;
@@ -742,9 +742,9 @@ void psnr_calculations(PictureControlSet *pcs_ptr, SequenceControlSet *scs_ptr) 
         residual_distortion = 0;
         row_index           = 0;
 
-        while (row_index < (uint32_t)(input_picture_ptr->height >> ss_y)) {
+        while (row_index < (uint32_t)((input_picture_ptr->height - scs_ptr->max_input_pad_bottom) >> ss_y)) {
             column_index = 0;
-            while (column_index < (uint32_t)(input_picture_ptr->width >> ss_x)) {
+            while (column_index < (uint32_t)((input_picture_ptr->width - scs_ptr->max_input_pad_bottom) >> ss_x)) {
                 residual_distortion += (int64_t)SQR((int64_t)(input_buffer[column_index]) -
                                                     (recon_coeff_buffer[column_index]));
                 ++column_index;
@@ -786,13 +786,13 @@ void psnr_calculations(PictureControlSet *pcs_ptr, SequenceControlSet *scs_ptr) 
         uint16_t *recon_coeff_buffer;
 
         if (scs_ptr->static_config.ten_bit_format == 1) {
-            const uint32_t luma_width        = input_picture_ptr->width;
-            const uint32_t luma_height       = input_picture_ptr->height;
-            const uint32_t chroma_width      = input_picture_ptr->width >> ss_x;
+            const uint32_t luma_width        = input_picture_ptr->width - scs_ptr->max_input_pad_right;
+            const uint32_t luma_height       = input_picture_ptr->height - scs_ptr->max_input_pad_bottom;
+            const uint32_t chroma_width      = luma_width >> ss_x;
             const uint32_t pic_width_in_sb   = (luma_width + 64 - 1) / 64;
             const uint32_t pic_height_in_sb  = (luma_height + 64 - 1) / 64;
             const uint32_t luma_2bit_width   = luma_width / 4;
-            const uint32_t chroma_height     = input_picture_ptr->height >> ss_y;
+            const uint32_t chroma_height     = luma_height >> ss_y;
             const uint32_t chroma_2bit_width = chroma_width / 4;
             uint32_t       sb_num_in_height, sb_num_in_width;
 
@@ -1037,9 +1037,9 @@ void psnr_calculations(PictureControlSet *pcs_ptr, SequenceControlSet *scs_ptr) 
 
             residual_distortion = 0;
 
-            while (row_index < input_picture_ptr->height) {
+            while (row_index < (uint32_t)(input_picture_ptr->height - scs_ptr->max_input_pad_bottom)) {
                 column_index = 0;
-                while (column_index < input_picture_ptr->width) {
+                while (column_index < input_picture_ptr->width - scs_ptr->max_input_pad_right) {
                     residual_distortion +=
                         (int64_t)SQR((int64_t)((((input_buffer[column_index]) << 2) |
                                                 ((input_buffer_bit_inc[column_index] >> 6) & 3))) -
@@ -1069,9 +1069,9 @@ void psnr_calculations(PictureControlSet *pcs_ptr, SequenceControlSet *scs_ptr) 
 
             residual_distortion = 0;
             row_index           = 0;
-            while (row_index < (uint32_t)(input_picture_ptr->height >> ss_y)) {
+            while (row_index < (uint32_t)((input_picture_ptr->height - scs_ptr->max_input_pad_bottom) >> ss_y)) {
                 column_index = 0;
-                while (column_index < (uint32_t)(input_picture_ptr->width >> ss_x)) {
+                while (column_index < (uint32_t)((input_picture_ptr->width - scs_ptr->max_input_pad_right) >> ss_x)) {
                     residual_distortion +=
                         (int64_t)SQR((int64_t)((((input_buffer[column_index]) << 2) |
                                                 ((input_buffer_bit_inc[column_index] >> 6) & 3))) -
@@ -1101,9 +1101,9 @@ void psnr_calculations(PictureControlSet *pcs_ptr, SequenceControlSet *scs_ptr) 
             residual_distortion = 0;
             row_index           = 0;
 
-            while (row_index < (uint32_t)(input_picture_ptr->height >> ss_y)) {
+            while (row_index < (uint32_t)((input_picture_ptr->height - scs_ptr->max_input_pad_bottom) >> ss_y)) {
                 column_index = 0;
-                while (column_index < (uint32_t)(input_picture_ptr->width >> ss_x)) {
+                while (column_index < (uint32_t)((input_picture_ptr->width - scs_ptr->max_input_pad_right) >> ss_x)) {
                     residual_distortion +=
                         (int64_t)SQR((int64_t)((((input_buffer[column_index]) << 2) |
                                                 ((input_buffer_bit_inc[column_index] >> 6) & 3))) -
