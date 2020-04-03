@@ -589,6 +589,11 @@ typedef struct PictureParentControlSet {
     int32_t      base_rdmult;
     double       r0;
     double       *cutree_beta;
+#if LAMBDA_SCALING
+    double      *tpl_rdmult_scaling_factors;
+    double      *tpl_sb_rdmult_scaling_factors;
+    EbBool       blk_lambda_tuning;
+#endif
 #endif
     // Dynamic GOP
     EbPred   pred_structure;

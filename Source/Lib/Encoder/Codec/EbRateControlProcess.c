@@ -5342,6 +5342,186 @@ static void sb_qp_derivation_two_pass(PictureControlSet *pcs_ptr) {
 }
 
 #if CUTREE_LA
+#if LAMBDA_SCALING
+//TODO: refine these
+static const int16_t dc_qlookup_QTX[QINDEX_RANGE] = {
+  4,    8,    8,    9,    10,  11,  12,  12,  13,  14,  15,   16,   17,   18,
+  19,   19,   20,   21,   22,  23,  24,  25,  26,  26,  27,   28,   29,   30,
+  31,   32,   32,   33,   34,  35,  36,  37,  38,  38,  39,   40,   41,   42,
+  43,   43,   44,   45,   46,  47,  48,  48,  49,  50,  51,   52,   53,   53,
+  54,   55,   56,   57,   57,  58,  59,  60,  61,  62,  62,   63,   64,   65,
+  66,   66,   67,   68,   69,  70,  70,  71,  72,  73,  74,   74,   75,   76,
+  77,   78,   78,   79,   80,  81,  81,  82,  83,  84,  85,   85,   87,   88,
+  90,   92,   93,   95,   96,  98,  99,  101, 102, 104, 105,  107,  108,  110,
+  111,  113,  114,  116,  117, 118, 120, 121, 123, 125, 127,  129,  131,  134,
+  136,  138,  140,  142,  144, 146, 148, 150, 152, 154, 156,  158,  161,  164,
+  166,  169,  172,  174,  177, 180, 182, 185, 187, 190, 192,  195,  199,  202,
+  205,  208,  211,  214,  217, 220, 223, 226, 230, 233, 237,  240,  243,  247,
+  250,  253,  257,  261,  265, 269, 272, 276, 280, 284, 288,  292,  296,  300,
+  304,  309,  313,  317,  322, 326, 330, 335, 340, 344, 349,  354,  359,  364,
+  369,  374,  379,  384,  389, 395, 400, 406, 411, 417, 423,  429,  435,  441,
+  447,  454,  461,  467,  475, 482, 489, 497, 505, 513, 522,  530,  539,  549,
+  559,  569,  579,  590,  602, 614, 626, 640, 654, 668, 684,  700,  717,  736,
+  755,  775,  796,  819,  843, 869, 896, 925, 955, 988, 1022, 1058, 1098, 1139,
+  1184, 1232, 1282, 1336,
+};
+
+static const int16_t dc_qlookup_10_QTX[QINDEX_RANGE] = {
+  4,    9,    10,   13,   15,   17,   20,   22,   25,   28,   31,   34,   37,
+  40,   43,   47,   50,   53,   57,   60,   64,   68,   71,   75,   78,   82,
+  86,   90,   93,   97,   101,  105,  109,  113,  116,  120,  124,  128,  132,
+  136,  140,  143,  147,  151,  155,  159,  163,  166,  170,  174,  178,  182,
+  185,  189,  193,  197,  200,  204,  208,  212,  215,  219,  223,  226,  230,
+  233,  237,  241,  244,  248,  251,  255,  259,  262,  266,  269,  273,  276,
+  280,  283,  287,  290,  293,  297,  300,  304,  307,  310,  314,  317,  321,
+  324,  327,  331,  334,  337,  343,  350,  356,  362,  369,  375,  381,  387,
+  394,  400,  406,  412,  418,  424,  430,  436,  442,  448,  454,  460,  466,
+  472,  478,  484,  490,  499,  507,  516,  525,  533,  542,  550,  559,  567,
+  576,  584,  592,  601,  609,  617,  625,  634,  644,  655,  666,  676,  687,
+  698,  708,  718,  729,  739,  749,  759,  770,  782,  795,  807,  819,  831,
+  844,  856,  868,  880,  891,  906,  920,  933,  947,  961,  975,  988,  1001,
+  1015, 1030, 1045, 1061, 1076, 1090, 1105, 1120, 1137, 1153, 1170, 1186, 1202,
+  1218, 1236, 1253, 1271, 1288, 1306, 1323, 1342, 1361, 1379, 1398, 1416, 1436,
+  1456, 1476, 1496, 1516, 1537, 1559, 1580, 1601, 1624, 1647, 1670, 1692, 1717,
+  1741, 1766, 1791, 1817, 1844, 1871, 1900, 1929, 1958, 1990, 2021, 2054, 2088,
+  2123, 2159, 2197, 2236, 2276, 2319, 2363, 2410, 2458, 2508, 2561, 2616, 2675,
+  2737, 2802, 2871, 2944, 3020, 3102, 3188, 3280, 3375, 3478, 3586, 3702, 3823,
+  3953, 4089, 4236, 4394, 4559, 4737, 4929, 5130, 5347,
+};
+
+static const int16_t dc_qlookup_12_QTX[QINDEX_RANGE] = {
+  4,     12,    18,    25,    33,    41,    50,    60,    70,    80,    91,
+  103,   115,   127,   140,   153,   166,   180,   194,   208,   222,   237,
+  251,   266,   281,   296,   312,   327,   343,   358,   374,   390,   405,
+  421,   437,   453,   469,   484,   500,   516,   532,   548,   564,   580,
+  596,   611,   627,   643,   659,   674,   690,   706,   721,   737,   752,
+  768,   783,   798,   814,   829,   844,   859,   874,   889,   904,   919,
+  934,   949,   964,   978,   993,   1008,  1022,  1037,  1051,  1065,  1080,
+  1094,  1108,  1122,  1136,  1151,  1165,  1179,  1192,  1206,  1220,  1234,
+  1248,  1261,  1275,  1288,  1302,  1315,  1329,  1342,  1368,  1393,  1419,
+  1444,  1469,  1494,  1519,  1544,  1569,  1594,  1618,  1643,  1668,  1692,
+  1717,  1741,  1765,  1789,  1814,  1838,  1862,  1885,  1909,  1933,  1957,
+  1992,  2027,  2061,  2096,  2130,  2165,  2199,  2233,  2267,  2300,  2334,
+  2367,  2400,  2434,  2467,  2499,  2532,  2575,  2618,  2661,  2704,  2746,
+  2788,  2830,  2872,  2913,  2954,  2995,  3036,  3076,  3127,  3177,  3226,
+  3275,  3324,  3373,  3421,  3469,  3517,  3565,  3621,  3677,  3733,  3788,
+  3843,  3897,  3951,  4005,  4058,  4119,  4181,  4241,  4301,  4361,  4420,
+  4479,  4546,  4612,  4677,  4742,  4807,  4871,  4942,  5013,  5083,  5153,
+  5222,  5291,  5367,  5442,  5517,  5591,  5665,  5745,  5825,  5905,  5984,
+  6063,  6149,  6234,  6319,  6404,  6495,  6587,  6678,  6769,  6867,  6966,
+  7064,  7163,  7269,  7376,  7483,  7599,  7715,  7832,  7958,  8085,  8214,
+  8352,  8492,  8635,  8788,  8945,  9104,  9275,  9450,  9639,  9832,  10031,
+  10245, 10465, 10702, 10946, 11210, 11482, 11776, 12081, 12409, 12750, 13118,
+  13501, 13913, 14343, 14807, 15290, 15812, 16356, 16943, 17575, 18237, 18949,
+  19718, 20521, 21387,
+};
+
+
+static int16_t av1_dc_quant_qtx(int qindex, int delta, AomBitDepth bit_depth) {
+  const int q_clamped = clamp(qindex + delta, 0, MAXQ);
+  switch (bit_depth) {
+    case AOM_BITS_8: return dc_qlookup_QTX[q_clamped];
+    case AOM_BITS_10: return dc_qlookup_10_QTX[q_clamped];
+    case AOM_BITS_12: return dc_qlookup_12_QTX[q_clamped];
+    default:
+      assert(0 && "bit_depth should be AOM_BITS_8, AOM_BITS_10 or AOM_BITS_12");
+      return -1;
+  }
+}
+
+static int av1_compute_rd_mult_based_on_qindex(AomBitDepth bit_depth, int qindex) {
+  const int q = av1_dc_quant_qtx(qindex, 0, bit_depth);
+  //const int q = eb_av1_dc_quant_Q3(qindex, 0, bit_depth);
+  int rdmult = q * q;
+  rdmult = rdmult * 3 + (rdmult * 2 / 3);
+  switch (bit_depth) {
+    case AOM_BITS_8: break;
+    case AOM_BITS_10: rdmult = ROUND_POWER_OF_TWO(rdmult, 4); break;
+    case AOM_BITS_12: rdmult = ROUND_POWER_OF_TWO(rdmult, 8); break;
+    default:
+      assert(0 && "bit_depth should be AOM_BITS_8, AOM_BITS_10 or AOM_BITS_12");
+      return -1;
+  }
+  return rdmult > 0 ? rdmult : 1;
+}
+
+static int av1_compute_rd_mult(AomBitDepth bit_depth, int qindex) {
+  int64_t rdmult = av1_compute_rd_mult_based_on_qindex(bit_depth, qindex);
+  /*
+  if (is_stat_consumption_stage(cpi) &&
+      (cpi->common.current_frame.frame_type != KEY_FRAME)) {
+    const GF_GROUP *const gf_group = &cpi->gf_group;
+    const FRAME_UPDATE_TYPE frame_type = gf_group->update_type[gf_group->index];
+    const int boost_index = AOMMIN(15, (cpi->rc.gfu_boost / 100));
+
+    rdmult = (rdmult * rd_frame_type_factor[frame_type]) >> 7;
+    rdmult += ((rdmult * rd_boost_factor[boost_index]) >> 7);
+  }
+  */
+  return (int)rdmult;
+}
+
+static void sb_setup_lambda(PictureControlSet *pcs_ptr,
+        SuperBlock *sb_ptr) {
+    const Av1Common  *const cm = pcs_ptr->parent_pcs_ptr->av1_cm;
+    PictureParentControlSet   *ppcs_ptr = pcs_ptr->parent_pcs_ptr;
+    SequenceControlSet        *scs_ptr = ppcs_ptr->scs_ptr;
+    const int bsize_base = BLOCK_16X16;
+    const int num_mi_w = mi_size_wide[bsize_base];
+    const int num_mi_h = mi_size_high[bsize_base];
+    const int num_cols = (cm->mi_cols + num_mi_w - 1) / num_mi_w;
+    const int num_rows = (cm->mi_rows + num_mi_h - 1) / num_mi_h;
+    const int num_bcols = (mi_size_wide[scs_ptr->seq_header.sb_size] + num_mi_w - 1) / num_mi_w;
+    const int num_brows = (mi_size_high[scs_ptr->seq_header.sb_size] + num_mi_h - 1) / num_mi_h;
+    int mi_col = sb_ptr->origin_x / 4;
+    int mi_row = sb_ptr->origin_y / 4;
+    int row, col;
+
+    double base_block_count = 0.0;
+    double log_sum = 0.0;
+
+    for (row = mi_row / num_mi_w;
+            row < num_rows && row < mi_row / num_mi_w + num_brows; ++row) {
+        for (col = mi_col / num_mi_h;
+                col < num_cols && col < mi_col / num_mi_h + num_bcols; ++col) {
+            const int index = row * num_cols + col;
+            log_sum += log(ppcs_ptr->tpl_rdmult_scaling_factors[index]);
+            base_block_count += 1.0;
+        }
+    }
+
+    const int orig_rdmult =
+        av1_compute_rd_mult(8, ppcs_ptr->frm_hdr.quantization_params.base_q_idx);
+    const int new_rdmult = av1_compute_rd_mult(8, sb_ptr->qindex);
+    const double scaling_factor = (double)new_rdmult / (double)orig_rdmult;
+    double scale_adj = log(scaling_factor) - log_sum / base_block_count;
+    scale_adj = exp(scale_adj);
+    int dbg = 0;
+    if (pcs_ptr->picture_number == 48 && mi_row == 0 && mi_col == 0 && 0) {
+        dbg = 1;
+        printf("rdmult_setup_sb (0, 0): base_block_count %f, pic_qindex %d, sb_qindex %d, lambda %d/%d, sb_size %d\n",
+                base_block_count, ppcs_ptr->frm_hdr.quantization_params.base_q_idx,
+                sb_ptr->qindex, orig_rdmult, new_rdmult,
+                scs_ptr->seq_header.sb_size);
+    }
+
+    for (row = mi_row / num_mi_w;
+            row < num_rows && row < mi_row / num_mi_w + num_brows; ++row) {
+        for (col = mi_col / num_mi_h;
+                col < num_cols && col < mi_col / num_mi_h + num_bcols; ++col) {
+            const int index = row * num_cols + col;
+            ppcs_ptr->tpl_sb_rdmult_scaling_factors[index] =
+                scale_adj * ppcs_ptr->tpl_rdmult_scaling_factors[index];
+            if (dbg) {
+                printf("\tindex %d, factor is %f, scale_adj is %f\n",
+                        index, ppcs_ptr->tpl_rdmult_scaling_factors[index], scale_adj);
+            }
+        }
+    }
+    ppcs_ptr->blk_lambda_tuning = EB_TRUE;
+}
+
+#endif
 /******************************************************
  * sb_qp_derivation_tpl_la
  * Calculates the QP per SB based on the referenced area
@@ -5353,6 +5533,7 @@ static void sb_qp_derivation_tpl_la(
 
     PictureParentControlSet   *ppcs_ptr = pcs_ptr->parent_pcs_ptr;
     SequenceControlSet        *scs_ptr = pcs_ptr->parent_pcs_ptr->scs_ptr;
+    const Av1Common           *const cm = pcs_ptr->parent_pcs_ptr->av1_cm;
     SuperBlock                *sb_ptr;
     uint32_t                  sb_addr;
 #if QP2QINDEX
@@ -5479,6 +5660,11 @@ static void sb_qp_derivation_tpl_la(
 #else
             pcs_ptr->parent_pcs_ptr->average_qp += sb_ptr->qp;
 #endif
+
+#if LAMBDA_SCALING
+			sb_setup_lambda(pcs_ptr, sb_ptr);
+#endif
+
 
             //int qp_index = quantizer_to_qindex[sb_ptr->qp];
             int qp_index = quantizer_to_qindex[(int)pcs_ptr->parent_pcs_ptr->picture_qp];
@@ -5705,6 +5891,9 @@ void *rate_control_kernel(void *input_ptr) {
             pcs_ptr = (PictureControlSet *)rate_control_tasks_ptr->pcs_wrapper_ptr->object_ptr;
             scs_ptr = (SequenceControlSet *)pcs_ptr->scs_wrapper_ptr->object_ptr;
             FrameHeader *frm_hdr = &pcs_ptr->parent_pcs_ptr->frm_hdr;
+#if LAMBDA_SCALING
+            pcs_ptr->parent_pcs_ptr->blk_lambda_tuning = EB_FALSE;
+#endif
 
             if (pcs_ptr->picture_number == 0) {
                 //init rate control parameters

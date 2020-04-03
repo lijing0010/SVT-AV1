@@ -815,6 +815,53 @@ void update_histogram_queue_entry(SequenceControlSet *scs_ptr, EncodeContext *en
 }
 
 #if CUTREE_LA
+#if LAMBDA_SCALING
+static void generate_lambda_scaling_factor(PictureParentControlSet         *pcs_ptr)
+{
+    Av1Common *cm = pcs_ptr->av1_cm;
+    //int tpl_stride = tpl_frame->stride;
+    double intra_cost = 0.0;
+    double mc_dep_cost = 0.0;
+    const int step = 4; //1 << cpi->tpl_stats_block_mis_log2;
+    const int mi_cols_sr = cm->mi_cols;//av1_pixels_to_mi(cm->superres_upscaled_width);
+
+    const int block_size = BLOCK_16X16;
+    const int num_mi_w = mi_size_wide[block_size];
+    const int num_mi_h = mi_size_high[block_size];
+    const int num_cols = (mi_cols_sr + num_mi_w - 1) / num_mi_w;
+    const int num_rows = (cm->mi_rows + num_mi_h - 1) / num_mi_h;
+    const double c = 1.2;
+    int dbg = 0;
+    if (pcs_ptr->picture_number == 0 && 0) {
+        dbg = 1;
+        printf("calculate tpl_rdmult_scaling_factors, 16x16 size %d/%d, ro %f\n", num_cols, num_rows, pcs_ptr->r0);
+    }
+    for (int row = 0; row < num_rows; row++) {
+        for (int col = 0; col < num_cols; col++) {
+            const int index = row * num_cols + col;
+            //OisMbResults *ois_mb_results_ptr =
+            //    pcs_ptr->ois_mb_results[((row * mi_cols_sr) >> 4) + (col >> 2)];
+            OisMbResults *ois_mb_results_ptr =
+                pcs_ptr->ois_mb_results[index];
+            int64_t mc_dep_delta =
+                RDCOST(pcs_ptr->base_rdmult, ois_mb_results_ptr->mc_dep_rate, ois_mb_results_ptr->mc_dep_dist);
+            intra_cost  = (double)(ois_mb_results_ptr->recrf_dist << RDDIV_BITS);
+            mc_dep_cost = (double)(ois_mb_results_ptr->recrf_dist << RDDIV_BITS) + mc_dep_delta;
+
+            const double rk = intra_cost / mc_dep_cost;
+
+            pcs_ptr->tpl_rdmult_scaling_factors[index] = rk / pcs_ptr->r0 + c;
+            if (dbg) {
+                printf("\tIndex %d, intra_cost %f, mc_dep_cost %f, r0 %f, rk %f, factor %f\n",
+                        index, intra_cost, mc_dep_cost, pcs_ptr->r0, rk, pcs_ptr->tpl_rdmult_scaling_factors[index]);
+            }
+        }
+    }
+
+    return;
+}
+
+#endif
 static AOM_INLINE void get_quantize_error(MacroblockPlane *p,
                                           const tran_low_t *coeff, tran_low_t *qcoeff,
                                           tran_low_t *dqcoeff, TxSize tx_size,
@@ -1530,6 +1577,9 @@ static void generate_r0beta(PictureParentControlSet *pcs_ptr)
       pcs_ptr->r0 = (double)intra_cost_base / mc_dep_cost_base;
     }
 
+#if LAMBDA_SCALING
+	generate_lambda_scaling_factor(pcs_ptr);
+#endif
     printf("genrate_r0beta ------> poc %ld\t%.0f\t%.0f \t%.5f base_rdmult=%d\n", pcs_ptr->picture_number, (double)intra_cost_base, (double)mc_dep_cost_base, pcs_ptr->r0, pcs_ptr->base_rdmult);
 
     const uint32_t sb_sz = scs_ptr->seq_header.sb_size == BLOCK_128X128 ? 128 : 64;

@@ -1855,9 +1855,13 @@ void product_full_loop(ModeDecisionCandidateBuffer *candidate_buffer,
     uint64_t              y_txb_coeff_bits;
     EB_ALIGN(16) uint64_t txb_full_distortion[3][DIST_CALC_TOTAL];
     context_ptr->three_quad_energy = 0;
+#if LAMBDA_SCALING
+    uint32_t full_lambda =  context_ptr->blk_full_lambda;
+#else
     uint32_t full_lambda =  context_ptr->hbd_mode_decision ?
         context_ptr->full_lambda_md[EB_10_BIT_MD] :
         context_ptr->full_lambda_md[EB_8_BIT_MD];
+#endif
     uint8_t  tx_depth              = context_ptr->tx_depth;
     uint32_t txb_itr               = context_ptr->txb_itr;
     uint32_t txb_1d_offset         = context_ptr->txb_1d_offset;
@@ -2214,7 +2218,11 @@ void encode_pass_tx_search(PictureControlSet *pcs_ptr, EncDecContext *context_pt
             0,
             blk_ptr->av1xd->use_intrabc,
 #if QP2QINDEX
+#if LAMBDA_SCALING
+            context_ptr->md_context->blk_full_lambda, //Jing: double check here, if fine for 8/10bit
+#else
             context_ptr->md_context->full_lambda_md[EB_8_BIT_MD],
+#endif
 #else
             context_ptr->full_lambda,
 #endif
@@ -2300,7 +2308,11 @@ void encode_pass_tx_search(PictureControlSet *pcs_ptr, EncDecContext *context_pt
             &y_txb_coeff_bits,
             &y_full_cost,
 #if QP2QINDEX
+#if LAMBDA_SCALING
+            context_ptr->md_context->blk_full_lambda); //Jing: double check here, if fine for 8/10bit
+#else
             context_ptr->md_context->full_lambda_md[EB_8_BIT_MD]);
+#endif
 #else
             context_ptr->full_lambda);
 #endif
@@ -2410,7 +2422,11 @@ void encode_pass_tx_search_hbd(
             0,
             blk_ptr->av1xd->use_intrabc,
 #if QP2QINDEX
+#if LAMBDA_SCALING
+            context_ptr->md_context->blk_full_lambda, //Jing: double check here, if fine for 8/10bit
+#else
             context_ptr->md_context->full_lambda_md[EB_10_BIT_MD],
+#endif
 #else
             context_ptr->full_lambda,
 #endif
@@ -2496,7 +2512,11 @@ void encode_pass_tx_search_hbd(
             &y_txb_coeff_bits,
             &y_full_cost,
 #if QP2QINDEX
+#if LAMBDA_SCALING
+            context_ptr->md_context->blk_full_lambda); //Jing: double check here, if fine for 8/10bit
+#else
             context_ptr->md_context->full_lambda_md[EB_10_BIT_MD]);
+#endif
 #else
             context_ptr->full_lambda);
 #endif
@@ -2564,9 +2584,14 @@ void full_loop_r(SuperBlock *sb_ptr, ModeDecisionCandidateBuffer *candidate_buff
     uint32_t txb_itr;
     uint32_t txb_origin_x;
     uint32_t txb_origin_y;
+
+#if LAMBDA_SCALING
+    uint32_t full_lambda =  context_ptr->blk_full_lambda;
+#else
     uint32_t full_lambda =  context_ptr->hbd_mode_decision ?
         context_ptr->full_lambda_md[EB_10_BIT_MD] :
         context_ptr->full_lambda_md[EB_8_BIT_MD];
+#endif
     context_ptr->three_quad_energy = 0;
 
     uint8_t tx_depth = candidate_buffer->candidate_ptr->tx_depth;
@@ -2834,9 +2859,13 @@ void cu_full_distortion_fast_txb_mode_r(
     current_txb_index              = 0;
     transform_buffer = context_ptr->trans_quant_buffers_ptr->txb_trans_coeff2_nx2_n_ptr;
 
+#if LAMBDA_SCALING
+    uint32_t full_lambda =  context_ptr->blk_full_lambda;
+#else
     uint32_t full_lambda =  context_ptr->hbd_mode_decision ?
         context_ptr->full_lambda_md[EB_10_BIT_MD] :
         context_ptr->full_lambda_md[EB_8_BIT_MD];
+#endif
     int32_t is_inter = (candidate_buffer->candidate_ptr->type == INTER_MODE ||
                         candidate_buffer->candidate_ptr->use_intrabc)
                            ? EB_TRUE

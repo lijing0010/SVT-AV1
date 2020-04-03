@@ -284,6 +284,7 @@ static void enc_dec_configure_sb(EncDecContext *context_ptr, SuperBlock *sb_ptr,
     (void)sb_ptr;
     context_ptr->qp_index =
         (uint8_t)pcs_ptr->parent_pcs_ptr->frm_hdr.quantization_params.base_q_idx;
+
     (*av1_lambda_assignment_function_table[pcs_ptr->parent_pcs_ptr->pred_structure])(
         &context_ptr->fast_lambda,
         &context_ptr->full_lambda,

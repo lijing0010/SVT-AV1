@@ -275,9 +275,13 @@ void inter_intra_search(PictureControlSet *pcs_ptr, ModeDecisionContext *context
                        (context_ptr->blk_origin_y + src_pic->origin_y) * src_pic->stride_y;
 
     uint8_t bit_depth = context_ptr->hbd_mode_decision ? EB_10BIT : EB_8BIT;
+#if LAMBDA_SCALING
+    uint32_t full_lambda =  context_ptr->blk_full_lambda;
+#else
     uint32_t full_lambda =  context_ptr->hbd_mode_decision ?
         context_ptr->full_lambda_md[EB_10_BIT_MD] :
         context_ptr->full_lambda_md[EB_8_BIT_MD];
+#endif
     uint32_t            bwidth  = context_ptr->blk_geom->bwidth;
     uint32_t            bheight = context_ptr->blk_geom->bheight;
     EbPictureBufferDesc pred_desc;
@@ -3276,7 +3280,11 @@ static void single_motion_search(PictureControlSet *pcs, ModeDecisionContext *co
     FrameHeader *          frm_hdr = &pcs->parent_pcs_ptr->frm_hdr;
 
 // single_motion_search supports 8bit path only
+#if LAMBDA_SCALING
+    uint32_t full_lambda =  context_ptr->blk_full_lambda;
+#else
     uint32_t full_lambda = context_ptr->full_lambda_md[EB_8_BIT_MD];
+#endif
     x->xd            = context_ptr->blk_ptr->av1xd;
     const int mi_row = -x->xd->mb_to_top_edge / (8 * MI_SIZE);
     const int mi_col = -x->xd->mb_to_left_edge / (8 * MI_SIZE);
@@ -5197,9 +5205,13 @@ void intra_bc_search(PictureControlSet *pcs, ModeDecisionContext *context_ptr,
                      uint8_t *num_dv_cand) {
     IntraBcContext  x_st;
     IntraBcContext *x = &x_st;
+#if LAMBDA_SCALING
+    uint32_t full_lambda =  context_ptr->blk_full_lambda;
+#else
     uint32_t full_lambda =  context_ptr->hbd_mode_decision ?
         context_ptr->full_lambda_md[EB_10_BIT_MD] :
         context_ptr->full_lambda_md[EB_8_BIT_MD];
+#endif
     //fill x with what needed.
     x->is_exhaustive_allowed =
         context_ptr->blk_geom->bwidth == 4 || context_ptr->blk_geom->bheight == 4 ? 1 : 0;
@@ -6521,3 +6533,60 @@ uint32_t product_full_mode_decision(
     UNUSED(cu_size_log2);
     return lowest_cost_index;
 }
+
+#if LAMBDA_SCALING
+void get_blk_tuned_full_lambda(struct ModeDecisionContext *context_ptr, PictureControlSet *pcs_ptr,
+                                 uint32_t sb_full_lambda, uint32_t pic_full_lambda) {
+    PictureParentControlSet *ppcs_ptr = pcs_ptr->parent_pcs_ptr;
+    SequenceControlSet *scs_ptr = (SequenceControlSet *)pcs_ptr->scs_wrapper_ptr->object_ptr;
+    Av1Common *cm = ppcs_ptr->av1_cm;
+    if (!ppcs_ptr->blk_lambda_tuning) {
+        return;
+    }
+
+    int sb_qindex = context_ptr->sb_ptr->qindex;
+    int pic_qindex = ppcs_ptr->frm_hdr.quantization_params.base_q_idx;
+
+    BlockSize bsize = context_ptr->blk_geom->bsize;
+    const int bsize_base = BLOCK_16X16;
+    const int num_mi_w = mi_size_wide[bsize_base];
+    const int num_mi_h = mi_size_high[bsize_base];
+    const int num_cols = (cm->mi_cols + num_mi_w - 1) / num_mi_w;
+    const int num_rows = (cm->mi_rows + num_mi_h - 1) / num_mi_h;
+    const int num_bcols = (mi_size_wide[bsize] + num_mi_w - 1) / num_mi_w;
+    const int num_brows = (mi_size_high[bsize] + num_mi_h - 1) / num_mi_h;
+    int mi_row = context_ptr->blk_origin_y / 4;
+    int mi_col = context_ptr->blk_origin_x / 4;
+    int row, col;
+    double base_block_count = 0.0;
+    double geom_mean_of_scale = 0.0;
+    for (row = mi_row / num_mi_w;
+            row < num_rows && row < mi_row / num_mi_w + num_brows; ++row) {
+        for (col = mi_col / num_mi_h;
+                col < num_cols && col < mi_col / num_mi_h + num_bcols; ++col) {
+            const int index = row * num_cols + col;
+            geom_mean_of_scale += log(ppcs_ptr->tpl_sb_rdmult_scaling_factors[index]);
+            base_block_count += 1.0;
+        }
+    }
+    geom_mean_of_scale = exp(geom_mean_of_scale / base_block_count);
+    int new_full_lambda = (int)((double)pic_full_lambda * geom_mean_of_scale + 0.5);
+    new_full_lambda = AOMMAX(new_full_lambda, 0);
+    if (bsize == ppcs_ptr->scs_ptr->seq_header.sb_size) {
+        const int rdmult_sb = sb_full_lambda; //should be sb level lambda
+        if (new_full_lambda != rdmult_sb) {
+            printf("[%ld]:Something wrong here, SB(%d, %d), blk (%d, %d), size %dx%d, qindex pic/sb %d/%d, lambda %d/%d, geom_mean_of_scale %f\n",
+                pcs_ptr->picture_number,
+                context_ptr->sb_origin_x,
+                context_ptr->sb_origin_y,
+                context_ptr->blk_origin_x,
+                context_ptr->blk_origin_y,
+                context_ptr->blk_geom->bwidth,
+                context_ptr->blk_geom->bheight,
+                pic_qindex, sb_qindex,
+                rdmult_sb, new_full_lambda, geom_mean_of_scale);
+        }
+    }
+    context_ptr->blk_full_lambda = new_full_lambda;
+}
+#endif

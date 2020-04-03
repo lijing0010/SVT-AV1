@@ -1189,6 +1189,10 @@ static void picture_parent_control_set_dctor(EbPtr p) {
 #if CUTREE_LA
     EB_FREE_2D(obj->ois_mb_results);
     EB_FREE_ARRAY(obj->cutree_beta);
+#if LAMBDA_SCALING
+    EB_FREE_ARRAY(obj->tpl_rdmult_scaling_factors);
+    EB_FREE_ARRAY(obj->tpl_sb_rdmult_scaling_factors);
+#endif
 #endif
     EB_FREE_2D(obj->ois_candicate);
     EB_FREE_ARRAY(obj->rc_me_distortion);
@@ -1334,6 +1338,10 @@ EbErrorType picture_parent_control_set_ctor(PictureParentControlSet *object_ptr,
     const uint16_t picture_height_in_mb = (uint16_t)((init_data_ptr->picture_height + 15) / 16);
     EB_MALLOC_2D(object_ptr->ois_mb_results, picture_width_in_mb * picture_height_in_mb, 1);
     EB_MALLOC_ARRAY(object_ptr->cutree_beta, object_ptr->sb_total_count);
+#if LAMBDA_SCALING
+    EB_MALLOC_ARRAY(object_ptr->tpl_rdmult_scaling_factors, picture_width_in_mb * picture_height_in_mb);
+    EB_MALLOC_ARRAY(object_ptr->tpl_sb_rdmult_scaling_factors, picture_width_in_mb * picture_height_in_mb);
+#endif
 #endif
 
     object_ptr->max_number_of_candidates_per_block =
