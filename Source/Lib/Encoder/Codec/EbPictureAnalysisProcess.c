@@ -3552,6 +3552,23 @@ void *picture_analysis_kernel(void *input_ptr) {
                              input_picture_ptr->height,
                              input_picture_ptr->origin_x,
                              input_picture_ptr->origin_y);
+
+            // Padding the chroma if over_boundary_block_mode is enabled
+            if (scs_ptr->over_boundary_block_mode == 1) {
+                generate_padding(input_picture_ptr->buffer_cb,
+                        input_picture_ptr->stride_cb,
+                        input_picture_ptr->width >> 1,
+                        input_picture_ptr->height >> 1,
+                        input_picture_ptr->origin_x >> 1,
+                        input_picture_ptr->origin_y >> 1);
+
+                generate_padding(input_picture_ptr->buffer_cr,
+                        input_picture_ptr->stride_cr,
+                        input_picture_ptr->width >> 1,
+                        input_picture_ptr->height >> 1,
+                        input_picture_ptr->origin_x >> 1,
+                        input_picture_ptr->origin_y >> 1);
+            }
             {
                 uint8_t *pa =
                     input_padded_picture_ptr->buffer_y + input_padded_picture_ptr->origin_x +
