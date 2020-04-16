@@ -53,6 +53,7 @@ static void enc_dec_context_dctor(EbPtr p) {
     EB_FREE_ARRAY(obj);
 }
 
+
 /******************************************************
  * Enc Dec Context Constructor
  ******************************************************/
@@ -2828,6 +2829,7 @@ void *enc_dec_kernel(void *input_ptr) {
 #endif
 
     segment_index = 0;
+    static int dumped = 0;
 
     for (;;) {
         // Get Mode Decision Results
@@ -2860,6 +2862,7 @@ void *enc_dec_kernel(void *input_ptr) {
         end_of_row_flag    = EB_FALSE;
         sb_row_index_start = sb_row_index_count = 0;
         context_ptr->tot_intra_coded_area       = 0;
+
 
         // Segment-loop
         while (assign_enc_dec_segments(segments_ptr,

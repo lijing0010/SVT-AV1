@@ -1106,6 +1106,11 @@ void *resource_coordination_kernel(void *input_ptr) {
                     ((PictureParentControlSet *)prev_pcs_wrapper_ptr->object_ptr)
                         ->alt_ref_ppcs_ptr->end_of_sequence_flag = EB_TRUE;
                 // Post the finished Results Object
+        if (pcs_ptr->picture_number == 18  && 0) {
+            printf("Dump at kernel %s\n", __FUNCTION__);
+            //dump_block_from_desc(64, 64, pcs_ptr->enhanced_picture_ptr, 0, 1024, 0);
+            dump_block_from_desc(32, 32, pcs_ptr->enhanced_picture_ptr, 0, 1024, 1);
+        }
                 eb_post_full_object(output_wrapper_ptr);
             }
             prev_pcs_wrapper_ptr = pcs_wrapper_ptr;

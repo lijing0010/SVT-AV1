@@ -1404,6 +1404,10 @@ void *mode_decision_configuration_kernel(void *input_ptr) {
 
         context_ptr->qp = pcs_ptr->picture_qp;
 
+        if (pcs_ptr->picture_number == 108 && 0) {
+            printf("\nDump at kernel %s\n", __FUNCTION__);
+            dump_block_from_desc(32, 32, pcs_ptr->parent_pcs_ptr->enhanced_picture_ptr, 0, 1024, 1);
+        }
         pcs_ptr->parent_pcs_ptr->average_qp = 0;
         pcs_ptr->intra_coded_area           = 0;
         // Compute Tc, and Beta offsets for a given picture

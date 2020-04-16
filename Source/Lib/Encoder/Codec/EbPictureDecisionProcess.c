@@ -5097,14 +5097,6 @@ void* picture_decision_kernel(void *input_ptr)
 
                             if (perform_filtering){
 #else
-                            if ((scs_ptr->enable_altrefs == EB_TRUE &&
-                                    scs_ptr->static_config.pred_structure == EB_PRED_RANDOM_ACCESS &&
-                                    scs_ptr->static_config.hierarchical_levels >=2) &&
-
-                                ((pcs_ptr->slice_type == I_SLICE && pcs_ptr->sc_content_detected == 0) ||
-                                  (pcs_ptr->slice_type != I_SLICE && pcs_ptr->temporal_layer_index == 0)
-                                    || (scs_ptr->use_input_stat_file && pcs_ptr->temporal_layer_index == 1 && pcs_ptr->sc_content_detected == 0)
-                                    ) ) {
 #endif
 #if ENHANCED_TF
                                 derive_tf_window_params(

@@ -2001,7 +2001,7 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
     // 0                            0: not allowed
     // 1                            1: allowed
     if (scs_ptr->static_config.over_bndry_blk == DEFAULT)
-        if (scs_ptr->static_config.enc_mode <= ENC_M5)
+        if (scs_ptr->static_config.enc_mode <= ENC_M8)
             scs_ptr->over_boundary_block_mode = 1;
         else
             scs_ptr->over_boundary_block_mode = 0;
