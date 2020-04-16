@@ -442,3 +442,116 @@ int32_t eb_aom_realloc_frame_buffer(Yv12BufferConfig *ybf, int32_t width, int32_
     }
     return -2;
 }
+
+void dump_block_from_desc(int txw, int txh, EbPictureBufferDesc *buf_tmp, int startX, int startY, int componentMask)
+{
+    unsigned char* buf=NULL;
+    int stride=0;
+    int bitDepth = buf_tmp->bit_depth;
+    int val=(bitDepth==8)?1:2;
+    EbColorFormat colorFormat = buf_tmp->color_format;    // Chroma format
+    uint16_t subWidthCMinus1 = (colorFormat==EB_YUV444?1:2)-1;
+    uint16_t subHeightCMinus1 = (colorFormat>=EB_YUV422?1:2)-1;
+    if (componentMask ==0) {
+        buf=buf_tmp->buffer_y;
+        stride=buf_tmp->stride_y;
+        subWidthCMinus1=0;
+        subHeightCMinus1=0;
+    } else if (componentMask == 1) {
+        buf=buf_tmp->buffer_cb;
+        stride=buf_tmp->stride_cb;
+        startX=ROUND_UV_EX(startX, subWidthCMinus1);
+        startY=ROUND_UV_EX(startY, subHeightCMinus1);
+    } else if (componentMask == 2) {
+        buf=buf_tmp->buffer_cr;
+        stride=buf_tmp->stride_cr;
+        startX=ROUND_UV_EX(startX, subWidthCMinus1);
+        startY=ROUND_UV_EX(startY, subHeightCMinus1);
+    } else {
+        assert(0);
+    }
+
+    int offset=((stride*((buf_tmp->origin_y>>subHeightCMinus1) + startY))) + (startX+(buf_tmp->origin_x>>subWidthCMinus1));
+    printf("bitDepth is %d, dump block size %dx%d at offset %d, (%d, %d), component is %s\n",
+            bitDepth, txw, txh, offset, startX, startY, componentMask==0?"luma":(componentMask==1?"Cb":"Cr"));
+            unsigned char* start_tmp=buf+offset*val;
+            for (int i=0;i<txh;i++) {
+                for (int j=0;j<txw+1;j++) {
+                    if (j==txw) {
+                        printf("|||");
+                    } else if (j%4 == 0) {
+                        printf("|");
+                    }
+
+                    if (bitDepth == 8) {
+                        printf("%3u ", start_tmp[j]);
+                    } else if (bitDepth == 10 || bitDepth == 16) {
+                        printf("%3d ", *((int16_t*)start_tmp + j));
+                    } else if (bitDepth == 32) {
+                        printf("%3d ", *((int32_t*)start_tmp + j));
+                    } else {
+                        printf("bitDepth is %d\n", bitDepth);
+                        assert(0);
+                    }
+                }
+                printf("\n");
+                if (i % 4 == 3) {
+                    for (int k=0;k<txw;k++) {
+                        printf("-");
+                    }
+                    printf("\n");
+                }
+                start_tmp += stride*val;
+            }
+    printf("------------------------\n");
+}
+
+void dump_coeff_block_from_desc(int txw, int txh, EbPictureBufferDesc *buf_tmp, int startX, int startY, int componentMask, int offset)
+{
+    int32_t* buf=NULL;
+    int stride=0;
+    int bitDepth = buf_tmp->bit_depth;
+    EbColorFormat colorFormat = buf_tmp->color_format;    // Chroma format
+    uint16_t subWidthCMinus1 = (colorFormat==EB_YUV444?1:2)-1;
+    uint16_t subHeightCMinus1 = (colorFormat>=EB_YUV422?1:2)-1;
+    if (componentMask ==0) {
+        buf=(int32_t *)buf_tmp->buffer_y;
+        stride=buf_tmp->stride_y;
+        subWidthCMinus1=0;
+        subHeightCMinus1=0;
+    } else if (componentMask == 1) {
+        buf=(int32_t *)buf_tmp->buffer_cb;
+        stride=buf_tmp->stride_cb;
+        startX=ROUND_UV_EX(startX, subWidthCMinus1);
+        startY=ROUND_UV_EX(startY, subHeightCMinus1);
+    } else if (componentMask == 2) {
+        buf=(int32_t *)buf_tmp->buffer_cr;
+        stride=buf_tmp->stride_cr;
+        startX=ROUND_UV_EX(startX, subWidthCMinus1);
+        startY=ROUND_UV_EX(startY, subHeightCMinus1);
+    } else {
+        assert(0);
+    }
+
+    printf("dump coeff block size %dx%d at offset %d, (%d, %d), component is %s\n",
+            txw, txh, offset, startX, startY, componentMask==0?"luma":(componentMask==1?"Cb":"Cr"));
+            int32_t* start_tmp=buf+offset;
+            for (int i=0;i<txh;i++) {
+                for (int j=0;j<txw;j++) {
+                    if (j%4 == 0) {
+                        printf("|");
+                    }
+
+                    printf("%3d ", start_tmp[j]);
+                }
+                printf("\n");
+                if (i % 4 == 3) {
+                    for (int k=0;k<txw;k++) {
+                        printf("-");
+                    }
+                    printf("\n");
+                }
+                start_tmp += txw;
+            }
+    printf("------------------------\n");
+}

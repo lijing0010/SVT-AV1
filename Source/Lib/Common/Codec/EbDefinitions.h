@@ -235,6 +235,7 @@ enum {
 #endif
 #define MAX_LAD 120 // max lookahead-distance 2x60fps
 #define ROUND_UV(x) (((x) >> 3) << 3)
+#define ROUND_UV_EX(x, subsampling) ((((x)>>(2+subsampling))<<(2+subsampling))>>(subsampling))
 #define AV1_PROB_COST_SHIFT 9
 #define AOMINNERBORDERINPIXELS 160
 #define SWITCHABLE_FILTER_CONTEXTS ((SWITCHABLE_FILTERS + 1) * 4)

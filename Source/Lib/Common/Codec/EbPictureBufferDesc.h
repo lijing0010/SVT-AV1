@@ -69,6 +69,8 @@ typedef struct EbPictureBufferDesc {
 
 #define YV12_FLAG_HIGHBITDEPTH 8
 
+void dump_block_from_desc(int txw, int txh, EbPictureBufferDesc *buf_tmp, int startX, int startY, int componentMask);
+void dump_coeff_block_from_desc(int txw, int txh, EbPictureBufferDesc *buf_tmp, int startX, int startY, int componentMask, int offset);
 /*!\brief List of supported color primaries */
 typedef enum AomColorPrimaries {
     AOM_CICP_CP_RESERVED_0   = 0, /**< For future use */
