@@ -632,6 +632,9 @@ static void mode_decision_scratch_candidate_buffer_dctor(EbPtr p) {
 ***************************************/
 EbErrorType mode_decision_candidate_buffer_ctor(ModeDecisionCandidateBuffer *buffer_ptr,
                                                 EbBitDepthEnum               max_bitdepth,
+#if SB64_MEM_OPT
+                                                uint8_t sb_size,
+#endif
                                                 uint64_t *fast_cost_ptr, uint64_t *full_cost_ptr,
                                                 uint64_t *full_cost_skip_ptr,
                                                 uint64_t *full_cost_merge_ptr) {
@@ -643,8 +646,13 @@ EbErrorType mode_decision_candidate_buffer_ctor(ModeDecisionCandidateBuffer *buf
     buffer_ptr->dctor = mode_decision_candidate_buffer_dctor;
 
     // Init Picture Data
+#if SB64_MEM_OPT
+    picture_buffer_desc_init_data.max_width                       = sb_size;
+    picture_buffer_desc_init_data.max_height                      = sb_size;
+#else
     picture_buffer_desc_init_data.max_width                       = MAX_SB_SIZE;
     picture_buffer_desc_init_data.max_height                      = MAX_SB_SIZE;
+#endif
     picture_buffer_desc_init_data.bit_depth                       = max_bitdepth;
     picture_buffer_desc_init_data.color_format                    = EB_YUV420;
     picture_buffer_desc_init_data.buffer_enable_mask              = PICTURE_BUFFER_DESC_FULL_MASK;
@@ -653,8 +661,13 @@ EbErrorType mode_decision_candidate_buffer_ctor(ModeDecisionCandidateBuffer *buf
     picture_buffer_desc_init_data.top_padding                     = 0;
     picture_buffer_desc_init_data.bot_padding                     = 0;
     picture_buffer_desc_init_data.split_mode                      = EB_FALSE;
+#if SB64_MEM_OPT
+    double_width_picture_buffer_desc_init_data.max_width          = sb_size;
+    double_width_picture_buffer_desc_init_data.max_height         = sb_size;
+#else
     double_width_picture_buffer_desc_init_data.max_width          = MAX_SB_SIZE;
     double_width_picture_buffer_desc_init_data.max_height         = MAX_SB_SIZE;
+#endif
     double_width_picture_buffer_desc_init_data.bit_depth          = EB_16BIT;
     double_width_picture_buffer_desc_init_data.color_format       = EB_YUV420;
     double_width_picture_buffer_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_FULL_MASK;
@@ -664,8 +677,13 @@ EbErrorType mode_decision_candidate_buffer_ctor(ModeDecisionCandidateBuffer *buf
     double_width_picture_buffer_desc_init_data.bot_padding        = 0;
     double_width_picture_buffer_desc_init_data.split_mode         = EB_FALSE;
 
+#if SB64_MEM_OPT
+    thirty_two_width_picture_buffer_desc_init_data.max_width    = sb_size;
+    thirty_two_width_picture_buffer_desc_init_data.max_height   = sb_size;
+#else
     thirty_two_width_picture_buffer_desc_init_data.max_width    = MAX_SB_SIZE;
     thirty_two_width_picture_buffer_desc_init_data.max_height   = MAX_SB_SIZE;
+#endif
     thirty_two_width_picture_buffer_desc_init_data.bit_depth    = EB_32BIT;
     thirty_two_width_picture_buffer_desc_init_data.color_format = EB_YUV420;
     thirty_two_width_picture_buffer_desc_init_data.buffer_enable_mask =
@@ -715,6 +733,9 @@ EbErrorType mode_decision_candidate_buffer_ctor(ModeDecisionCandidateBuffer *buf
     return EB_ErrorNone;
 }
 EbErrorType mode_decision_scratch_candidate_buffer_ctor(ModeDecisionCandidateBuffer *buffer_ptr,
+#if SB64_MEM_OPT
+                                                        uint8_t                      sb_size,
+#endif
                                                         EbBitDepthEnum               max_bitdepth) {
     EbPictureBufferDescInitData picture_buffer_desc_init_data;
     EbPictureBufferDescInitData double_width_picture_buffer_desc_init_data;
@@ -723,8 +744,13 @@ EbErrorType mode_decision_scratch_candidate_buffer_ctor(ModeDecisionCandidateBuf
     buffer_ptr->dctor = mode_decision_scratch_candidate_buffer_dctor;
 
     // Init Picture Data
+#if SB64_MEM_OPT
+    picture_buffer_desc_init_data.max_width                       = sb_size;
+    picture_buffer_desc_init_data.max_height                      = sb_size;
+#else
     picture_buffer_desc_init_data.max_width                       = MAX_SB_SIZE;
     picture_buffer_desc_init_data.max_height                      = MAX_SB_SIZE;
+#endif
     picture_buffer_desc_init_data.bit_depth                       = max_bitdepth;
     picture_buffer_desc_init_data.color_format                    = EB_YUV420;
     picture_buffer_desc_init_data.buffer_enable_mask              = PICTURE_BUFFER_DESC_FULL_MASK;
@@ -733,8 +759,13 @@ EbErrorType mode_decision_scratch_candidate_buffer_ctor(ModeDecisionCandidateBuf
     picture_buffer_desc_init_data.top_padding                     = 0;
     picture_buffer_desc_init_data.bot_padding                     = 0;
     picture_buffer_desc_init_data.split_mode                      = EB_FALSE;
+#if SB64_MEM_OPT
+    double_width_picture_buffer_desc_init_data.max_width          = sb_size;
+    double_width_picture_buffer_desc_init_data.max_height         = sb_size;
+#else
     double_width_picture_buffer_desc_init_data.max_width          = MAX_SB_SIZE;
     double_width_picture_buffer_desc_init_data.max_height         = MAX_SB_SIZE;
+#endif
     double_width_picture_buffer_desc_init_data.bit_depth          = EB_16BIT;
     double_width_picture_buffer_desc_init_data.color_format       = EB_YUV420;
     double_width_picture_buffer_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_FULL_MASK;
@@ -744,8 +775,13 @@ EbErrorType mode_decision_scratch_candidate_buffer_ctor(ModeDecisionCandidateBuf
     double_width_picture_buffer_desc_init_data.bot_padding        = 0;
     double_width_picture_buffer_desc_init_data.split_mode         = EB_FALSE;
 
+#if SB64_MEM_OPT
+    thirty_two_width_picture_buffer_desc_init_data.max_width    = sb_size;
+    thirty_two_width_picture_buffer_desc_init_data.max_height   = sb_size;
+#else
     thirty_two_width_picture_buffer_desc_init_data.max_width    = MAX_SB_SIZE;
     thirty_two_width_picture_buffer_desc_init_data.max_height   = MAX_SB_SIZE;
+#endif
     thirty_two_width_picture_buffer_desc_init_data.bit_depth    = EB_32BIT;
     thirty_two_width_picture_buffer_desc_init_data.color_format = EB_YUV420;
     thirty_two_width_picture_buffer_desc_init_data.buffer_enable_mask =

@@ -412,7 +412,9 @@ extern "C" {
 #define MAY16_7PM_ADOPTIONS         1 // M0 and M1 adoptions
 #define MAY17_ADOPTIONS             1 // Adoptions for M0/M1
 #define MAY19_ADOPTIONS             1 // Adoptions in MR, M5-M8 from svt-01_presets branch
-
+#define MD_CTX_CLEAN_UP             1 // Memory reduction for MdEncPassCuData
+#define BLK_MEM_CLEAN_UP            1 // Memory reduction for BlkStruct
+#define SB64_MEM_OPT                1 // Memory reduction for SB size 64
 #endif
 // END  SVT_01 /////////////////////////////////////////////////////////
 #define COMMON_16BIT 1 // 16Bit pipeline support for common

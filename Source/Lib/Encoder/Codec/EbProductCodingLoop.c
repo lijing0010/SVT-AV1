@@ -7637,7 +7637,11 @@ void init_tx_candidate_buffer(
     ModeDecisionContext *context_ptr,
     uint8_t end_tx_depth) {
     uint32_t block_index =
+#if SB64_MEM_OPT
+        context_ptr->blk_geom->origin_x + (context_ptr->blk_geom->origin_y * context_ptr->sb_size);
+#else
         context_ptr->blk_geom->origin_x + (context_ptr->blk_geom->origin_y * MAX_SB_SIZE);
+#endif
     if (end_tx_depth) {
         memcpy(context_ptr->candidate_buffer_tx_depth_1->candidate_ptr,
             candidate_buffer->candidate_ptr,
@@ -7762,7 +7766,11 @@ void init_tx_candidate_buffer(
 void update_tx_candidate_buffer(ModeDecisionCandidateBuffer *candidate_buffer,
                                  ModeDecisionContext *context_ptr, uint8_t best_tx_depth) {
     uint32_t block_index =
+#if SB64_MEM_OPT
+        context_ptr->blk_geom->origin_x + (context_ptr->blk_geom->origin_y * context_ptr->sb_size);
+#else
         context_ptr->blk_geom->origin_x + (context_ptr->blk_geom->origin_y * MAX_SB_SIZE);
+#endif
     if (best_tx_depth == 1) {
         // Copy depth 1 mode/type/eob ..
         memcpy(candidate_buffer->candidate_ptr,
@@ -10278,9 +10286,15 @@ void md_encode_block(PictureControlSet *pcs_ptr,
         ((context_ptr->round_origin_y >> 1) + (input_picture_ptr->origin_y >> 1)) *
             input_picture_ptr->stride_cb +
         ((context_ptr->round_origin_x >> 1) + (input_picture_ptr->origin_x >> 1));
+#if SB64_MEM_OPT
+    const uint32_t blk_origin_index = blk_geom->origin_x + blk_geom->origin_y * context_ptr->sb_size;
+    const uint32_t blk_chroma_origin_index =
+        ROUND_UV(blk_geom->origin_x) / 2 + ROUND_UV(blk_geom->origin_y) / 2 * (context_ptr->sb_size >> 1);
+#else
     const uint32_t blk_origin_index = blk_geom->origin_x + blk_geom->origin_y * SB_STRIDE_Y;
     const uint32_t blk_chroma_origin_index =
         ROUND_UV(blk_geom->origin_x) / 2 + ROUND_UV(blk_geom->origin_y) / 2 * SB_STRIDE_UV;
+#endif
     BlkStruct *blk_ptr        = context_ptr->blk_ptr;
     candidate_buffer_ptr_array = &(candidate_buffer_ptr_array_base[0]);
 #if TPL_LA_LAMBDA_SCALING

@@ -60,12 +60,14 @@ typedef struct MdEncPassCuData {
     uint64_t skip_cost;
     uint64_t merge_cost;
     uint64_t chroma_distortion;
+#if !MD_CTX_CLEAN_UP
     uint64_t y_full_distortion[DIST_CALC_TOTAL];
     uint64_t y_coeff_bits;
     uint32_t y_has_coeff;
     uint64_t fast_luma_rate;
     uint16_t y_count_non_zero_coeffs
         [4]; // Store nonzero CoeffNum, per TU. If one TU, stored in 0, otherwise 4 tus stored in 0 to 3
+#endif
 } MdEncPassCuData;
 
 typedef struct {
@@ -631,6 +633,9 @@ typedef struct ModeDecisionContext {
 #if COEFF_BASED_BYPASS_NSQ
     uint16_t coeff_area_based_bypass_nsq_th;
 #endif
+#if SB64_MEM_OPT
+    uint8_t sb_size;
+#endif
 } ModeDecisionContext;
 
 typedef void (*EbAv1LambdaAssignFunc)(uint32_t *fast_lambda, uint32_t *full_lambda,
@@ -647,6 +652,9 @@ typedef void (*EbLambdaAssignFunc)(uint32_t *fast_lambda, uint32_t *full_lambda,
      **************************************/
 extern EbErrorType mode_decision_context_ctor(ModeDecisionContext *context_ptr,
                                               EbColorFormat        color_format,
+#if SB64_MEM_OPT
+                                              uint8_t sb_size,
+#endif
                                               EbFifo *mode_decision_configuration_input_fifo_ptr,
                                               EbFifo *mode_decision_output_fifo_ptr,
                                               uint8_t enable_hbd_mode_decision,

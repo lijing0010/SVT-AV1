@@ -240,11 +240,19 @@ typedef struct ModeDecisionCandidateBuffer {
     * Extern Function Declarations
     **************************************/
 extern EbErrorType mode_decision_candidate_buffer_ctor(
+#if SB64_MEM_OPT
+    ModeDecisionCandidateBuffer *buffer_ptr, EbBitDepthEnum max_bitdepth, uint8_t sb_size, uint64_t *fast_cost_ptr,
+#else
     ModeDecisionCandidateBuffer *buffer_ptr, EbBitDepthEnum max_bitdepth, uint64_t *fast_cost_ptr,
+#endif
     uint64_t *full_cost_ptr, uint64_t *full_cost_skip_ptr, uint64_t *full_cost_merge_ptr);
 
 extern EbErrorType mode_decision_scratch_candidate_buffer_ctor(
+#if SB64_MEM_OPT
+    ModeDecisionCandidateBuffer *buffer_ptr, uint8_t sb_size, EbBitDepthEnum max_bitdepth);
+#else
     ModeDecisionCandidateBuffer *buffer_ptr, EbBitDepthEnum max_bitdepth);
+#endif
 
 uint32_t product_full_mode_decision(struct ModeDecisionContext *context_ptr, BlkStruct *blk_ptr,
                                     ModeDecisionCandidateBuffer **buffer_ptr_array,

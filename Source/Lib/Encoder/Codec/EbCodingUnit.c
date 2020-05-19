@@ -77,8 +77,13 @@ EbErrorType largest_coding_unit_ctor(SuperBlock *larget_coding_unit_ptr, uint8_t
     EB_MALLOC_ARRAY(larget_coding_unit_ptr->cu_partition_array, max_block_count);
 
     coeff_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_FULL_MASK;
+#if SB64_MEM_OPT
+    coeff_init_data.max_width          = sb_size_pix;
+    coeff_init_data.max_height         = sb_size_pix;
+#else
     coeff_init_data.max_width          = SB_STRIDE_Y;
     coeff_init_data.max_height         = SB_STRIDE_Y;
+#endif
     coeff_init_data.bit_depth          = EB_32BIT;
     coeff_init_data.color_format       = picture_control_set->color_format;
     coeff_init_data.left_padding       = 0;
