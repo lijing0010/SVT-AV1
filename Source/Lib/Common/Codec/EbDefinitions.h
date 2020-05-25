@@ -426,6 +426,12 @@ extern "C" {
 #define EB_OUTPUTSTREAMBUFFERSIZE_MACRO(ResolutionSize)                ((ResolutionSize) < (INPUT_SIZE_1080i_TH) ? 0x1E8480 : (ResolutionSize) < (INPUT_SIZE_1080p_TH) ? 0x2DC6C0 : (ResolutionSize) < (INPUT_SIZE_4K_TH) ? 0x2DC6C0 : 0x2DC6C0  )
 #endif
 
+#if SB_MEM_OPT
+#define SB_BLK_MEM_OPT 1              // Memory reduction for total counts of final_blk_arr
+#else
+#define SB_BLK_MEM_OPT 0
+#endif
+
 #endif
 // END  SVT_01 /////////////////////////////////////////////////////////
 #define COMMON_16BIT 1 // 16Bit pipeline support for common

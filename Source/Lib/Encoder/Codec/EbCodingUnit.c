@@ -65,7 +65,12 @@ EbErrorType largest_coding_unit_ctor(SuperBlock *larget_coding_unit_ptr, uint8_t
         larget_coding_unit_ptr->final_blk_arr[cu_i].leaf_index = cu_i;
 #endif
 #if SB_MEM_OPT
+#if !SB_BLK_MEM_OPT
+        // Do NOT initialize the it, most of the final_blk_arr are not used.
+        // Malloc maximum but only initialize it only when actually used.
+        // This will help to same actually memory usage
         larget_coding_unit_ptr->final_blk_arr[cu_i].av1xd = larget_coding_unit_ptr->av1xd ;
+#endif
 
 #else
         larget_coding_unit_ptr->final_blk_arr[cu_i].av1xd = larget_coding_unit_ptr->av1xd + cu_i;
