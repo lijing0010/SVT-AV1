@@ -419,6 +419,12 @@ extern "C" {
 #define MD_CTX_CLEAN_UP             1 // Memory reduction for MdEncPassCuData
 #define BLK_MEM_CLEAN_UP            1 // Memory reduction for BlkStruct
 #define SB64_MEM_OPT                1 // Memory reduction for SB size 64
+#define OUTPUT_MEM_OPT              1 // Memory reduction for output bitstream
+#if NEW_RESOLUTION_RANGES
+#define EB_OUTPUTSTREAMBUFFERSIZE_MACRO(ResolutionSize)                ((ResolutionSize) < (INPUT_SIZE_720p_TH) ? 0x1E8480 : (ResolutionSize) < (INPUT_SIZE_1080p_TH) ? 0x2DC6C0 : (ResolutionSize) < (INPUT_SIZE_4K_TH) ? 0x2DC6C0 : 0x2DC6C0  )
+#else
+#define EB_OUTPUTSTREAMBUFFERSIZE_MACRO(ResolutionSize)                ((ResolutionSize) < (INPUT_SIZE_1080i_TH) ? 0x1E8480 : (ResolutionSize) < (INPUT_SIZE_1080p_TH) ? 0x2DC6C0 : (ResolutionSize) < (INPUT_SIZE_4K_TH) ? 0x2DC6C0 : 0x2DC6C0  )
+#endif
 
 #endif
 // END  SVT_01 /////////////////////////////////////////////////////////
