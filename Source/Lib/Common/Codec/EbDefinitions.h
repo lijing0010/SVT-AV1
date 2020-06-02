@@ -461,6 +461,7 @@ extern "C" {
 #define DEPTH_CYCLES_REDUCTION 1
 #define CLEANUP_CYCLE_ALLOCATION 1
 #define MR_DEPTH_REFINEMENT 1 // Change MR depth refinement levels
+#define PALETTE_MEM_OPT            1 // Memory optimization for palette
 #endif
 // END  SVT_01 /////////////////////////////////////////////////////////
 

@@ -9,6 +9,9 @@
 #include "EbModeDecisionProcess.h"
 #include "EbLambdaRateTables.h"
 
+#if PALETTE_MEM_OPT
+int  av1_allow_palette(int allow_screen_content_tools, BlockSize sb_type);
+#endif
 static void mode_decision_context_dctor(EbPtr p) {
     ModeDecisionContext *obj = (ModeDecisionContext *)p;
 #if SB64_MEM_OPT
@@ -382,7 +385,12 @@ EbErrorType mode_decision_context_ctor(ModeDecisionContext *context_ptr, EbColor
                 context_ptr->md_blk_arr_nsq[0].neigh_top_recon[0] + offset;
         }
 #endif
+#if PALETTE_MEM_OPT
+        const BlockGeom *blk_geom = get_blk_geom_mds(coded_leaf_index);
+        if (av1_allow_palette(cfg_palette, blk_geom->bsize))
+#else
         if (cfg_palette)
+#endif
             EB_MALLOC_ARRAY(
                 context_ptr->md_blk_arr_nsq[coded_leaf_index].palette_info.color_idx_map,
                 MAX_PALETTE_SQUARE);
