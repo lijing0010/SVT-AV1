@@ -466,6 +466,7 @@ extern "C" {
 #define COEFF_BASED_TXT_BYPASS 1 // Use TXT statistics to bypass certain tx types
 #define COEFF_BASED_TXS_BYPASS 1 // Use TXS statistics to bypass certain tx search sizes
 
+#define QP63_MISMATCH_FIX      1 // Fix the enc/dec mismatch for QP63
 #endif
 // END  SVT_01 /////////////////////////////////////////////////////////
 

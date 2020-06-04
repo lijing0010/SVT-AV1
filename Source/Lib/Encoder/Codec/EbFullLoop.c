@@ -1679,11 +1679,19 @@ int32_t av1_quantize_inv_quantize(
 #else
                              quantizer_to_qindex[qp]
 #endif
+#if QP63_MISMATCH_FIX
+                           : (uint32_t)CLIP3(
+                              0,
+                              255,
+                              (int32_t)pcs_ptr->parent_pcs_ptr->frm_hdr.quantization_params.base_q_idx +
+                                       segmentation_qp_offset);
+#else
                            : (uint32_t)CLIP3(
                               pcs_ptr->parent_pcs_ptr->frm_hdr.delta_q_params.delta_q_res,
                               255 - pcs_ptr->parent_pcs_ptr->frm_hdr.delta_q_params.delta_q_res,
                               (int32_t)pcs_ptr->parent_pcs_ptr->frm_hdr.quantization_params.base_q_idx +
                                        segmentation_qp_offset);
+#endif
 
     if (bit_increment == 0) {
         if (component_type == COMPONENT_LUMA) {
