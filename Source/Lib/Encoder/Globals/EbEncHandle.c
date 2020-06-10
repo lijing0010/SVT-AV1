@@ -1180,6 +1180,10 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
             ref_pic_buf_desc_init_data.bit_depth = EB_10BIT;
 
         eb_ref_obj_ect_desc_init_data_structure.reference_picture_desc_init_data = ref_pic_buf_desc_init_data;
+#if MEM_OPT_10bit
+        eb_ref_obj_ect_desc_init_data_structure.hbd_mode_decision =
+            enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->static_config.enable_hbd_mode_decision;
+#endif
 
         // Reference Picture Buffers
         EB_NEW(
@@ -1196,7 +1200,11 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
         // Currently, only Luma samples are needed in the PA
         ref_pic_buf_desc_init_data.max_width = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_luma_width;
         ref_pic_buf_desc_init_data.max_height = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_luma_height;
+#if MEM_OPT_10bit
+        ref_pic_buf_desc_init_data.bit_depth = EB_8BIT;
+#else
         ref_pic_buf_desc_init_data.bit_depth = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->encoder_bit_depth;
+#endif
         ref_pic_buf_desc_init_data.color_format = EB_YUV420; //use 420 for picture analysis
         ref_pic_buf_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
         ref_pic_buf_desc_init_data.left_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz + ME_FILTER_TAP;
@@ -1206,7 +1214,11 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
         ref_pic_buf_desc_init_data.split_mode = EB_FALSE;
         quart_pic_buf_desc_init_data.max_width = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_luma_width >> 1;
         quart_pic_buf_desc_init_data.max_height = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_luma_height >> 1;
+#if MEM_OPT_10bit
+        quart_pic_buf_desc_init_data.bit_depth = EB_8BIT;
+#else
         quart_pic_buf_desc_init_data.bit_depth = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->encoder_bit_depth;
+#endif
         quart_pic_buf_desc_init_data.color_format = EB_YUV420;
         quart_pic_buf_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
         quart_pic_buf_desc_init_data.left_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 1;
@@ -1218,7 +1230,11 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
 
         sixteenth_pic_buf_desc_init_data.max_width = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_luma_width >> 2;
         sixteenth_pic_buf_desc_init_data.max_height = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_luma_height >> 2;
+#if MEM_OPT_10bit
+        sixteenth_pic_buf_desc_init_data.bit_depth = EB_8BIT;
+#else
         sixteenth_pic_buf_desc_init_data.bit_depth = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->encoder_bit_depth;
+#endif
         sixteenth_pic_buf_desc_init_data.color_format = EB_YUV420;
         sixteenth_pic_buf_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
         sixteenth_pic_buf_desc_init_data.left_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 2;

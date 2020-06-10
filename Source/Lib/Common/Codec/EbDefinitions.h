@@ -502,6 +502,7 @@ extern "C" {
 #define STATS_TX_TYPES  TX_TYPES // 16 TXT levels (# of tx types)
 #define STATS_DELTAS    3 // negative, pred, positive
 #endif
+#define MEM_OPT_10bit       1 // Memory optimization for 10bit
 #endif
 // END  SVT_01 /////////////////////////////////////////////////////////
 
