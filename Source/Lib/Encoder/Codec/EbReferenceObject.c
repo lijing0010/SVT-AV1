@@ -210,6 +210,39 @@ EbErrorType eb_reference_object_ctor(EbReferenceObject *reference_object,
         EB_CALLOC_ALIGNED_ARRAY(reference_object->mvs, mem_size);
     }
     memset(&reference_object->film_grain_params, 0, sizeof(reference_object->film_grain_params));
+#if INL_ME
+    // TODO: Jing
+    // if (in_loop_me)
+    // Create quarter/sixteenth ref pic for in loop HME
+    picture_buffer_desc_init_data_ptr->max_width /= 2;
+    picture_buffer_desc_init_data_ptr->max_height /= 2;
+    picture_buffer_desc_init_data_ptr->bit_depth = EB_8BIT;
+    picture_buffer_desc_init_data_ptr->color_format = EB_YUV420;
+    picture_buffer_desc_init_data_ptr->buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
+    picture_buffer_desc_init_data_ptr->left_padding /= 2;
+    picture_buffer_desc_init_data_ptr->right_padding /= 2;
+    picture_buffer_desc_init_data_ptr->top_padding /= 2;
+    picture_buffer_desc_init_data_ptr->bot_padding /= 2;
+    picture_buffer_desc_init_data_ptr->split_mode = EB_FALSE;
+    EB_NEW(reference_object->quarter_reference_picture,
+            eb_picture_buffer_desc_ctor,
+            (EbPtr)picture_buffer_desc_init_data_ptr);
+
+    picture_buffer_desc_init_data_ptr->max_width /= 2;
+    picture_buffer_desc_init_data_ptr->max_height /= 2;
+    picture_buffer_desc_init_data_ptr->bit_depth = EB_8BIT;
+    picture_buffer_desc_init_data_ptr->color_format = EB_YUV420;
+    picture_buffer_desc_init_data_ptr->buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
+    picture_buffer_desc_init_data_ptr->left_padding /= 2;
+    picture_buffer_desc_init_data_ptr->right_padding /= 2;
+    picture_buffer_desc_init_data_ptr->top_padding /= 2;
+    picture_buffer_desc_init_data_ptr->bot_padding /= 2;
+    picture_buffer_desc_init_data_ptr->split_mode = EB_FALSE;
+    EB_NEW(reference_object->sixteenth_reference_picture,
+            eb_picture_buffer_desc_ctor,
+            (EbPtr)picture_buffer_desc_init_data_ptr);
+#endif
+
     EB_CREATE_MUTEX(reference_object->referenced_area_mutex);
     return EB_ErrorNone;
 }
@@ -282,3 +315,38 @@ EbErrorType eb_pa_reference_object_creator(EbPtr *object_dbl_ptr, EbPtr object_i
 
     return EB_ErrorNone;
 }
+
+#if INL_ME
+static void eb_down_scaled_object_dctor(EbPtr p) {
+    EbDownScaledObject *obj = (EbDownScaledObject*)p;
+    EB_DELETE(obj->quarter_picture_ptr);
+    EB_DELETE(obj->sixteenth_picture_ptr);
+}
+
+static EbErrorType eb_down_scaled_object_ctor(EbDownScaledObject *ds_obj_,
+                                              EbPtr               object_init_data_ptr) {
+    EbPictureBufferDescInitData *picture_buffer_desc_init_data_ptr =
+        (EbPictureBufferDescInitData *)object_init_data_ptr;
+
+    ds_obj_->dctor = eb_down_scaled_object_dctor;
+
+    EB_NEW(ds_obj_->quarter_picture_ptr,
+           eb_picture_buffer_desc_ctor,
+           (EbPtr)(picture_buffer_desc_init_data_ptr));
+    EB_NEW(ds_obj_->sixteenth_picture_ptr,
+           eb_picture_buffer_desc_ctor,
+           (EbPtr)(picture_buffer_desc_init_data_ptr + 1));
+    return EB_ErrorNone;
+}
+
+EbErrorType eb_down_scaled_object_creator(EbPtr *object_dbl_ptr,
+                                          EbPtr object_init_data_ptr) {
+    EbDownScaledObject *obj;
+
+    *object_dbl_ptr = NULL;
+    EB_NEW(obj, eb_down_scaled_object_ctor, object_init_data_ptr);
+    *object_dbl_ptr = obj;
+
+    return EB_ErrorNone;
+}
+#endif

@@ -51,6 +51,9 @@ struct _EbEncHandle {
     // Picture Buffers
     EbSystemResource **reference_picture_pool_ptr_array;
     EbSystemResource **pa_reference_picture_pool_ptr_array;
+#if INL_ME
+    EbSystemResource **down_scaled_picture_pool_ptr_array;
+#endif
 
     // Overlay input picture
     EbSystemResource **overlay_input_picture_pool_ptr_array;

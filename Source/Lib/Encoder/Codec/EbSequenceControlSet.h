@@ -90,6 +90,11 @@ typedef struct SequenceControlSet {
     /*!< Down-sampling method @ ME and alt-ref temporal filtering
         (The signal changes per preset; 0: filtering, 1: decimation) Default is 0. */
     uint8_t down_sampling_method_me_search;
+#if INL_ME
+    /*!< Use in loop motion estimation
+         Default is 0. */
+    uint8_t in_loop_me;
+#endif
     /*!< Allow the usage of motion field motion vector in the stream
         (The signal changes per preset; 0: Enabled, 1: Disabled) Default is 1. */
     uint8_t mfmv_enabled;

@@ -137,6 +137,93 @@ void global_motion_estimation(PictureParentControlSet *pcs_ptr, MeContext *conte
     }
 }
 
+#if INL_ME
+void global_motion_estimation_inl(PictureParentControlSet *pcs_ptr, MeContext *context_ptr,
+                              EbPictureBufferDesc *input_picture_ptr) {
+    EbDownScaledObject *ds_object =
+        (EbDownScaledObject*)pcs_ptr->down_scaled_picture_wrapper_ptr->object_ptr;
+    EbPictureBufferDesc *quarter_picture_ptr = ds_object->quarter_picture_ptr;
+    EbPictureBufferDesc *sixteenth_picture_ptr = ds_object->sixteenth_picture_ptr;
+
+    EbReferenceObject *ref_object =
+        (EbReferenceObject*)pcs_ptr->reference_picture_wrapper_ptr->object_ptr;
+    EbPictureBufferDesc *quarter_ref_pic_ptr = ref_object->quarter_reference_picture;
+    EbPictureBufferDesc *sixteenth_ref_pic_ptr = ref_object->sixteenth_reference_picture;
+    EbPictureBufferDesc *ref_picture_ptr = ref_object->reference_picture;
+
+
+    uint32_t num_of_list_to_search =
+        (pcs_ptr->slice_type == P_SLICE) ? (uint32_t)REF_LIST_0 : (uint32_t)REF_LIST_1;
+
+    for (uint32_t list_index = REF_LIST_0; list_index <= num_of_list_to_search; ++list_index) {
+        uint32_t num_of_ref_pic_to_search;
+        if (context_ptr->me_alt_ref == EB_TRUE)
+            num_of_ref_pic_to_search = 1;
+        else
+#if MRP_CTRL
+#if ON_OFF_FEATURE_MRP
+            num_of_ref_pic_to_search = pcs_ptr->slice_type == P_SLICE
+            ? pcs_ptr->mrp_ctrls.ref_list0_count_try
+            : list_index == REF_LIST_0 ? pcs_ptr->mrp_ctrls.ref_list0_count_try
+            : pcs_ptr->mrp_ctrls.ref_list1_count_try;
+#else
+            num_of_ref_pic_to_search = pcs_ptr->slice_type == P_SLICE
+            ? pcs_ptr->ref_list0_count_try
+            : list_index == REF_LIST_0 ? pcs_ptr->ref_list0_count_try
+            : pcs_ptr->ref_list1_count_try;
+#endif
+#else
+            num_of_ref_pic_to_search = pcs_ptr->slice_type == P_SLICE
+                                           ? pcs_ptr->ref_list0_count
+                                           : list_index == REF_LIST_0 ? pcs_ptr->ref_list0_count
+                                                                      : pcs_ptr->ref_list1_count;
+#endif
+
+        // Limit the global motion search to the first frame types of ref lists
+        num_of_ref_pic_to_search = MIN(num_of_ref_pic_to_search, 1);
+
+        // Ref Picture Loop
+        for (uint32_t ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search;
+             ++ref_pic_index) {
+            // Set the source and the reference picture to be used by the global motion search
+            // based on the input search mode
+#if GM_DOWN_16
+            if (pcs_ptr->gm_level == GM_DOWN16) {
+                ref_picture_ptr = sixteenth_ref_pic_ptr;
+                input_picture_ptr = sixteenth_picture_ptr;
+
+            }
+            else if (pcs_ptr->gm_level == GM_DOWN) {
+#else
+            if (pcs_ptr->gm_level == GM_DOWN) {
+#endif
+                ref_picture_ptr   = quarter_ref_pic_ptr;
+                input_picture_ptr = quarter_picture_ptr;
+            } else {
+                //ref_picture_ptr = (EbPictureBufferDesc *)reference_object->input_padded_picture_ptr;
+            }
+
+            compute_global_motion(input_picture_ptr,
+                                  ref_picture_ptr,
+                                  &pcs_ptr->global_motion_estimation[list_index][ref_pic_index],
+                                  pcs_ptr->frm_hdr.allow_high_precision_mv);
+        }
+
+#if GM_LIST1
+        if (context_ptr->gm_identiy_exit) {
+            if (list_index == 0) {
+                if (pcs_ptr->global_motion_estimation[0][0].wmtype == IDENTITY) {
+                    pcs_ptr->global_motion_estimation[1][0].wmtype = IDENTITY;
+                    break;
+                }
+            }
+        }
+#endif
+
+    }
+}
+#endif
+
 static INLINE int convert_to_trans_prec(int allow_hp, int coor) {
     if (allow_hp)
         return ROUND_POWER_OF_TWO_SIGNED(coor, WARPEDMODEL_PREC_BITS - 3);

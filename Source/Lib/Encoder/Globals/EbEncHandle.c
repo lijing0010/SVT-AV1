@@ -742,10 +742,15 @@ EbErrorType load_default_buffer_configuration_settings(
     scs_ptr->total_process_init_count                    = 0;
     if (core_count > 1){
         scs_ptr->total_process_init_count += (scs_ptr->picture_analysis_process_init_count            = MAX(MIN(15, core_count >> 1), core_count / 6));
+#if !INL_ME
         scs_ptr->total_process_init_count += (scs_ptr->motion_estimation_process_init_count =  MAX(MIN(20, core_count >> 1), core_count / 3));//1);//
+#endif
         scs_ptr->total_process_init_count += (scs_ptr->source_based_operations_process_init_count     = MAX(MIN(3, core_count >> 1), core_count / 12));
 #if INL_ME
-        scs_ptr->total_process_init_count += (scs_ptr->inlme_process_init_count = 1); 
+        if (scs_ptr->in_loop_me)
+            scs_ptr->total_process_init_count += (scs_ptr->inlme_process_init_count = 1); 
+        else
+            scs_ptr->total_process_init_count += (scs_ptr->motion_estimation_process_init_count =  MAX(MIN(20, core_count >> 1), core_count / 3));//1);//
 #endif
         scs_ptr->total_process_init_count += (scs_ptr->mode_decision_configuration_process_init_count = MAX(MIN(3, core_count >> 1), core_count / 12));
         scs_ptr->total_process_init_count += (scs_ptr->enc_dec_process_init_count                     = MAX(MIN(40, core_count >> 1), core_count));
@@ -761,11 +766,16 @@ EbErrorType load_default_buffer_configuration_settings(
 #endif
     }else{
         scs_ptr->total_process_init_count += (scs_ptr->picture_analysis_process_init_count            = 1);
+#if !INL_ME
         scs_ptr->total_process_init_count += (scs_ptr->motion_estimation_process_init_count           = 1);
+#endif
         scs_ptr->total_process_init_count += (scs_ptr->source_based_operations_process_init_count     = 1);
         scs_ptr->total_process_init_count += (scs_ptr->mode_decision_configuration_process_init_count = 1);
 #if INL_ME
-        scs_ptr->total_process_init_count += (scs_ptr->inlme_process_init_count                       = 1);
+        if (scs_ptr->in_loop_me)
+            scs_ptr->total_process_init_count += (scs_ptr->inlme_process_init_count                   = 1);
+        else
+            scs_ptr->total_process_init_count += (scs_ptr->motion_estimation_process_init_count       = 1);
 #endif
         scs_ptr->total_process_init_count += (scs_ptr->enc_dec_process_init_count                     = 1);
         scs_ptr->total_process_init_count += (scs_ptr->entropy_coding_process_init_count              = 1);
@@ -1277,6 +1287,10 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
     // Allocate Resource Arrays
     EB_ALLOC_PTR_ARRAY(enc_handle_ptr->reference_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
     EB_ALLOC_PTR_ARRAY(enc_handle_ptr->pa_reference_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
+#if INL_ME
+	//if (scs_ptr->in_loop_me)
+    EB_ALLOC_PTR_ARRAY(enc_handle_ptr->down_scaled_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
+#endif
 
     EB_ALLOC_PTR_ARRAY(enc_handle_ptr->overlay_input_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
 
@@ -1397,6 +1411,49 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
         // Set the SequenceControlSet Picture Pool Fifo Ptrs
         enc_handle_ptr->scs_instance_array[instance_index]->encode_context_ptr->reference_picture_pool_fifo_ptr = eb_system_resource_get_producer_fifo(enc_handle_ptr->reference_picture_pool_ptr_array[instance_index], 0);
         enc_handle_ptr->scs_instance_array[instance_index]->encode_context_ptr->pa_reference_picture_pool_fifo_ptr = eb_system_resource_get_producer_fifo(enc_handle_ptr->pa_reference_picture_pool_ptr_array[instance_index], 0);
+#if INL_ME
+		// if (scs_ptr->in_loop_me && GM need it)
+		if (enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->in_loop_me) {
+			EbDownScaledObjectDescInitData eb_down_scale_obj_init_data;
+			quart_pic_buf_desc_init_data.max_width = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_luma_width >> 1;
+			quart_pic_buf_desc_init_data.max_height = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_luma_height >> 1;
+			quart_pic_buf_desc_init_data.bit_depth = EB_8BIT;
+			quart_pic_buf_desc_init_data.color_format = EB_YUV420;
+			quart_pic_buf_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
+			quart_pic_buf_desc_init_data.left_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 1;
+			quart_pic_buf_desc_init_data.right_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 1;
+			quart_pic_buf_desc_init_data.top_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 1;
+			quart_pic_buf_desc_init_data.bot_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 1;
+			quart_pic_buf_desc_init_data.split_mode = EB_FALSE;
+			//useless, don't need to store two, just use one
+			quart_pic_buf_desc_init_data.down_sampled_filtered = EB_FALSE;
+
+			sixteenth_pic_buf_desc_init_data.max_width = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_luma_width >> 2;
+			sixteenth_pic_buf_desc_init_data.max_height = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_luma_height >> 2;
+			sixteenth_pic_buf_desc_init_data.bit_depth = EB_8BIT;
+			sixteenth_pic_buf_desc_init_data.color_format = EB_YUV420;
+			sixteenth_pic_buf_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
+			sixteenth_pic_buf_desc_init_data.left_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 2;
+			sixteenth_pic_buf_desc_init_data.right_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 2;
+			sixteenth_pic_buf_desc_init_data.top_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 2;
+			sixteenth_pic_buf_desc_init_data.bot_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 2;
+			sixteenth_pic_buf_desc_init_data.split_mode = EB_FALSE;
+			//useless
+			sixteenth_pic_buf_desc_init_data.down_sampled_filtered = EB_FALSE;
+			eb_down_scale_obj_init_data.quarter_picture_desc_init_data = quart_pic_buf_desc_init_data;
+			eb_down_scale_obj_init_data.sixteenth_picture_desc_init_data = sixteenth_pic_buf_desc_init_data;
+			EB_NEW(enc_handle_ptr->down_scaled_picture_pool_ptr_array[instance_index],
+					eb_system_resource_ctor,
+					enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->input_buffer_fifo_init_count,
+					EB_PictureDecisionProcessInitCount,
+					0,
+					eb_down_scaled_object_creator,
+					&(eb_down_scale_obj_init_data),
+					NULL);
+			// Set the SequenceControlSet Picture Pool Fifo Ptrs
+			enc_handle_ptr->scs_instance_array[instance_index]->encode_context_ptr->down_scaled_picture_pool_fifo_ptr = eb_system_resource_get_producer_fifo(enc_handle_ptr->down_scaled_picture_pool_ptr_array[instance_index], 0);
+		}
+#endif
 
         if (enc_handle_ptr->scs_instance_array[0]->scs_ptr->static_config.enable_overlays) {
             // Overlay Input Picture Buffers
@@ -1557,6 +1614,7 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
 
 #if INL_ME
     // Picture Mgr Results
+    if (enc_handle_ptr->scs_instance_array[0]->scs_ptr->in_loop_me)
     {
         PictureManagerResultInitData picture_manager_result_init_data;
         EB_NEW(
@@ -1787,15 +1845,17 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
 
 
 #if INL_ME
-    // In-Loop ME Context
-    EB_ALLOC_PTR_ARRAY(enc_handle_ptr->inlme_context_ptr_array, enc_handle_ptr->scs_instance_array[0]->scs_ptr->inlme_process_init_count);
+    if (enc_handle_ptr->scs_instance_array[0]->scs_ptr->in_loop_me) {
+        // In-Loop ME Context
+        EB_ALLOC_PTR_ARRAY(enc_handle_ptr->inlme_context_ptr_array, enc_handle_ptr->scs_instance_array[0]->scs_ptr->inlme_process_init_count);
 
-    for (process_index = 0; process_index < enc_handle_ptr->scs_instance_array[0]->scs_ptr->inlme_process_init_count; ++process_index) {
-        EB_NEW(
-            enc_handle_ptr->inlme_context_ptr_array[process_index],
-            ime_context_ctor,
-            enc_handle_ptr,
-            process_index);
+        for (process_index = 0; process_index < enc_handle_ptr->scs_instance_array[0]->scs_ptr->inlme_process_init_count; ++process_index) {
+            EB_NEW(
+                    enc_handle_ptr->inlme_context_ptr_array[process_index],
+                    ime_context_ctor,
+                    enc_handle_ptr,
+                    process_index);
+        }
     }
 #endif
 
@@ -1933,9 +1993,11 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
 
 #if INL_ME
     // Motion Estimation
-    EB_CREATE_THREAD_ARRAY(enc_handle_ptr->ime_thread_handle_array, control_set_ptr->inlme_process_init_count,
-        inloop_me_kernel,
-        enc_handle_ptr->inlme_context_ptr_array);
+    if (enc_handle_ptr->scs_instance_array[0]->scs_ptr->in_loop_me) {
+        EB_CREATE_THREAD_ARRAY(enc_handle_ptr->ime_thread_handle_array, control_set_ptr->inlme_process_init_count,
+                inloop_me_kernel,
+                enc_handle_ptr->inlme_context_ptr_array);
+    }
 #endif
     // Rate Control
     EB_CREATE_THREAD(enc_handle_ptr->rate_control_thread_handle, rate_control_kernel, enc_handle_ptr->rate_control_context_ptr);
@@ -2351,6 +2413,9 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
             scs_ptr->down_sampling_method_me_search = ME_DECIMATED_DOWNSAMPLED;
 
 
+#if INL_ME
+    scs_ptr->in_loop_me = 1;
+#endif
     // Set over_boundary_block_mode     Settings
     // 0                            0: not allowed
     // 1                            1: allowed

@@ -5523,6 +5523,9 @@ void perform_simple_picture_analysis_for_overlay(PictureParentControlSet     *pc
 
     SequenceControlSet *scs_ptr = (SequenceControlSet*)pcs_ptr->scs_wrapper_ptr->object_ptr;
     input_picture_ptr               = pcs_ptr->enhanced_picture_ptr;
+#if INL_ME
+    //TODO: Remove PA here
+#endif
     pa_ref_obj_               = (EbPaReferenceObject*)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr;
     input_padded_picture_ptr        = (EbPictureBufferDesc*)pa_ref_obj_->input_padded_picture_ptr;
     pic_width_in_sb = (pcs_ptr->aligned_width + scs_ptr->sb_sz - 1) / scs_ptr->sb_sz;

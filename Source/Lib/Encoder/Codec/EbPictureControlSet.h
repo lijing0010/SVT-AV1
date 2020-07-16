@@ -511,6 +511,9 @@ typedef struct PictureParentControlSet {
     EbObjectWrapper *    input_picture_wrapper_ptr;
     EbObjectWrapper *    reference_picture_wrapper_ptr;
     EbObjectWrapper *    pa_reference_picture_wrapper_ptr;
+#if INL_ME
+    EbObjectWrapper *    down_scaled_picture_wrapper_ptr;
+#endif
     EbPictureBufferDesc *enhanced_picture_ptr;
     EbPictureBufferDesc *enhanced_downscaled_picture_ptr;
     EbPictureBufferDesc *enhanced_unscaled_picture_ptr;

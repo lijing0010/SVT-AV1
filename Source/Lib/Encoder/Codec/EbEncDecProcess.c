@@ -1302,6 +1302,8 @@ void pad_ref_and_set_flags(PictureControlSet *pcs_ptr, SequenceControlSet *scs_p
         }
 #endif
     }
+
+
     if ((scs_ptr->static_config.encoder_16bit_pipeline) && (!is_16bit)) {
         // Y samples
         generate_padding16_bit(ref_pic_16bit_ptr->buffer_y,
@@ -1359,6 +1361,23 @@ void pad_ref_and_set_flags(PictureControlSet *pcs_ptr, SequenceControlSet *scs_p
                               (ref_pic_16bit_ptr->width + (ref_pic_ptr->origin_x << 1)) >> 1,
                               (ref_pic_16bit_ptr->height + (ref_pic_ptr->origin_y << 1)) >> 1);
     }
+
+#if INL_ME
+    // Save down scaled reference for HME
+    if (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) {
+        downsample_filtering_input_picture(
+                pcs_ptr->parent_pcs_ptr,
+                ref_pic_ptr,
+                reference_object->quarter_reference_picture,
+                reference_object->sixteenth_reference_picture);
+    } else {
+        downsample_decimation_input_picture(
+                pcs_ptr->parent_pcs_ptr,
+                ref_pic_ptr,
+                reference_object->quarter_reference_picture,
+                reference_object->sixteenth_reference_picture);
+    }
+#endif
     // set up the ref POC
     reference_object->ref_poc = pcs_ptr->parent_pcs_ptr->picture_number;
 

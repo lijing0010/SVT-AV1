@@ -3346,6 +3346,12 @@ void calculate_input_average_intensity(SequenceControlSet *     scs_ptr,
  ** Calculating the pixel intensity histogram bins per picture needed for SCD
  ** Computing Picture Variance
  ************************************************/
+#if INL_ME
+void gathering_picture_statistics_ex(SequenceControlSet *scs_ptr, PictureParentControlSet *pcs_ptr,
+                                  EbPictureBufferDesc *input_picture_ptr,
+                                  uint32_t             sb_total_count) {
+}
+#endif
 void gathering_picture_statistics(SequenceControlSet *scs_ptr, PictureParentControlSet *pcs_ptr,
                                   EbPictureBufferDesc *input_picture_ptr,
                                   EbPictureBufferDesc *input_padded_picture_ptr,
@@ -3923,6 +3929,9 @@ void *picture_analysis_kernel(void *input_ptr) {
     EbObjectWrapper *            out_results_wrapper_ptr;
     PictureAnalysisResults *     out_results_ptr;
     EbPaReferenceObject *        pa_ref_obj_;
+#if INL_ME
+    EbDownScaledObject*          ds_obj;
+#endif
 
     EbPictureBufferDesc *input_padded_picture_ptr;
     EbPictureBufferDesc *input_picture_ptr;
@@ -3948,9 +3957,18 @@ void *picture_analysis_kernel(void *input_ptr) {
             scs_ptr           = (SequenceControlSet *)pcs_ptr->scs_wrapper_ptr->object_ptr;
             input_picture_ptr = pcs_ptr->enhanced_picture_ptr;
 
+#if INL_ME
+            if (scs_ptr->in_loop_me) {
+                ds_obj =
+                    (EbDownScaledObject*)pcs_ptr->down_scaled_picture_wrapper_ptr->object_ptr;
+            } else {
+#endif
             pa_ref_obj_ =
                 (EbPaReferenceObject *)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr;
             input_padded_picture_ptr = (EbPictureBufferDesc *)pa_ref_obj_->input_padded_picture_ptr;
+#if INL_ME
+            }
+#endif
             // Variance
             pic_width_in_sb = (pcs_ptr->aligned_width + scs_ptr->sb_sz - 1) / scs_ptr->sb_sz;
             pic_height_in_sb = (pcs_ptr->aligned_height + scs_ptr->sb_sz - 1) / scs_ptr->sb_sz;
@@ -4016,6 +4034,9 @@ void *picture_analysis_kernel(void *input_ptr) {
 
             }
 #endif
+#if INL_ME
+            if (!scs_ptr->in_loop_me)
+#endif
             {
                 uint8_t *pa =
                     input_padded_picture_ptr->buffer_y + input_padded_picture_ptr->origin_x +
@@ -4046,6 +4067,33 @@ void *picture_analysis_kernel(void *input_ptr) {
                 down_sample_chroma(input_picture_ptr, pcs_ptr->chroma_downsampled_picture_ptr);
             } else
                 pcs_ptr->chroma_downsampled_picture_ptr = input_picture_ptr;
+
+
+#if INL_ME
+            if (scs_ptr->in_loop_me) {
+                //TODO: Check for global motion whether we need these
+                if (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) {
+                    downsample_filtering_input_picture(
+                            pcs_ptr,
+                            input_picture_ptr,
+                            (EbPictureBufferDesc *)ds_obj->quarter_picture_ptr,
+                            (EbPictureBufferDesc *)ds_obj->sixteenth_picture_ptr);
+                } else {
+                    downsample_decimation_input_picture(
+                            pcs_ptr,
+                            input_picture_ptr,
+                            (EbPictureBufferDesc *)ds_obj->quarter_picture_ptr,
+                            (EbPictureBufferDesc *)ds_obj->sixteenth_picture_ptr);
+                }
+
+            // TODO: Refine this function
+            // Gathering statistics of input picture, including Variance Calculation, Histogram Bins
+            gathering_picture_statistics_ex(
+                scs_ptr, pcs_ptr,
+                input_picture_ptr,
+                sb_total_count);
+            } else {
+#endif
             // Pad input picture to complete border SBs
             pad_picture_to_multiple_of_sb_dimensions(input_padded_picture_ptr);
             // 1/4 & 1/16 input picture decimation
@@ -4073,6 +4121,9 @@ void *picture_analysis_kernel(void *input_ptr) {
                 (EbPictureBufferDesc *)pa_ref_obj_
                     ->sixteenth_decimated_picture_ptr, // Hsan: always use decimated until studying the trade offs
                 sb_total_count);
+#if INL_ME
+            }
+#endif
 
             if (scs_ptr->static_config.screen_content_mode == 2) { // auto detect
                 is_screen_content(pcs_ptr,
@@ -4083,9 +4134,9 @@ void *picture_analysis_kernel(void *input_ptr) {
             // Hold the 64x64 variance and mean in the reference frame
             uint32_t sb_index;
             for (sb_index = 0; sb_index < pcs_ptr->sb_total_count; ++sb_index) {
-                pa_ref_obj_->variance[sb_index] =
-                    pcs_ptr->variance[sb_index][ME_TIER_ZERO_PU_64x64];
-                pa_ref_obj_->y_mean[sb_index] = pcs_ptr->y_mean[sb_index][ME_TIER_ZERO_PU_64x64];
+                //pa_ref_obj_->variance[sb_index] =
+                //    pcs_ptr->variance[sb_index][ME_TIER_ZERO_PU_64x64];
+                //pa_ref_obj_->y_mean[sb_index] = pcs_ptr->y_mean[sb_index][ME_TIER_ZERO_PU_64x64];
             }
         }
         // Get Empty Results Object

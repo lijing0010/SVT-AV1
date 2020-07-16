@@ -9949,10 +9949,16 @@ void integer_search_sb(
     uint8_t ref_pic_index;
     uint8_t num_of_ref_pic_to_search;
     EbPaReferenceObject *reference_object; // input parameter, reference Object Ptr
+#if INL_ME
+    EbReferenceObject *inl_reference_object;
+    PictureControlSet *child_pcs_ptr = NULL;
+    if (context_ptr->me_in_loop)
+        child_pcs_ptr = pcs_ptr->child_pcs;
+#endif
     // Final ME Search Center
     int16_t x_search_center = 0;
     int16_t y_search_center = 0;
-    EbPictureBufferDesc *ref_pic_ptr;
+    EbPictureBufferDesc *ref_pic_ptr = NULL;
     num_of_list_to_search =
         (pcs_ptr->slice_type == P_SLICE) ? (uint32_t)REF_LIST_0 : (uint32_t)REF_LIST_1;
 
@@ -9985,24 +9991,49 @@ void integer_search_sb(
                                                                         : pcs_ptr->ref_list1_count;
 #endif
 
+#if INL_ME
+            if (context_ptr->me_in_loop)
+                inl_reference_object =
+                    child_pcs_ptr->ref_pic_ptr_array[0][0]->object_ptr;
+            else
+                reference_object =
+                    (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
+#else
             reference_object =
                 (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
+#endif
         }
 
         // Ref Picture Loop
         for (ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search; ++ref_pic_index) {
             if (context_ptr->me_alt_ref == EB_TRUE) {
                 reference_object = (EbPaReferenceObject *)context_ptr->alt_ref_reference_ptr;
+#if INL_ME
+                ref_pic_ptr = (EbPictureBufferDesc *)reference_object->input_padded_picture_ptr;
+#endif
             } else {
-                if (num_of_list_to_search) {
+#if INL_ME
+                if (context_ptr->me_in_loop) {
+                    inl_reference_object =
+                        child_pcs_ptr->ref_pic_ptr_array[list_index][ref_pic_index]->object_ptr;
+                    ref_pic_ptr = inl_reference_object->reference_picture;
+                } else {
+                    reference_object =
+                        (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index]
+                        ->object_ptr;
+                    ref_pic_ptr = (EbPictureBufferDesc *)reference_object->input_padded_picture_ptr;
                 }
-
+#else
                 reference_object =
                     (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index]
                         ->object_ptr;
+#endif
             }
 
+#if !INL_ME
             ref_pic_ptr = (EbPictureBufferDesc *)reference_object->input_padded_picture_ptr;
+#endif
+
             // Get hme results
             if (context_ptr->hme_results[list_index][ref_pic_index].do_ref == 0)
                 continue;  //so will not get ME results for those references.
@@ -10620,6 +10651,13 @@ void hme_level0_sb(
         *referenceObject;  // input parameter, reference Object Ptr
     uint8_t ref_pic_index;
     uint8_t num_of_ref_pic_to_search;
+#if INL_ME
+    EbReferenceObject *inl_reference_object;
+    PictureControlSet *child_pcs_ptr = NULL;
+    if (scs_ptr->in_loop_me)
+        child_pcs_ptr = pcs_ptr->child_pcs;
+#endif
+
 #if !DISABLE_HME_PRE_CHECK
     EbPictureBufferDesc *refPicPtr;
 #endif
@@ -10657,8 +10695,15 @@ void hme_level0_sb(
                 : (list_index == REF_LIST_0)
                 ? pcs_ptr->ref_list0_count
                 : pcs_ptr->ref_list1_count;
-
+#if INL_ME
+            if (context_ptr->me_in_loop)
+                inl_reference_object = child_pcs_ptr->ref_pic_ptr_array[0][0]->object_ptr;
+            else
+                referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
+#else
             referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
+#endif
+
 #if !FIX_WARNINGS
             ref0Poc = pcs_ptr->ref_pic_poc_array[0][0];
 #endif
@@ -10670,6 +10715,11 @@ void hme_level0_sb(
         {
             if (context_ptr->me_alt_ref == EB_TRUE) {
                 referenceObject =(EbPaReferenceObject *)context_ptr->alt_ref_reference_ptr;
+#if INL_ME
+                sixteenthRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
+                    (EbPictureBufferDesc*)referenceObject->sixteenth_filtered_picture_ptr :
+                    (EbPictureBufferDesc*)referenceObject->sixteenth_decimated_picture_ptr;
+#endif
             }
             else {
                 if (num_of_list_to_search) {
@@ -10683,19 +10733,38 @@ void hme_level0_sb(
                     ref1Poc = pcs_ptr->ref_pic_poc_array[1][0];
 #endif
                 }
-
+#if INL_ME
+            if (context_ptr->me_in_loop) {
+                inl_reference_object =
+                    (EbReferenceObject *)child_pcs_ptr
+                    ->ref_pic_ptr_array[list_index][ref_pic_index]
+                    ->object_ptr;
+                sixteenthRefPicPtr = inl_reference_object->sixteenth_reference_picture;
+            } else {
                 referenceObject =
                     (EbPaReferenceObject *)pcs_ptr
                     ->ref_pa_pic_ptr_array[list_index][ref_pic_index]
                     ->object_ptr;
+                sixteenthRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
+                    (EbPictureBufferDesc*)referenceObject->sixteenth_filtered_picture_ptr :
+                    (EbPictureBufferDesc*)referenceObject->sixteenth_decimated_picture_ptr;
+            }
+#else
+                referenceObject =
+                    (EbPaReferenceObject *)pcs_ptr
+                    ->ref_pa_pic_ptr_array[list_index][ref_pic_index]
+                    ->object_ptr;
+#endif
             }
 #if !DISABLE_HME_PRE_CHECK
             refPicPtr = (EbPictureBufferDesc*)referenceObject->input_padded_picture_ptr;
 #endif
             // 1/16 ME reference buffer(s); filtered or decimated
+#if !INL_ME
             sixteenthRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
                 (EbPictureBufferDesc*)referenceObject->sixteenth_filtered_picture_ptr :
                 (EbPictureBufferDesc*)referenceObject->sixteenth_decimated_picture_ptr;
+#endif
             if (pcs_ptr->temporal_layer_index > 0 || list_index == 0) {
 #if DISABLE_HME_PRE_CHECK
                 x_search_center = 0;
@@ -10858,6 +10927,14 @@ void hme_level1_sb(
     int16_t hmeLevel1SearchAreaInHeight;
     // Configure HME level 0, level 1 and level 2 from static config parameters
     EbBool enable_hme_level1_flag = context_ptr->enable_hme_level1_flag;
+
+#if INL_ME
+    EbReferenceObject *inl_reference_object;
+    PictureControlSet *child_pcs_ptr = NULL;
+    if (scs_ptr->in_loop_me)
+        child_pcs_ptr = pcs_ptr->child_pcs;
+#endif
+
 #if ADD_HME_DECIMATION_SIGNAL
     if (context_ptr->hme_decimation == ONE_DECIMATION_HME)
         enable_hme_level1_flag = context_ptr->enable_hme_level0_flag;
@@ -10884,8 +10961,14 @@ void hme_level1_sb(
                 : (list_index == REF_LIST_0)
                 ? pcs_ptr->ref_list0_count
                 : pcs_ptr->ref_list1_count;
-
+#if INL_ME
+            if (context_ptr->me_in_loop)
+                inl_reference_object = child_pcs_ptr->ref_pic_ptr_array[0][0]->object_ptr;
+            else
+                referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
+#else
             referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
+#endif
 #if !FIX_WARNINGS
             ref0Poc = pcs_ptr->ref_pic_poc_array[0][0];
 #endif
@@ -10894,29 +10977,40 @@ void hme_level1_sb(
         for (ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search;++ref_pic_index){
             if (context_ptr->me_alt_ref == EB_TRUE) {
                 referenceObject = (EbPaReferenceObject *)context_ptr->alt_ref_reference_ptr;
+#if INL_ME
+                quarterRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
+                    (EbPictureBufferDesc*)referenceObject->quarter_filtered_picture_ptr :
+                    (EbPictureBufferDesc*)referenceObject->quarter_decimated_picture_ptr;
+#endif
             }
             else {
-                if (num_of_list_to_search) {
-#if !LOW_DELAY_TUNE
-                    referenceObject =
-                        (EbPaReferenceObject *)pcs_ptr
-                        ->ref_pa_pic_ptr_array[1][0]
-                        ->object_ptr;
-#endif
-#if !FIX_WARNINGS
-                    ref1Poc = pcs_ptr->ref_pic_poc_array[1][0];
-#endif
-                }
-
-                referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index]->object_ptr;
+#if INL_ME
+            if (context_ptr->me_in_loop) {
+                inl_reference_object =
+                    (EbReferenceObject *)child_pcs_ptr
+                    ->ref_pic_ptr_array[list_index][ref_pic_index]
+                    ->object_ptr;
+                quarterRefPicPtr = inl_reference_object->quarter_reference_picture;
+            } else {
+                referenceObject =
+                    (EbPaReferenceObject *)pcs_ptr
+                    ->ref_pa_pic_ptr_array[list_index][ref_pic_index]
+                    ->object_ptr;
+                quarterRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
+                    (EbPictureBufferDesc*)referenceObject->quarter_filtered_picture_ptr :
+                    (EbPictureBufferDesc*)referenceObject->quarter_decimated_picture_ptr;
             }
-#if !FIX_WARNINGS
-            refPicPtr = (EbPictureBufferDesc*)referenceObject->input_padded_picture_ptr;
+#else
+                referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index]->object_ptr;
 #endif
+            }
+
             // Set 1/4 ME reference buffer(s); filtered or decimated
+#if !INL_ME
             quarterRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
                 (EbPictureBufferDesc*)referenceObject->quarter_filtered_picture_ptr :
                 (EbPictureBufferDesc*)referenceObject->quarter_decimated_picture_ptr;
+#endif
             if (pcs_ptr->temporal_layer_index > 0 || list_index == 0) {
                 // B - NO HME in boundaries
 #if ENABLE_HME_AT_INC_SB
@@ -11053,6 +11147,13 @@ void hme_level2_sb(
     uint32_t list_index;
     EbPaReferenceObject *referenceObject;  // input parameter, reference Object Ptr
 
+#if INL_ME
+    SequenceControlSet *scs_ptr = (SequenceControlSet *)pcs_ptr->scs_wrapper_ptr->object_ptr;
+    EbReferenceObject *inl_reference_object;
+    PictureControlSet *child_pcs_ptr = NULL;
+    if (scs_ptr->in_loop_me)
+        child_pcs_ptr = pcs_ptr->child_pcs;
+#endif
     uint8_t ref_pic_index;
     uint8_t num_of_ref_pic_to_search;
     EbPictureBufferDesc *refPicPtr;
@@ -11085,7 +11186,15 @@ void hme_level2_sb(
                 ? pcs_ptr->ref_list0_count
                 : pcs_ptr->ref_list1_count;
 
+#if INL_ME
+            if (context_ptr->me_in_loop)
+                inl_reference_object = child_pcs_ptr->ref_pic_ptr_array[0][0]->object_ptr;
+            else
+                referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
+#else
             referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
+#endif
+
 #if !FIX_WARNINGS
             ref0Poc = pcs_ptr->ref_pic_poc_array[0][0];
 #endif
@@ -11094,23 +11203,33 @@ void hme_level2_sb(
         for (ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search; ++ref_pic_index){
             if (context_ptr->me_alt_ref == EB_TRUE) {
                 referenceObject = (EbPaReferenceObject *)context_ptr->alt_ref_reference_ptr;
+#if INL_ME
+                refPicPtr = (EbPictureBufferDesc*)referenceObject->input_padded_picture_ptr;
+#endif
             }
             else {
-                if (num_of_list_to_search) {
-#if !LOW_DELAY_TUNE
-                    referenceObject =
-                        (EbPaReferenceObject *)pcs_ptr
-                        ->ref_pa_pic_ptr_array[1][0]
-                        ->object_ptr;
-#endif
-#if !FIX_WARNINGS
-                    ref1Poc = pcs_ptr->ref_pic_poc_array[1][0];
-#endif
-                }
-
-                referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index]->object_ptr;
+#if INL_ME
+            if (context_ptr->me_in_loop) {
+                inl_reference_object =
+                    (EbReferenceObject *)child_pcs_ptr
+                    ->ref_pic_ptr_array[list_index][ref_pic_index]
+                    ->object_ptr;
+                refPicPtr = inl_reference_object->reference_picture;
+            } else {
+                referenceObject =
+                    (EbPaReferenceObject *)pcs_ptr
+                    ->ref_pa_pic_ptr_array[list_index][ref_pic_index]
+                    ->object_ptr;
+                refPicPtr = (EbPictureBufferDesc*)referenceObject->input_padded_picture_ptr;
             }
+#else
+                referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index]->object_ptr;
+#endif
+            }
+#if !INL_ME
             refPicPtr = (EbPictureBufferDesc*)referenceObject->input_padded_picture_ptr;
+#endif
+
             if (pcs_ptr->temporal_layer_index > 0 || list_index == 0) {
 #if ENABLE_HME_AT_INC_SB
                 if (context_ptr->enable_hme_flag) {

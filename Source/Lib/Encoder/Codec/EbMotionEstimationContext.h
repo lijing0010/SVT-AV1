@@ -577,6 +577,9 @@ typedef struct MeContext {
     uint16_t adj_search_area_width;
     uint16_t adj_search_area_height;
     EbBool   me_alt_ref;
+#if INL_ME
+    EbBool   me_in_loop;
+#endif
     void *   alt_ref_reference_ptr;
     // tf
     int tf_frame_index;
