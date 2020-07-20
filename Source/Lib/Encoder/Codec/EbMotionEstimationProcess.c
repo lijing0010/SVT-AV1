@@ -2600,7 +2600,10 @@ void *inloop_me_kernel(void *input_ptr) {
 
                         if (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) {
                             // load filtered down sample into sixteenth_sb_buffer
+                            if (context_ptr->me_context_ptr->hme_search_method == FULL_SAD_SEARCH)
                             downsample_2d(frame_ptr, frame_stride, BLOCK_SIZE_64, BLOCK_SIZE_64, local_ptr,local_stride, decim_step);
+                            else
+                            downsample_2d(frame_ptr, frame_stride << 1, BLOCK_SIZE_64, BLOCK_SIZE_64, local_ptr,local_stride, decim_step);
                         } else {
                             if (context_ptr->me_context_ptr->hme_search_method ==
                                     FULL_SAD_SEARCH) {
