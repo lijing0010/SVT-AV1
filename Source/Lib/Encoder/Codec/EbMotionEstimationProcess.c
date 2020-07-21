@@ -1980,6 +1980,7 @@ void *motion_estimation_kernel(void *input_ptr) {
         pcs_ptr        = (PictureParentControlSet *)in_results_ptr->pcs_wrapper_ptr->object_ptr;
         scs_ptr        = (SequenceControlSet *)pcs_ptr->scs_wrapper_ptr->object_ptr;
 
+#if !INL_ME
         pa_ref_obj_ = (EbPaReferenceObject *)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr;
         // Set 1/4 and 1/16 ME input buffer(s); filtered or decimated
         quarter_picture_ptr =
@@ -1994,6 +1995,7 @@ void *motion_estimation_kernel(void *input_ptr) {
         input_padded_picture_ptr = (EbPictureBufferDesc *)pa_ref_obj_->input_padded_picture_ptr;
 
         input_picture_ptr = pcs_ptr->enhanced_unscaled_picture_ptr;
+#endif
 
         context_ptr->me_context_ptr->me_alt_ref =
             in_results_ptr->task_type == 1 ? EB_TRUE : EB_FALSE;
@@ -2020,6 +2022,23 @@ void *motion_estimation_kernel(void *input_ptr) {
         if (in_results_ptr->task_type == 0) {
             // ME Kernel Signal(s) derivation
             signal_derivation_me_kernel_oq(scs_ptr, pcs_ptr, context_ptr);
+
+#if INL_ME
+            pa_ref_obj_ = (EbPaReferenceObject *)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr;
+            // Set 1/4 and 1/16 ME input buffer(s); filtered or decimated
+            quarter_picture_ptr =
+                (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED)
+                ? (EbPictureBufferDesc *)pa_ref_obj_->quarter_filtered_picture_ptr
+                : (EbPictureBufferDesc *)pa_ref_obj_->quarter_decimated_picture_ptr;
+
+            sixteenth_picture_ptr =
+                (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED)
+                ? (EbPictureBufferDesc *)pa_ref_obj_->sixteenth_filtered_picture_ptr
+                : (EbPictureBufferDesc *)pa_ref_obj_->sixteenth_decimated_picture_ptr;
+            input_padded_picture_ptr = (EbPictureBufferDesc *)pa_ref_obj_->input_padded_picture_ptr;
+
+            input_picture_ptr = pcs_ptr->enhanced_unscaled_picture_ptr;
+#endif
 
             // Global motion estimation
             // Compute only for the first fragment.

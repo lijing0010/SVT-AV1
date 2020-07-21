@@ -1252,23 +1252,37 @@ void *resource_coordination_kernel(void *input_ptr) {
 
 #if INL_ME
             // Get Empty down scaled input Picture Object
-            eb_get_empty_object(scs_ptr->encode_context_ptr->down_scaled_picture_pool_fifo_ptr,
-                                &reference_picture_wrapper_ptr);
+            if (scs_ptr->in_loop_me) {
+                eb_get_empty_object(scs_ptr->encode_context_ptr->down_scaled_picture_pool_fifo_ptr,
+                        &reference_picture_wrapper_ptr);
+                pcs_ptr->down_scaled_picture_wrapper_ptr = reference_picture_wrapper_ptr;
+            } else {
+                // Get Empty Reference Picture Object
+                eb_get_empty_object(scs_ptr->encode_context_ptr->pa_reference_picture_pool_fifo_ptr,
+                        &reference_picture_wrapper_ptr);
 
-            pcs_ptr->down_scaled_picture_wrapper_ptr = reference_picture_wrapper_ptr;
+                pcs_ptr->pa_reference_picture_wrapper_ptr = reference_picture_wrapper_ptr;
+
+                // Since overlay pictures are not added to PA_Reference queue in PD and not released there, the life count is only set to 1
+                if (pcs_ptr->is_overlay)
+                    // Give the new Reference a nominal live_count of 1
+                    eb_object_inc_live_count(pcs_ptr->pa_reference_picture_wrapper_ptr, 1);
+                else
+                    eb_object_inc_live_count(pcs_ptr->pa_reference_picture_wrapper_ptr, 2);
+            }
 #else
             // Get Empty Reference Picture Object
             eb_get_empty_object(scs_ptr->encode_context_ptr->pa_reference_picture_pool_fifo_ptr,
                                 &reference_picture_wrapper_ptr);
 
             pcs_ptr->pa_reference_picture_wrapper_ptr = reference_picture_wrapper_ptr;
-#endif
             // Since overlay pictures are not added to PA_Reference queue in PD and not released there, the life count is only set to 1
             if (pcs_ptr->is_overlay)
                 // Give the new Reference a nominal live_count of 1
                 eb_object_inc_live_count(pcs_ptr->pa_reference_picture_wrapper_ptr, 1);
             else
                 eb_object_inc_live_count(pcs_ptr->pa_reference_picture_wrapper_ptr, 2);
+#endif
             if (scs_ptr->static_config.unrestricted_motion_vector == 0) {
                 struct PictureParentControlSet *ppcs_ptr = pcs_ptr;
                 Av1Common *const                cm       = ppcs_ptr->av1_cm;
