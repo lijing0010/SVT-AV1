@@ -2491,161 +2491,162 @@ void *inloop_me_kernel(void *input_ptr) {
         scs_ptr = (SequenceControlSet *)ppcs_ptr->scs_wrapper_ptr->object_ptr;
 
         printf("iME-IN  POC:%ld  \n", ppcs_ptr->picture_number);
-        input_picture_ptr = ppcs_ptr->enhanced_unscaled_picture_ptr;
+        if (scs_ptr->in_loop_me) {
+            input_picture_ptr = ppcs_ptr->enhanced_unscaled_picture_ptr;
 
-        context_ptr->me_context_ptr->me_alt_ref = EB_FALSE;
-        context_ptr->me_context_ptr->me_in_loop = EB_TRUE;
+            context_ptr->me_context_ptr->me_alt_ref = EB_FALSE;
+            context_ptr->me_context_ptr->me_in_loop = EB_TRUE;
 
-        // Lambda Assignement
-        if (scs_ptr->static_config.pred_structure == EB_PRED_RANDOM_ACCESS) {
-            if (ppcs_ptr->temporal_layer_index == 0)
-                context_ptr->me_context_ptr->lambda =
-                    lambda_mode_decision_ra_sad[ppcs_ptr->picture_qp];
-            else if (ppcs_ptr->temporal_layer_index < 3)
-                context_ptr->me_context_ptr->lambda =
-                    lambda_mode_decision_ra_sad_qp_scaling_l1[ppcs_ptr->picture_qp];
-            else
-                context_ptr->me_context_ptr->lambda =
-                    lambda_mode_decision_ra_sad_qp_scaling_l3[ppcs_ptr->picture_qp];
-        } else {
-            if (ppcs_ptr->temporal_layer_index == 0)
-                context_ptr->me_context_ptr->lambda =
-                    lambda_mode_decision_ld_sad[ppcs_ptr->picture_qp];
-            else
-                context_ptr->me_context_ptr->lambda =
-                    lambda_mode_decision_ld_sad_qp_scaling[ppcs_ptr->picture_qp];
-        }
+            // Lambda Assignement
+            if (scs_ptr->static_config.pred_structure == EB_PRED_RANDOM_ACCESS) {
+                if (ppcs_ptr->temporal_layer_index == 0)
+                    context_ptr->me_context_ptr->lambda =
+                        lambda_mode_decision_ra_sad[ppcs_ptr->picture_qp];
+                else if (ppcs_ptr->temporal_layer_index < 3)
+                    context_ptr->me_context_ptr->lambda =
+                        lambda_mode_decision_ra_sad_qp_scaling_l1[ppcs_ptr->picture_qp];
+                else
+                    context_ptr->me_context_ptr->lambda =
+                        lambda_mode_decision_ra_sad_qp_scaling_l3[ppcs_ptr->picture_qp];
+            } else {
+                if (ppcs_ptr->temporal_layer_index == 0)
+                    context_ptr->me_context_ptr->lambda =
+                        lambda_mode_decision_ld_sad[ppcs_ptr->picture_qp];
+                else
+                    context_ptr->me_context_ptr->lambda =
+                        lambda_mode_decision_ld_sad_qp_scaling[ppcs_ptr->picture_qp];
+            }
 
-        // ME Kernel Signal(s) derivation
-        signal_derivation_me_kernel_oq(scs_ptr, ppcs_ptr, (MotionEstimationContext_t*)context_ptr);
+            // ME Kernel Signal(s) derivation
+            signal_derivation_me_kernel_oq(scs_ptr, ppcs_ptr, (MotionEstimationContext_t*)context_ptr);
 
-        // Global motion estimation
-        // Compute only for the first fragment.
-        // TODO: create an other kernel ?
-        if (ppcs_ptr->gm_level == GM_FULL || ppcs_ptr->gm_level == GM_DOWN || ppcs_ptr->gm_level == GM_DOWN16) {
-            if (context_ptr->me_context_ptr->compute_global_motion &&
-                    in_results_ptr->segment_index == 0)
-                global_motion_estimation_inl(
-                        ppcs_ptr, context_ptr->me_context_ptr, input_picture_ptr);
-        }
+            // Global motion estimation
+            // Compute only for the first fragment.
+            if (ppcs_ptr->gm_level == GM_FULL || ppcs_ptr->gm_level == GM_DOWN || ppcs_ptr->gm_level == GM_DOWN16) {
+                if (context_ptr->me_context_ptr->compute_global_motion &&
+                        in_results_ptr->segment_index == 0)
+                    global_motion_estimation_inl(
+                            ppcs_ptr, context_ptr->me_context_ptr, input_picture_ptr);
+            }
 
-        // Segments
-        segment_index = in_results_ptr->segment_index;
-        pic_width_in_sb =
-            (ppcs_ptr->aligned_width + scs_ptr->sb_sz - 1) / scs_ptr->sb_sz;
-        picture_height_in_sb =
-            (ppcs_ptr->aligned_height + scs_ptr->sb_sz - 1) / scs_ptr->sb_sz;
-        SEGMENT_CONVERT_IDX_TO_XY(
-                segment_index, x_segment_index, y_segment_index, ppcs_ptr->me_segments_column_count);
-        x_sb_start_index = SEGMENT_START_IDX(
-                x_segment_index, pic_width_in_sb, ppcs_ptr->me_segments_column_count);
-        x_sb_end_index = SEGMENT_END_IDX(
-                x_segment_index, pic_width_in_sb, ppcs_ptr->me_segments_column_count);
-        y_sb_start_index = SEGMENT_START_IDX(
-                y_segment_index, picture_height_in_sb, ppcs_ptr->me_segments_row_count);
-        y_sb_end_index = SEGMENT_END_IDX(
-                y_segment_index, picture_height_in_sb, ppcs_ptr->me_segments_row_count);
+            // Segments
+            segment_index = in_results_ptr->segment_index;
+            pic_width_in_sb =
+                (ppcs_ptr->aligned_width + scs_ptr->sb_sz - 1) / scs_ptr->sb_sz;
+            picture_height_in_sb =
+                (ppcs_ptr->aligned_height + scs_ptr->sb_sz - 1) / scs_ptr->sb_sz;
+            SEGMENT_CONVERT_IDX_TO_XY(
+                    segment_index, x_segment_index, y_segment_index, ppcs_ptr->me_segments_column_count);
+            x_sb_start_index = SEGMENT_START_IDX(
+                    x_segment_index, pic_width_in_sb, ppcs_ptr->me_segments_column_count);
+            x_sb_end_index = SEGMENT_END_IDX(
+                    x_segment_index, pic_width_in_sb, ppcs_ptr->me_segments_column_count);
+            y_sb_start_index = SEGMENT_START_IDX(
+                    y_segment_index, picture_height_in_sb, ppcs_ptr->me_segments_row_count);
+            y_sb_end_index = SEGMENT_END_IDX(
+                    y_segment_index, picture_height_in_sb, ppcs_ptr->me_segments_row_count);
 
-        if (ppcs_ptr->slice_type != I_SLICE) {
-            // SB Loop
-            for (y_sb_index = y_sb_start_index; y_sb_index < y_sb_end_index; ++y_sb_index) {
-                for (x_sb_index = x_sb_start_index; x_sb_index < x_sb_end_index; ++x_sb_index) {
-                    sb_index    = (uint16_t)(x_sb_index + y_sb_index * pic_width_in_sb);
-                    sb_origin_x = x_sb_index * scs_ptr->sb_sz;
-                    sb_origin_y = y_sb_index * scs_ptr->sb_sz;
+            if (ppcs_ptr->slice_type != I_SLICE) {
+                // SB Loop
+                for (y_sb_index = y_sb_start_index; y_sb_index < y_sb_end_index; ++y_sb_index) {
+                    for (x_sb_index = x_sb_start_index; x_sb_index < x_sb_end_index; ++x_sb_index) {
+                        sb_index    = (uint16_t)(x_sb_index + y_sb_index * pic_width_in_sb);
+                        sb_origin_x = x_sb_index * scs_ptr->sb_sz;
+                        sb_origin_y = y_sb_index * scs_ptr->sb_sz;
 
-                    sb_width =
-                        (ppcs_ptr->aligned_width - sb_origin_x) < BLOCK_SIZE_64
-                        ? ppcs_ptr->aligned_width - sb_origin_x
-                        : BLOCK_SIZE_64;
-                    sb_height =
-                        (ppcs_ptr->aligned_height - sb_origin_y) < BLOCK_SIZE_64
-                        ? ppcs_ptr->aligned_height  - sb_origin_y
-                        : BLOCK_SIZE_64;
+                        sb_width =
+                            (ppcs_ptr->aligned_width - sb_origin_x) < BLOCK_SIZE_64
+                            ? ppcs_ptr->aligned_width - sb_origin_x
+                            : BLOCK_SIZE_64;
+                        sb_height =
+                            (ppcs_ptr->aligned_height - sb_origin_y) < BLOCK_SIZE_64
+                            ? ppcs_ptr->aligned_height  - sb_origin_y
+                            : BLOCK_SIZE_64;
 
-                    // Load the SB from the input to the intermediate SB buffer
-                    buffer_index = (input_picture_ptr->origin_y + sb_origin_y) *
-                        input_picture_ptr->stride_y +
-                        input_picture_ptr->origin_x + sb_origin_x;
+                        // Load the SB from the input to the intermediate SB buffer
+                        buffer_index = (input_picture_ptr->origin_y + sb_origin_y) *
+                            input_picture_ptr->stride_y +
+                            input_picture_ptr->origin_x + sb_origin_x;
 
-                    {
-                        uint8_t *src_ptr = &input_picture_ptr->buffer_y[buffer_index];
+                        {
+                            uint8_t *src_ptr = &input_picture_ptr->buffer_y[buffer_index];
 
-                        //_MM_HINT_T0     //_MM_HINT_T1    //_MM_HINT_T2//_MM_HINT_NTA
-                        uint32_t i;
-                        for (i = 0; i < sb_height; i++) {
-                            char const *p =
-                                (char const *)(src_ptr +
-                                        i * input_picture_ptr->stride_y);
-                            _mm_prefetch(p, _MM_HINT_T2);
-                        }
-                    }
-
-                    context_ptr->me_context_ptr->sb_src_ptr =
-                        &input_picture_ptr->buffer_y[buffer_index];
-                    context_ptr->me_context_ptr->sb_src_stride =
-                        input_picture_ptr->stride_y;
-
-                    // Load the 1/4 decimated SB from the 1/4 decimated input to the 1/4 intermediate SB buffer
-                    if (context_ptr->me_context_ptr->enable_hme_level1_flag) {
-                        uint8_t *frame_ptr = &input_picture_ptr->buffer_y[buffer_index];
-                        uint8_t *local_ptr = context_ptr->me_context_ptr->quarter_sb_buffer;
-                        uint16_t frame_stride = input_picture_ptr->stride_y;
-                        uint16_t local_stride = context_ptr->me_context_ptr->quarter_sb_buffer_stride;
-                        uint8_t decim_step = 2;
-
-                        if (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) {
-                            // load filtered down sample into quarter_sb_buffer
-                            downsample_2d(frame_ptr, frame_stride, BLOCK_SIZE_64, BLOCK_SIZE_64, local_ptr,local_stride, decim_step);
-                        } else {
-                            for (uint16_t sb_row = 0; sb_row < (BLOCK_SIZE_64 >> 1); sb_row++) {
-                                for (uint16_t sb_col = 0; sb_col < (sb_width >> 1); sb_col++) {
-                                    local_ptr[sb_col + sb_row * local_stride] =
-                                        frame_ptr[sb_col * decim_step + sb_row * decim_step * frame_stride];
-                                }
+                            //_MM_HINT_T0     //_MM_HINT_T1    //_MM_HINT_T2//_MM_HINT_NTA
+                            uint32_t i;
+                            for (i = 0; i < sb_height; i++) {
+                                char const *p =
+                                    (char const *)(src_ptr +
+                                            i * input_picture_ptr->stride_y);
+                                _mm_prefetch(p, _MM_HINT_T2);
                             }
                         }
-                    }
 
-                    // Load the 1/16 decimated SB from the 1/16 decimated input to the 1/16 intermediate SB buffer
-                    if (context_ptr->me_context_ptr->enable_hme_level0_flag) {
-                        uint8_t *frame_ptr = &input_picture_ptr->buffer_y[buffer_index];
-                        uint8_t *local_ptr = context_ptr->me_context_ptr->sixteenth_sb_buffer;
-                        uint16_t frame_stride = input_picture_ptr->stride_y;
-                        uint16_t local_stride = context_ptr->me_context_ptr->sixteenth_sb_buffer_stride;
-                        uint8_t decim_step = 4;
+                        context_ptr->me_context_ptr->sb_src_ptr =
+                            &input_picture_ptr->buffer_y[buffer_index];
+                        context_ptr->me_context_ptr->sb_src_stride =
+                            input_picture_ptr->stride_y;
 
-                        if (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) {
-                            // load filtered down sample into sixteenth_sb_buffer
-                            if (context_ptr->me_context_ptr->hme_search_method == FULL_SAD_SEARCH)
+                        // Load the 1/4 decimated SB from the 1/4 decimated input to the 1/4 intermediate SB buffer
+                        if (context_ptr->me_context_ptr->enable_hme_level1_flag) {
+                            uint8_t *frame_ptr = &input_picture_ptr->buffer_y[buffer_index];
+                            uint8_t *local_ptr = context_ptr->me_context_ptr->quarter_sb_buffer;
+                            uint16_t frame_stride = input_picture_ptr->stride_y;
+                            uint16_t local_stride = context_ptr->me_context_ptr->quarter_sb_buffer_stride;
+                            uint8_t decim_step = 2;
+
+                            if (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) {
+                                // load filtered down sample into quarter_sb_buffer
                                 downsample_2d(frame_ptr, frame_stride, BLOCK_SIZE_64, BLOCK_SIZE_64, local_ptr,local_stride, decim_step);
-                            else
-                                downsample_2d(frame_ptr, frame_stride << 1, BLOCK_SIZE_64, BLOCK_SIZE_64, local_ptr,local_stride, decim_step);
-                        } else {
-                            if (context_ptr->me_context_ptr->hme_search_method ==
-                                    FULL_SAD_SEARCH) {
-                                for (uint16_t sb_row = 0; sb_row < (BLOCK_SIZE_64 >> 2); sb_row++) {
-                                    for (uint16_t sb_col = 0; sb_col < (sb_width >> 2); sb_col++) {
-                                        local_ptr[sb_col + sb_row * local_stride] =
-                                            frame_ptr[sb_col * decim_step + sb_row * decim_step * frame_stride];
-                                    }
-                                }
                             } else {
-                                for (uint16_t sb_row = 0; sb_row < (BLOCK_SIZE_64 >> 2); sb_row += 2) {
-                                    for (uint16_t sb_col = 0; sb_col < (sb_width >> 2); sb_col++) {
+                                for (uint16_t sb_row = 0; sb_row < (BLOCK_SIZE_64 >> 1); sb_row++) {
+                                    for (uint16_t sb_col = 0; sb_col < (sb_width >> 1); sb_col++) {
                                         local_ptr[sb_col + sb_row * local_stride] =
                                             frame_ptr[sb_col * decim_step + sb_row * decim_step * frame_stride];
                                     }
                                 }
                             }
                         }
+
+                        // Load the 1/16 decimated SB from the 1/16 decimated input to the 1/16 intermediate SB buffer
+                        if (context_ptr->me_context_ptr->enable_hme_level0_flag) {
+                            uint8_t *frame_ptr = &input_picture_ptr->buffer_y[buffer_index];
+                            uint8_t *local_ptr = context_ptr->me_context_ptr->sixteenth_sb_buffer;
+                            uint16_t frame_stride = input_picture_ptr->stride_y;
+                            uint16_t local_stride = context_ptr->me_context_ptr->sixteenth_sb_buffer_stride;
+                            uint8_t decim_step = 4;
+
+                            if (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) {
+                                // load filtered down sample into sixteenth_sb_buffer
+                                if (context_ptr->me_context_ptr->hme_search_method == FULL_SAD_SEARCH)
+                                    downsample_2d(frame_ptr, frame_stride, BLOCK_SIZE_64, BLOCK_SIZE_64, local_ptr,local_stride, decim_step);
+                                else
+                                    downsample_2d(frame_ptr, frame_stride << 1, BLOCK_SIZE_64, BLOCK_SIZE_64, local_ptr,local_stride, decim_step);
+                            } else {
+                                if (context_ptr->me_context_ptr->hme_search_method ==
+                                        FULL_SAD_SEARCH) {
+                                    for (uint16_t sb_row = 0; sb_row < (BLOCK_SIZE_64 >> 2); sb_row++) {
+                                        for (uint16_t sb_col = 0; sb_col < (sb_width >> 2); sb_col++) {
+                                            local_ptr[sb_col + sb_row * local_stride] =
+                                                frame_ptr[sb_col * decim_step + sb_row * decim_step * frame_stride];
+                                        }
+                                    }
+                                } else {
+                                    for (uint16_t sb_row = 0; sb_row < (BLOCK_SIZE_64 >> 2); sb_row += 2) {
+                                        for (uint16_t sb_col = 0; sb_col < (sb_width >> 2); sb_col++) {
+                                            local_ptr[sb_col + sb_row * local_stride] =
+                                                frame_ptr[sb_col * decim_step + sb_row * decim_step * frame_stride];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        motion_estimate_sb(ppcs_ptr,
+                                sb_index,
+                                sb_origin_x,
+                                sb_origin_y,
+                                context_ptr->me_context_ptr,
+                                input_picture_ptr);
                     }
-                    motion_estimate_sb(ppcs_ptr,
-                            sb_index,
-                            sb_origin_x,
-                            sb_origin_y,
-                            context_ptr->me_context_ptr,
-                            input_picture_ptr);
                 }
             }
         }
