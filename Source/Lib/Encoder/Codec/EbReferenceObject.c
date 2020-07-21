@@ -214,33 +214,33 @@ EbErrorType eb_reference_object_ctor(EbReferenceObject *reference_object,
     // TODO: Jing
     // if (in_loop_me)
     // Create quarter/sixteenth ref pic for in loop HME
-    picture_buffer_desc_init_data_ptr->max_width /= 2;
-    picture_buffer_desc_init_data_ptr->max_height /= 2;
-    picture_buffer_desc_init_data_ptr->bit_depth = EB_8BIT;
-    picture_buffer_desc_init_data_ptr->color_format = EB_YUV420;
-    picture_buffer_desc_init_data_ptr->buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
-    picture_buffer_desc_init_data_ptr->left_padding /= 2;
-    picture_buffer_desc_init_data_ptr->right_padding /= 2;
-    picture_buffer_desc_init_data_ptr->top_padding /= 2;
-    picture_buffer_desc_init_data_ptr->bot_padding /= 2;
-    picture_buffer_desc_init_data_ptr->split_mode = EB_FALSE;
+    picture_buffer_desc_init_data_16bit_ptr.max_width /= 2;
+    picture_buffer_desc_init_data_16bit_ptr.max_height /= 2;
+    picture_buffer_desc_init_data_16bit_ptr.bit_depth = EB_8BIT;
+    picture_buffer_desc_init_data_16bit_ptr.color_format = EB_YUV420;
+    picture_buffer_desc_init_data_16bit_ptr.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
+    picture_buffer_desc_init_data_16bit_ptr.left_padding /= 2;
+    picture_buffer_desc_init_data_16bit_ptr.right_padding /= 2;
+    picture_buffer_desc_init_data_16bit_ptr.top_padding /= 2;
+    picture_buffer_desc_init_data_16bit_ptr.bot_padding /= 2;
+    picture_buffer_desc_init_data_16bit_ptr.split_mode = EB_FALSE;
     EB_NEW(reference_object->quarter_reference_picture,
             eb_picture_buffer_desc_ctor,
-            (EbPtr)picture_buffer_desc_init_data_ptr);
+            (EbPtr)&picture_buffer_desc_init_data_16bit_ptr);
 
-    picture_buffer_desc_init_data_ptr->max_width /= 2;
-    picture_buffer_desc_init_data_ptr->max_height /= 2;
-    picture_buffer_desc_init_data_ptr->bit_depth = EB_8BIT;
-    picture_buffer_desc_init_data_ptr->color_format = EB_YUV420;
-    picture_buffer_desc_init_data_ptr->buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
-    picture_buffer_desc_init_data_ptr->left_padding /= 2;
-    picture_buffer_desc_init_data_ptr->right_padding /= 2;
-    picture_buffer_desc_init_data_ptr->top_padding /= 2;
-    picture_buffer_desc_init_data_ptr->bot_padding /= 2;
-    picture_buffer_desc_init_data_ptr->split_mode = EB_FALSE;
+    picture_buffer_desc_init_data_16bit_ptr.max_width /= 2;
+    picture_buffer_desc_init_data_16bit_ptr.max_height /= 2;
+    picture_buffer_desc_init_data_16bit_ptr.bit_depth = EB_8BIT;
+    picture_buffer_desc_init_data_16bit_ptr.color_format = EB_YUV420;
+    picture_buffer_desc_init_data_16bit_ptr.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
+    picture_buffer_desc_init_data_16bit_ptr.left_padding /= 2;
+    picture_buffer_desc_init_data_16bit_ptr.right_padding /= 2;
+    picture_buffer_desc_init_data_16bit_ptr.top_padding /= 2;
+    picture_buffer_desc_init_data_16bit_ptr.bot_padding /= 2;
+    picture_buffer_desc_init_data_16bit_ptr.split_mode = EB_FALSE;
     EB_NEW(reference_object->sixteenth_reference_picture,
             eb_picture_buffer_desc_ctor,
-            (EbPtr)picture_buffer_desc_init_data_ptr);
+            (EbPtr)&picture_buffer_desc_init_data_16bit_ptr);
 #endif
 
     EB_CREATE_MUTEX(reference_object->referenced_area_mutex);

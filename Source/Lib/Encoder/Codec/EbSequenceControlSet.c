@@ -379,6 +379,9 @@ EbErrorType copy_sequence_control_set(SequenceControlSet *dst, SequenceControlSe
     dst->use_input_stat_file            = src->use_input_stat_file;
     dst->use_output_stat_file           = src->use_output_stat_file;
     dst->scd_delay                      = src->scd_delay;
+#if INL_ME
+    dst->in_loop_me                     = src->in_loop_me;
+#endif
     return EB_ErrorNone;
 }
 
