@@ -74,6 +74,11 @@ typedef struct EbReferenceObjectDescInitData {
     uint8_t hbd_mode_decision;
 #endif
 #endif
+#if INL_ME
+    // whether enable 1/4,1/16 8bit luma for inloop me
+    uint8_t hme_quarter_luma_recon;
+    uint8_t hme_sixteenth_luma_recon; 
+#endif
 } EbReferenceObjectDescInitData;
 
 typedef struct EbPaReferenceObject {

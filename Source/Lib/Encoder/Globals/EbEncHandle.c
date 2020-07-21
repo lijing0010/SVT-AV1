@@ -1081,6 +1081,175 @@ EbErrorType rest_results_creator(
 
     return EB_ErrorNone;
 }
+#if INL_ME
+static int create_down_scaled_buf_descs(EbEncHandle *enc_handle_ptr, uint32_t instance_index) 
+{
+    SequenceControlSet* scs_ptr = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr;
+    EbPictureBufferDescInitData       quart_pic_buf_desc_init_data;
+    EbPictureBufferDescInitData       sixteenth_pic_buf_desc_init_data;
+    EbDownScaledObjectDescInitData eb_down_scale_obj_init_data;
+    quart_pic_buf_desc_init_data.max_width = scs_ptr->max_input_luma_width >> 1;
+    quart_pic_buf_desc_init_data.max_height = scs_ptr->max_input_luma_height >> 1;
+    quart_pic_buf_desc_init_data.bit_depth = EB_8BIT;
+    quart_pic_buf_desc_init_data.color_format = EB_YUV420;
+    quart_pic_buf_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
+    quart_pic_buf_desc_init_data.left_padding = scs_ptr->sb_sz >> 1;
+    quart_pic_buf_desc_init_data.right_padding = scs_ptr->sb_sz >> 1;
+    quart_pic_buf_desc_init_data.top_padding = scs_ptr->sb_sz >> 1;
+    quart_pic_buf_desc_init_data.bot_padding = scs_ptr->sb_sz >> 1;
+    quart_pic_buf_desc_init_data.split_mode = EB_FALSE;
+    //useless, don't need to store two, just use one
+    quart_pic_buf_desc_init_data.down_sampled_filtered = EB_FALSE;
+
+    sixteenth_pic_buf_desc_init_data.max_width = scs_ptr->max_input_luma_width >> 2;
+    sixteenth_pic_buf_desc_init_data.max_height = scs_ptr->max_input_luma_height >> 2;
+    sixteenth_pic_buf_desc_init_data.bit_depth = EB_8BIT;
+    sixteenth_pic_buf_desc_init_data.color_format = EB_YUV420;
+    sixteenth_pic_buf_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
+    sixteenth_pic_buf_desc_init_data.left_padding = scs_ptr->sb_sz >> 2;
+    sixteenth_pic_buf_desc_init_data.right_padding = scs_ptr->sb_sz >> 2;
+    sixteenth_pic_buf_desc_init_data.top_padding = scs_ptr->sb_sz >> 2;
+    sixteenth_pic_buf_desc_init_data.bot_padding = scs_ptr->sb_sz >> 2;
+    sixteenth_pic_buf_desc_init_data.split_mode = EB_FALSE;
+    //useless
+    sixteenth_pic_buf_desc_init_data.down_sampled_filtered = EB_FALSE;
+    eb_down_scale_obj_init_data.quarter_picture_desc_init_data = quart_pic_buf_desc_init_data;
+    eb_down_scale_obj_init_data.sixteenth_picture_desc_init_data = sixteenth_pic_buf_desc_init_data;
+    EB_NEW(enc_handle_ptr->down_scaled_picture_pool_ptr_array[instance_index],
+            eb_system_resource_ctor,
+            scs_ptr->input_buffer_fifo_init_count,
+            EB_PictureDecisionProcessInitCount,
+            0,
+            eb_down_scaled_object_creator,
+            &(eb_down_scale_obj_init_data),
+            NULL);
+    // Set the SequenceControlSet Picture Pool Fifo Ptrs
+    enc_handle_ptr->scs_instance_array[instance_index]->encode_context_ptr->down_scaled_picture_pool_fifo_ptr = eb_system_resource_get_producer_fifo(enc_handle_ptr->down_scaled_picture_pool_ptr_array[instance_index], 0);
+    return 0;
+}
+
+static int create_pa_ref_buf_descs(EbEncHandle *enc_handle_ptr, uint32_t instance_index) 
+{
+        SequenceControlSet* scs_ptr = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr;
+        EbPaReferenceObjectDescInitData   eb_pa_ref_obj_ect_desc_init_data_structure;
+        EbPictureBufferDescInitData       ref_pic_buf_desc_init_data;
+        EbPictureBufferDescInitData       quart_pic_buf_desc_init_data;
+        EbPictureBufferDescInitData       sixteenth_pic_buf_desc_init_data;
+        // PA Reference Picture Buffers
+        // Currently, only Luma samples are needed in the PA
+        ref_pic_buf_desc_init_data.max_width = scs_ptr->max_input_luma_width;
+        ref_pic_buf_desc_init_data.max_height = scs_ptr->max_input_luma_height;
+#if MEM_OPT_10bit
+        ref_pic_buf_desc_init_data.bit_depth = EB_8BIT;
+#else
+        ref_pic_buf_desc_init_data.bit_depth = scs_ptr->encoder_bit_depth;
+#endif
+        ref_pic_buf_desc_init_data.color_format = EB_YUV420; //use 420 for picture analysis
+        ref_pic_buf_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
+        ref_pic_buf_desc_init_data.left_padding = scs_ptr->sb_sz + ME_FILTER_TAP;
+        ref_pic_buf_desc_init_data.right_padding = scs_ptr->sb_sz + ME_FILTER_TAP;
+        ref_pic_buf_desc_init_data.top_padding = scs_ptr->sb_sz + ME_FILTER_TAP;
+        ref_pic_buf_desc_init_data.bot_padding = scs_ptr->sb_sz + ME_FILTER_TAP;
+        ref_pic_buf_desc_init_data.split_mode = EB_FALSE;
+        quart_pic_buf_desc_init_data.max_width = scs_ptr->max_input_luma_width >> 1;
+        quart_pic_buf_desc_init_data.max_height = scs_ptr->max_input_luma_height >> 1;
+#if MEM_OPT_10bit
+        quart_pic_buf_desc_init_data.bit_depth = EB_8BIT;
+#else
+        quart_pic_buf_desc_init_data.bit_depth = scs_ptr->encoder_bit_depth;
+#endif
+        quart_pic_buf_desc_init_data.color_format = EB_YUV420;
+        quart_pic_buf_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
+        quart_pic_buf_desc_init_data.left_padding = scs_ptr->sb_sz >> 1;
+        quart_pic_buf_desc_init_data.right_padding = scs_ptr->sb_sz >> 1;
+        quart_pic_buf_desc_init_data.top_padding = scs_ptr->sb_sz >> 1;
+        quart_pic_buf_desc_init_data.bot_padding = scs_ptr->sb_sz >> 1;
+        quart_pic_buf_desc_init_data.split_mode = EB_FALSE;
+        quart_pic_buf_desc_init_data.down_sampled_filtered = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ? EB_TRUE : EB_FALSE;
+
+        sixteenth_pic_buf_desc_init_data.max_width = scs_ptr->max_input_luma_width >> 2;
+        sixteenth_pic_buf_desc_init_data.max_height = scs_ptr->max_input_luma_height >> 2;
+#if MEM_OPT_10bit
+        sixteenth_pic_buf_desc_init_data.bit_depth = EB_8BIT;
+#else
+        sixteenth_pic_buf_desc_init_data.bit_depth = scs_ptr->encoder_bit_depth;
+#endif
+        sixteenth_pic_buf_desc_init_data.color_format = EB_YUV420;
+        sixteenth_pic_buf_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
+        sixteenth_pic_buf_desc_init_data.left_padding = scs_ptr->sb_sz >> 2;
+        sixteenth_pic_buf_desc_init_data.right_padding = scs_ptr->sb_sz >> 2;
+        sixteenth_pic_buf_desc_init_data.top_padding = scs_ptr->sb_sz >> 2;
+        sixteenth_pic_buf_desc_init_data.bot_padding = scs_ptr->sb_sz >> 2;
+        sixteenth_pic_buf_desc_init_data.split_mode = EB_FALSE;
+        sixteenth_pic_buf_desc_init_data.down_sampled_filtered = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ? EB_TRUE : EB_FALSE;
+
+        eb_pa_ref_obj_ect_desc_init_data_structure.reference_picture_desc_init_data = ref_pic_buf_desc_init_data;
+        eb_pa_ref_obj_ect_desc_init_data_structure.quarter_picture_desc_init_data = quart_pic_buf_desc_init_data;
+        eb_pa_ref_obj_ect_desc_init_data_structure.sixteenth_picture_desc_init_data = sixteenth_pic_buf_desc_init_data;
+        // Reference Picture Buffers
+        EB_NEW(enc_handle_ptr->pa_reference_picture_pool_ptr_array[instance_index],
+            eb_system_resource_ctor,
+            scs_ptr->pa_reference_picture_buffer_init_count,
+            EB_PictureDecisionProcessInitCount,
+            0,
+            eb_pa_reference_object_creator,
+            &(eb_pa_ref_obj_ect_desc_init_data_structure),
+            NULL);
+        // Set the SequenceControlSet Picture Pool Fifo Ptrs
+        enc_handle_ptr->scs_instance_array[instance_index]->encode_context_ptr->pa_reference_picture_pool_fifo_ptr = eb_system_resource_get_producer_fifo(enc_handle_ptr->pa_reference_picture_pool_ptr_array[instance_index], 0);
+        return 0;
+}
+
+static int create_ref_buf_descs(EbEncHandle *enc_handle_ptr, uint32_t instance_index) 
+{
+    EbReferenceObjectDescInitData     eb_ref_obj_ect_desc_init_data_structure;
+    EbPictureBufferDescInitData       ref_pic_buf_desc_init_data;
+    SequenceControlSet* scs_ptr = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr;
+    EbBool is_16bit = (EbBool)(scs_ptr->static_config.encoder_bit_depth > EB_8BIT);
+    // Initialize the various Picture types
+    ref_pic_buf_desc_init_data.max_width = scs_ptr->max_input_luma_width;
+    ref_pic_buf_desc_init_data.max_height = scs_ptr->max_input_luma_height;
+    ref_pic_buf_desc_init_data.bit_depth = scs_ptr->encoder_bit_depth;
+    ref_pic_buf_desc_init_data.color_format = scs_ptr->static_config.encoder_color_format;
+    ref_pic_buf_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_FULL_MASK;
+
+    ref_pic_buf_desc_init_data.left_padding = PAD_VALUE;
+    ref_pic_buf_desc_init_data.right_padding = PAD_VALUE;
+    ref_pic_buf_desc_init_data.top_padding = PAD_VALUE;
+    ref_pic_buf_desc_init_data.bot_padding = PAD_VALUE;
+    ref_pic_buf_desc_init_data.mfmv = scs_ptr->mfmv_enabled;
+    ref_pic_buf_desc_init_data.is_16bit_pipeline = scs_ptr->static_config.encoder_16bit_pipeline;
+    // Hsan: split_mode is set @ eb_reference_object_ctor() as both unpacked reference and packed reference are needed for a 10BIT input; unpacked reference @ MD, and packed reference @ EP
+
+    if (is_16bit)
+        ref_pic_buf_desc_init_data.bit_depth = EB_10BIT;
+
+    eb_ref_obj_ect_desc_init_data_structure.reference_picture_desc_init_data = ref_pic_buf_desc_init_data;
+#if MEM_OPT_10bit
+    eb_ref_obj_ect_desc_init_data_structure.hbd_mode_decision =
+        scs_ptr->static_config.enable_hbd_mode_decision;
+#endif
+
+    // TODO:
+    // Check HME configuration to see if we need 1/4 or 1/16 HME
+    eb_ref_obj_ect_desc_init_data_structure.hme_quarter_luma_recon = scs_ptr->in_loop_me;
+    eb_ref_obj_ect_desc_init_data_structure.hme_sixteenth_luma_recon = scs_ptr->in_loop_me;
+
+    // Reference Picture Buffers
+    EB_NEW(
+            enc_handle_ptr->reference_picture_pool_ptr_array[instance_index],
+            eb_system_resource_ctor,
+            scs_ptr->reference_picture_buffer_init_count,//enc_handle_ptr->ref_pic_pool_total_count,
+            EB_PictureManagerProcessInitCount,
+            0,
+            eb_reference_object_creator,
+            &(eb_ref_obj_ect_desc_init_data_structure),
+            NULL);
+
+    enc_handle_ptr->scs_instance_array[instance_index]->encode_context_ptr->reference_picture_pool_fifo_ptr = eb_system_resource_get_producer_fifo(enc_handle_ptr->reference_picture_pool_ptr_array[instance_index], 0);
+    return 0;
+}
+#endif
 
 void init_fn_ptr(void);
 void av1_init_wedge_masks(void);
@@ -1090,6 +1259,7 @@ void av1_init_wedge_masks(void);
 #ifdef __GNUC__
 __attribute__((visibility("default")))
 #endif
+
 EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
 {
     if(svt_enc_component == NULL)
@@ -1099,7 +1269,9 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
     uint32_t instance_index;
     uint32_t process_index;
     uint32_t max_picture_width;
+#if !INL_ME
     EbBool is_16bit = (EbBool)(enc_handle_ptr->scs_instance_array[0]->scs_ptr->static_config.encoder_bit_depth > EB_8BIT);
+#endif
     EbColorFormat color_format = enc_handle_ptr->scs_instance_array[0]->scs_ptr->static_config.encoder_color_format;
     SequenceControlSet* control_set_ptr;
 
@@ -1276,10 +1448,13 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
 
     // Allocate Resource Arrays
     EB_ALLOC_PTR_ARRAY(enc_handle_ptr->reference_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
-    EB_ALLOC_PTR_ARRAY(enc_handle_ptr->pa_reference_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
 #if INL_ME
     if (enc_handle_ptr->scs_instance_array[0]->scs_ptr->in_loop_me)
         EB_ALLOC_PTR_ARRAY(enc_handle_ptr->down_scaled_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
+    else
+        EB_ALLOC_PTR_ARRAY(enc_handle_ptr->pa_reference_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
+#else
+    EB_ALLOC_PTR_ARRAY(enc_handle_ptr->pa_reference_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
 #endif
 
     EB_ALLOC_PTR_ARRAY(enc_handle_ptr->overlay_input_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
@@ -1298,6 +1473,7 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
     enc_dec_ports[ENCDEC_INPUT_PORT_ENCDEC].count = enc_handle_ptr->scs_instance_array[0]->scs_ptr->enc_dec_process_init_count;
 
     for (instance_index = 0; instance_index < enc_handle_ptr->encode_instance_total_count; ++instance_index) {
+#if !INL_ME
         EbReferenceObjectDescInitData     eb_ref_obj_ect_desc_init_data_structure;
         EbPaReferenceObjectDescInitData   eb_pa_ref_obj_ect_desc_init_data_structure;
         EbPictureBufferDescInitData       ref_pic_buf_desc_init_data;
@@ -1401,49 +1577,15 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
         // Set the SequenceControlSet Picture Pool Fifo Ptrs
         enc_handle_ptr->scs_instance_array[instance_index]->encode_context_ptr->reference_picture_pool_fifo_ptr = eb_system_resource_get_producer_fifo(enc_handle_ptr->reference_picture_pool_ptr_array[instance_index], 0);
         enc_handle_ptr->scs_instance_array[instance_index]->encode_context_ptr->pa_reference_picture_pool_fifo_ptr = eb_system_resource_get_producer_fifo(enc_handle_ptr->pa_reference_picture_pool_ptr_array[instance_index], 0);
-#if INL_ME
+#else
+        create_ref_buf_descs(enc_handle_ptr, instance_index);
 		// if (scs_ptr->in_loop_me && GM need it)
         // TODO: Move the signal_xxx before init_encoder, so we can know whether need these for GM
 		if (enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->in_loop_me) {
-			EbDownScaledObjectDescInitData eb_down_scale_obj_init_data;
-			quart_pic_buf_desc_init_data.max_width = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_luma_width >> 1;
-			quart_pic_buf_desc_init_data.max_height = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_luma_height >> 1;
-			quart_pic_buf_desc_init_data.bit_depth = EB_8BIT;
-			quart_pic_buf_desc_init_data.color_format = EB_YUV420;
-			quart_pic_buf_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
-			quart_pic_buf_desc_init_data.left_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 1;
-			quart_pic_buf_desc_init_data.right_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 1;
-			quart_pic_buf_desc_init_data.top_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 1;
-			quart_pic_buf_desc_init_data.bot_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 1;
-			quart_pic_buf_desc_init_data.split_mode = EB_FALSE;
-			//useless, don't need to store two, just use one
-			quart_pic_buf_desc_init_data.down_sampled_filtered = EB_FALSE;
-
-			sixteenth_pic_buf_desc_init_data.max_width = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_luma_width >> 2;
-			sixteenth_pic_buf_desc_init_data.max_height = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_luma_height >> 2;
-			sixteenth_pic_buf_desc_init_data.bit_depth = EB_8BIT;
-			sixteenth_pic_buf_desc_init_data.color_format = EB_YUV420;
-			sixteenth_pic_buf_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
-			sixteenth_pic_buf_desc_init_data.left_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 2;
-			sixteenth_pic_buf_desc_init_data.right_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 2;
-			sixteenth_pic_buf_desc_init_data.top_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 2;
-			sixteenth_pic_buf_desc_init_data.bot_padding = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->sb_sz >> 2;
-			sixteenth_pic_buf_desc_init_data.split_mode = EB_FALSE;
-			//useless
-			sixteenth_pic_buf_desc_init_data.down_sampled_filtered = EB_FALSE;
-			eb_down_scale_obj_init_data.quarter_picture_desc_init_data = quart_pic_buf_desc_init_data;
-			eb_down_scale_obj_init_data.sixteenth_picture_desc_init_data = sixteenth_pic_buf_desc_init_data;
-			EB_NEW(enc_handle_ptr->down_scaled_picture_pool_ptr_array[instance_index],
-					eb_system_resource_ctor,
-					enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->input_buffer_fifo_init_count,
-					EB_PictureDecisionProcessInitCount,
-					0,
-					eb_down_scaled_object_creator,
-					&(eb_down_scale_obj_init_data),
-					NULL);
-			// Set the SequenceControlSet Picture Pool Fifo Ptrs
-			enc_handle_ptr->scs_instance_array[instance_index]->encode_context_ptr->down_scaled_picture_pool_fifo_ptr = eb_system_resource_get_producer_fifo(enc_handle_ptr->down_scaled_picture_pool_ptr_array[instance_index], 0);
-		}
+            create_down_scaled_buf_descs(enc_handle_ptr, instance_index); 
+		} else {
+            create_pa_ref_buf_descs(enc_handle_ptr, instance_index); 
+        }
 #endif
 
         if (enc_handle_ptr->scs_instance_array[0]->scs_ptr->static_config.enable_overlays) {
@@ -2400,7 +2542,7 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
 
 
 #if INL_ME
-    scs_ptr->in_loop_me = 1;
+    scs_ptr->in_loop_me = 0;
 #endif
     // Set over_boundary_block_mode     Settings
     // 0                            0: not allowed

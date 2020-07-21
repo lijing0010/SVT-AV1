@@ -128,6 +128,10 @@ static void eb_reference_object_dctor(EbPtr p) {
     EB_DELETE(obj->reference_picture);
     EB_FREE_ALIGNED_ARRAY(obj->mvs);
     EB_DESTROY_MUTEX(obj->referenced_area_mutex);
+#if INL_ME
+    EB_DELETE(obj->quarter_reference_picture);
+    EB_DELETE(obj->sixteenth_reference_picture);
+#endif
 }
 
 /*****************************************
@@ -150,6 +154,10 @@ EbErrorType eb_reference_object_ctor(EbReferenceObject *reference_object,
 #endif
     EbPictureBufferDescInitData picture_buffer_desc_init_data_16bit_ptr =
         *picture_buffer_desc_init_data_ptr;
+#if INL_ME
+    EbPictureBufferDescInitData hme_desc_init_data =
+        *picture_buffer_desc_init_data_ptr;
+#endif
 
     reference_object->dctor = eb_reference_object_dctor;
     //TODO:12bit
@@ -211,36 +219,43 @@ EbErrorType eb_reference_object_ctor(EbReferenceObject *reference_object,
     }
     memset(&reference_object->film_grain_params, 0, sizeof(reference_object->film_grain_params));
 #if INL_ME
+
+    reference_object->quarter_reference_picture = NULL;
+    reference_object->sixteenth_reference_picture = NULL;
     // TODO: Jing
     // if (in_loop_me)
     // Create quarter/sixteenth ref pic for in loop HME
-    picture_buffer_desc_init_data_16bit_ptr.max_width /= 2;
-    picture_buffer_desc_init_data_16bit_ptr.max_height /= 2;
-    picture_buffer_desc_init_data_16bit_ptr.bit_depth = EB_8BIT;
-    picture_buffer_desc_init_data_16bit_ptr.color_format = EB_YUV420;
-    picture_buffer_desc_init_data_16bit_ptr.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
-    picture_buffer_desc_init_data_16bit_ptr.left_padding /= 2;
-    picture_buffer_desc_init_data_16bit_ptr.right_padding /= 2;
-    picture_buffer_desc_init_data_16bit_ptr.top_padding /= 2;
-    picture_buffer_desc_init_data_16bit_ptr.bot_padding /= 2;
-    picture_buffer_desc_init_data_16bit_ptr.split_mode = EB_FALSE;
-    EB_NEW(reference_object->quarter_reference_picture,
-            eb_picture_buffer_desc_ctor,
-            (EbPtr)&picture_buffer_desc_init_data_16bit_ptr);
+    if (ref_init_ptr->hme_quarter_luma_recon) {
+        hme_desc_init_data.max_width = picture_buffer_desc_init_data_16bit_ptr.max_width >> 1;
+        hme_desc_init_data.max_height = picture_buffer_desc_init_data_16bit_ptr.max_height >> 1;
+        hme_desc_init_data.bit_depth = EB_8BIT;
+        hme_desc_init_data.color_format = EB_YUV420;
+        hme_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
+        hme_desc_init_data.left_padding = picture_buffer_desc_init_data_16bit_ptr.left_padding >> 1;
+        hme_desc_init_data.right_padding = picture_buffer_desc_init_data_16bit_ptr.right_padding >> 1;
+        hme_desc_init_data.top_padding = picture_buffer_desc_init_data_16bit_ptr.top_padding >> 1;
+        hme_desc_init_data.bot_padding = picture_buffer_desc_init_data_16bit_ptr.bot_padding >> 1;
+        hme_desc_init_data.split_mode = EB_FALSE;
+        EB_NEW(reference_object->quarter_reference_picture,
+                eb_picture_buffer_desc_ctor,
+                (EbPtr)&hme_desc_init_data);
+    }
 
-    picture_buffer_desc_init_data_16bit_ptr.max_width /= 2;
-    picture_buffer_desc_init_data_16bit_ptr.max_height /= 2;
-    picture_buffer_desc_init_data_16bit_ptr.bit_depth = EB_8BIT;
-    picture_buffer_desc_init_data_16bit_ptr.color_format = EB_YUV420;
-    picture_buffer_desc_init_data_16bit_ptr.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
-    picture_buffer_desc_init_data_16bit_ptr.left_padding /= 2;
-    picture_buffer_desc_init_data_16bit_ptr.right_padding /= 2;
-    picture_buffer_desc_init_data_16bit_ptr.top_padding /= 2;
-    picture_buffer_desc_init_data_16bit_ptr.bot_padding /= 2;
-    picture_buffer_desc_init_data_16bit_ptr.split_mode = EB_FALSE;
-    EB_NEW(reference_object->sixteenth_reference_picture,
-            eb_picture_buffer_desc_ctor,
-            (EbPtr)&picture_buffer_desc_init_data_16bit_ptr);
+    if (ref_init_ptr->hme_sixteenth_luma_recon) {
+        hme_desc_init_data.max_width = picture_buffer_desc_init_data_16bit_ptr.max_width >> 2;
+        hme_desc_init_data.max_height = picture_buffer_desc_init_data_16bit_ptr.max_height >> 2;
+        hme_desc_init_data.bit_depth = EB_8BIT;
+        hme_desc_init_data.color_format = EB_YUV420;
+        hme_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK;
+        hme_desc_init_data.left_padding = picture_buffer_desc_init_data_16bit_ptr.left_padding >> 2;
+        hme_desc_init_data.right_padding = picture_buffer_desc_init_data_16bit_ptr.right_padding >> 2;
+        hme_desc_init_data.top_padding = picture_buffer_desc_init_data_16bit_ptr.top_padding >> 2;
+        hme_desc_init_data.bot_padding = picture_buffer_desc_init_data_16bit_ptr.bot_padding >> 2;
+        hme_desc_init_data.split_mode = EB_FALSE;
+        EB_NEW(reference_object->sixteenth_reference_picture,
+                eb_picture_buffer_desc_ctor,
+                (EbPtr)&hme_desc_init_data);
+    }
 #endif
 
     EB_CREATE_MUTEX(reference_object->referenced_area_mutex);
