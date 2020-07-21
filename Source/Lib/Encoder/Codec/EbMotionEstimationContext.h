@@ -579,6 +579,7 @@ typedef struct MeContext {
     EbBool   me_alt_ref;
 #if INL_ME
     EbBool   me_in_loop;
+    void * alt_ref_reference_ptr_inl;
 #endif
     void *   alt_ref_reference_ptr;
     // tf

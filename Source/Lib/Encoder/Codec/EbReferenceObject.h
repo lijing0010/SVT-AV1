@@ -101,6 +101,7 @@ typedef struct EbPaReferenceObjectDescInitData {
 #if INL_ME
 typedef struct EbDownScaledObject {
     EbDctor              dctor;
+    EbPictureBufferDesc *picture_ptr; // original picture, just a pointer, don't allocate resource here
     EbPictureBufferDesc *quarter_picture_ptr;
     EbPictureBufferDesc *sixteenth_picture_ptr;
 } EbDownScaledObject;

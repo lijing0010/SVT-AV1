@@ -330,6 +330,7 @@ static EbErrorType eb_down_scaled_object_ctor(EbDownScaledObject *ds_obj_,
 
     ds_obj_->dctor = eb_down_scaled_object_dctor;
 
+    ds_obj_->picture_ptr = NULL;
     EB_NEW(ds_obj_->quarter_picture_ptr,
            eb_picture_buffer_desc_ctor,
            (EbPtr)(picture_buffer_desc_init_data_ptr));

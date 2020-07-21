@@ -473,6 +473,113 @@ static void create_me_context_and_picture_control(
     }
 }
 
+#if INL_ME
+static void create_me_context_and_picture_control_inl(
+    MotionEstimationContext_t *context_ptr, PictureParentControlSet *picture_control_set_ptr_frame,
+    PictureParentControlSet *picture_control_set_ptr_central,
+    EbPictureBufferDesc *input_picture_ptr_central, int blk_row, int blk_col, uint32_t ss_x,
+    uint32_t ss_y) {
+    UNUSED(ss_x);
+    UNUSED(ss_y);
+    SequenceControlSet *scs_ptr = picture_control_set_ptr_central->scs_ptr;
+    // set reference picture for alt-refs
+    context_ptr->me_context_ptr->alt_ref_reference_ptr_inl =
+        (EbDownScaledObject*)picture_control_set_ptr_frame->down_scaled_picture_wrapper_ptr->object_ptr;
+    context_ptr->me_context_ptr->me_alt_ref = EB_TRUE;
+
+    // Parts from MotionEstimationKernel()
+    uint32_t sb_origin_x = (uint32_t)(blk_col * BW);
+    uint32_t sb_origin_y = (uint32_t)(blk_row * BH);
+
+    uint32_t sb_width = (input_picture_ptr_central->width - sb_origin_x) < BLOCK_SIZE_64
+                            ? input_picture_ptr_central->width - sb_origin_x
+                            : BLOCK_SIZE_64;
+    uint32_t sb_height = (input_picture_ptr_central->height - sb_origin_y) < BLOCK_SIZE_64
+                             ? input_picture_ptr_central->height - sb_origin_y
+                             : BLOCK_SIZE_64;
+
+    // Load the SB from the input to the intermediate SB buffer
+    int buffer_index =
+        (input_picture_ptr_central->origin_y + sb_origin_y) * input_picture_ptr_central->stride_y +
+        input_picture_ptr_central->origin_x + sb_origin_x;
+
+    // set search method
+    context_ptr->me_context_ptr->hme_search_method = FULL_SAD_SEARCH;
+
+    // set Lambda
+    context_ptr->me_context_ptr->lambda =
+        lambda_mode_decision_ra_sad[picture_control_set_ptr_central->picture_qp];
+
+    {
+        uint8_t *src_ptr = &(input_picture_ptr_central->buffer_y[buffer_index]);
+
+        //_MM_HINT_T0     //_MM_HINT_T1    //_MM_HINT_T2    //_MM_HINT_NTA
+        uint32_t i;
+        for (i = 0; i < sb_height; i++) {
+            char const *p = (char const *)(src_ptr + i * input_picture_ptr_central->stride_y);
+            _mm_prefetch(p, _MM_HINT_T2);
+        }
+    }
+    context_ptr->me_context_ptr->sb_src_ptr    = &(input_picture_ptr_central->buffer_y[buffer_index]);
+    context_ptr->me_context_ptr->sb_src_stride = input_picture_ptr_central->stride_y;
+
+    // Load the 1/4 decimated SB from the 1/4 decimated input to the 1/4 intermediate SB buffer
+    if (context_ptr->me_context_ptr->enable_hme_level1_flag) {
+        uint8_t *frame_ptr = &input_picture_ptr_central->buffer_y[buffer_index];
+        uint8_t *local_ptr = context_ptr->me_context_ptr->quarter_sb_buffer;
+        uint16_t frame_stride = input_picture_ptr_central->stride_y;
+        uint16_t local_stride = context_ptr->me_context_ptr->quarter_sb_buffer_stride;
+        uint8_t decim_step = 2;
+
+        if (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) {
+            // load filtered down sample into quarter_sb_buffer
+            downsample_2d(frame_ptr, frame_stride, BLOCK_SIZE_64, BLOCK_SIZE_64, local_ptr,local_stride, decim_step);
+        } else {
+            for (uint16_t sb_row = 0; sb_row < (BLOCK_SIZE_64 >> 1); sb_row++) {
+                for (uint16_t sb_col = 0; sb_col < (sb_width >> 1); sb_col++) {
+                    local_ptr[sb_col + sb_row * local_stride] =
+                        frame_ptr[sb_col * decim_step + sb_row * decim_step * frame_stride];
+                }
+            }
+        }
+    }
+
+    // Load the 1/16 decimated SB from the 1/16 decimated input to the 1/16 intermediate SB buffer
+    if (context_ptr->me_context_ptr->enable_hme_level0_flag) {
+        uint8_t *frame_ptr = &input_picture_ptr_central->buffer_y[buffer_index];
+        uint8_t *local_ptr = context_ptr->me_context_ptr->sixteenth_sb_buffer;
+        uint16_t frame_stride = input_picture_ptr_central->stride_y;
+        uint16_t local_stride = context_ptr->me_context_ptr->sixteenth_sb_buffer_stride;
+        uint8_t decim_step = 4;
+
+        if (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) {
+            // load filtered down sample into sixteenth_sb_buffer
+            if (context_ptr->me_context_ptr->hme_search_method == FULL_SAD_SEARCH)
+                downsample_2d(frame_ptr, frame_stride, BLOCK_SIZE_64, BLOCK_SIZE_64, local_ptr,local_stride, decim_step);
+            else
+                downsample_2d(frame_ptr, frame_stride << 1, BLOCK_SIZE_64, BLOCK_SIZE_64, local_ptr,local_stride, decim_step);
+        } else {
+            if (context_ptr->me_context_ptr->hme_search_method ==
+                    FULL_SAD_SEARCH) {
+                for (uint16_t sb_row = 0; sb_row < (BLOCK_SIZE_64 >> 2); sb_row++) {
+                    for (uint16_t sb_col = 0; sb_col < (sb_width >> 2); sb_col++) {
+                        local_ptr[sb_col + sb_row * local_stride] =
+                            frame_ptr[sb_col * decim_step + sb_row * decim_step * frame_stride];
+                    }
+                }
+            } else {
+                for (uint16_t sb_row = 0; sb_row < (BLOCK_SIZE_64 >> 2); sb_row += 2) {
+                    for (uint16_t sb_col = 0; sb_col < (sb_width >> 2); sb_col++) {
+                        local_ptr[sb_col + sb_row * local_stride] =
+                            frame_ptr[sb_col * decim_step + sb_row * decim_step * frame_stride];
+                    }
+                }
+            }
+        }
+    }
+}
+#endif
+
 // Get sub-block filter weights for the 16 subblocks case
 static INLINE int get_subblock_filter_weight_16subblocks(unsigned int y, unsigned int x,
                                                          unsigned int block_height,
@@ -2889,6 +2996,29 @@ static EbErrorType produce_temporally_filtered_pic(
 
                 } else {
                     // Initialize ME context
+#if INL_ME
+                    // When in_loop_me is on, we should not use any PA related stuff
+                    if (picture_control_set_ptr_central->scs_ptr->in_loop_me)
+                        create_me_context_and_picture_control_inl(
+                                me_context_ptr,
+                                list_picture_control_set_ptr[frame_index],
+                                list_picture_control_set_ptr[index_center],
+                                input_picture_ptr_central,
+                                blk_row,
+                                blk_col,
+                                ss_x,
+                                ss_y);
+                    else
+                        create_me_context_and_picture_control(
+                                me_context_ptr,
+                                list_picture_control_set_ptr[frame_index],
+                                list_picture_control_set_ptr[index_center],
+                                input_picture_ptr_central,
+                                blk_row,
+                                blk_col,
+                                ss_x,
+                                ss_y);
+#else
                     create_me_context_and_picture_control(
                         me_context_ptr,
                         list_picture_control_set_ptr[frame_index],
@@ -2898,6 +3028,7 @@ static EbErrorType produce_temporally_filtered_pic(
                         blk_col,
                         ss_x,
                         ss_y);
+#endif
 
                     // Perform ME - context_ptr will store the outputs (MVs, buffers, etc)
                     // Block-based MC using open-loop HME + refinement
@@ -3263,6 +3394,38 @@ static void adjust_filter_strength(PictureParentControlSet *picture_control_set_
     // TODO: apply further refinements to the filter parameters according to 1st pass statistics
 }
 
+#if INL_ME
+static void pad_and_decimate_filtered_pic_inl(
+    PictureParentControlSet *picture_control_set_ptr_central) {
+    // reference structures (padded pictures + downsampled versions)
+    SequenceControlSet *scs_ptr =
+        (SequenceControlSet *)picture_control_set_ptr_central->scs_wrapper_ptr->object_ptr;
+    EbPictureBufferDesc *input_picture_ptr =
+        picture_control_set_ptr_central->enhanced_picture_ptr;
+
+	// TODO: refine this function, padding 8-bit luma only
+    pad_input_pictures(scs_ptr, input_picture_ptr);
+
+	EbDownScaledObject *ds_obj =
+		(EbDownScaledObject*)picture_control_set_ptr_central->down_scaled_picture_wrapper_ptr->object_ptr;
+
+	// Get the 1/2, 1/4 of input picture, only used for global motion
+	// TODO: Check for global motion whether we need these
+	if (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) {
+		downsample_filtering_input_picture(
+				picture_control_set_ptr_central,
+				input_picture_ptr,
+				(EbPictureBufferDesc *)ds_obj->quarter_picture_ptr,
+				(EbPictureBufferDesc *)ds_obj->sixteenth_picture_ptr);
+	} else {
+		downsample_decimation_input_picture(
+				picture_control_set_ptr_central,
+				input_picture_ptr,
+				(EbPictureBufferDesc *)ds_obj->quarter_picture_ptr,
+				(EbPictureBufferDesc *)ds_obj->sixteenth_picture_ptr);
+	}
+}
+#endif
 static void pad_and_decimate_filtered_pic(
     PictureParentControlSet *picture_control_set_ptr_central) {
     // reference structures (padded pictures + downsampled versions)
@@ -3665,7 +3828,14 @@ EbErrorType svt_av1_init_temporal_filtering(
         }
 
         // padding + decimation: even if highbd src, this is only performed on the 8 bit buffer (excluding the LSBs)
+#if INL_ME
+        if (picture_control_set_ptr_central->scs_ptr->in_loop_me)
+            pad_and_decimate_filtered_pic_inl(picture_control_set_ptr_central);
+        else
+            pad_and_decimate_filtered_pic(picture_control_set_ptr_central);
+#else
         pad_and_decimate_filtered_pic(picture_control_set_ptr_central);
+#endif
 
         // Normalize the filtered SSE. Add 8 bit precision.
         picture_control_set_ptr_central->filtered_sse =

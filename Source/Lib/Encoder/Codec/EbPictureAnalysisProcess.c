@@ -4095,7 +4095,7 @@ void downsample_filtering_input_picture(PictureParentControlSet *pcs_ptr,
 ********************************************************************************/
 
 #if INL_ME_PA_REFINE
-static void pad_input_pictures(SequenceControlSet *scs_ptr,
+void pad_input_pictures(SequenceControlSet *scs_ptr,
                                EbPictureBufferDesc *input_picture_ptr) {
     // Pad pictures to multiple min cu size
     // For non-8 aligned case, like 426x240, padding to 432x240 first
@@ -4194,6 +4194,8 @@ void *picture_analysis_kernel(void *input_ptr) {
             if (scs_ptr->in_loop_me) {
                 ds_obj =
                     (EbDownScaledObject*)pcs_ptr->down_scaled_picture_wrapper_ptr->object_ptr;
+
+                ds_obj->picture_ptr = input_picture_ptr; // Save original picture pointer
 
                 // Get the 1/2, 1/4 of input picture, only used for global motion
                 // TODO: Check for global motion whether we need these

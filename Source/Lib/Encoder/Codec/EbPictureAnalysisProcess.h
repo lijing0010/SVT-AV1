@@ -9,6 +9,7 @@
 #include "EbDefinitions.h"
 #include "EbNoiseExtractAVX2.h"
 #include "EbPictureControlSet.h"
+#include "EbSequenceControlSet.h"
 
 /***************************************
  * Extern Function Declaration
@@ -45,5 +46,9 @@ void noise_extract_chroma_strong_c(EbPictureBufferDesc *input_picture_ptr,
 void noise_extract_chroma_weak_c(EbPictureBufferDesc *input_picture_ptr,
                                  EbPictureBufferDesc *denoised_picture_ptr, uint32_t sb_origin_y,
                                  uint32_t sb_origin_x);
+#endif
+#if INL_ME_PA_REFINE
+void pad_input_pictures(SequenceControlSet *scs_ptr,
+                               EbPictureBufferDesc *input_picture_ptr);
 #endif
 #endif // EbPictureAnalysis_h
