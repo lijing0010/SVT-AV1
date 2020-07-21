@@ -4191,6 +4191,16 @@ void *picture_analysis_kernel(void *input_ptr) {
 
             // Pre processing operations performed on the input picture
             picture_pre_processing_operations(pcs_ptr, scs_ptr);
+
+            if (input_picture_ptr->color_format >= EB_YUV422) {
+                // Jing: Do the conversion of 422/444=>420 here since it's multi-threaded kernel
+                //       Reuse the Y, only add cb/cr in the newly created buffer desc
+                //       NOTE: since denoise may change the src, so this part is after picture_pre_processing_operations()
+                pcs_ptr->chroma_downsampled_picture_ptr->buffer_y = input_picture_ptr->buffer_y;
+                down_sample_chroma(input_picture_ptr, pcs_ptr->chroma_downsampled_picture_ptr);
+            } else
+                pcs_ptr->chroma_downsampled_picture_ptr = input_picture_ptr;
+
             if (scs_ptr->in_loop_me) {
                 ds_obj =
                     (EbDownScaledObject*)pcs_ptr->down_scaled_picture_wrapper_ptr->object_ptr;
@@ -4261,16 +4271,6 @@ void *picture_analysis_kernel(void *input_ptr) {
                         ->sixteenth_decimated_picture_ptr, // Hsan: always use decimated until studying the trade offs
                         pcs_ptr->sb_total_count);
             }
-
-            if (input_picture_ptr->color_format >= EB_YUV422) {
-                // Jing: Do the conversion of 422/444=>420 here since it's multi-threaded kernel
-                //       Reuse the Y, only add cb/cr in the newly created buffer desc
-                //       NOTE: since denoise may change the src, so this part is after picture_pre_processing_operations()
-                pcs_ptr->chroma_downsampled_picture_ptr->buffer_y = input_picture_ptr->buffer_y;
-                down_sample_chroma(input_picture_ptr, pcs_ptr->chroma_downsampled_picture_ptr);
-            } else
-                pcs_ptr->chroma_downsampled_picture_ptr = input_picture_ptr;
-
 
             if (scs_ptr->static_config.screen_content_mode == 2) { // auto detect
                 is_screen_content(pcs_ptr,
@@ -4447,7 +4447,6 @@ void *picture_analysis_kernel(void *input_ptr) {
                 down_sample_chroma(input_picture_ptr, pcs_ptr->chroma_downsampled_picture_ptr);
             } else
                 pcs_ptr->chroma_downsampled_picture_ptr = input_picture_ptr;
-
 
 #if INL_ME
             if (scs_ptr->in_loop_me) {
