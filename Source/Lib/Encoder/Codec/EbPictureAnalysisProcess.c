@@ -4227,7 +4227,7 @@ void *picture_analysis_kernel(void *input_ptr) {
                 // Gathering statistics of input picture, including Variance Calculation, Histogram Bins
                 gathering_picture_statistics_ex(
                         scs_ptr, pcs_ptr,
-                        input_picture_ptr);
+                        pcs_ptr->chroma_downsampled_picture_ptr);
             } else {
                 // Original path
                 // Get PA ref, copy 8bit luma to pa_ref->input_padded_picture_ptr
