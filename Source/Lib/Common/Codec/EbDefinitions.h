@@ -609,6 +609,7 @@ extern "C" {
 #if SVT_02_TEMP
 
 #define INL_ME  1 //In-Loop ME 
+#define INL_ME_PA_REFINE 1
 
 #define NEW_DELAY  0
 

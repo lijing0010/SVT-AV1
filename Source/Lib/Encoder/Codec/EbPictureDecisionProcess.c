@@ -5538,10 +5538,16 @@ void perform_simple_picture_analysis_for_overlay(PictureParentControlSet     *pc
         input_picture_ptr);
 
     // Pre processing operations performed on the input picture
+#if INL_ME
+    picture_pre_processing_operations(
+        pcs_ptr,
+        scs_ptr);
+#else
     picture_pre_processing_operations(
         pcs_ptr,
         scs_ptr,
         sb_total_count);
+#endif
 
     if (input_picture_ptr->color_format >= EB_YUV422) {
         // Jing: Do the conversion of 422/444=>420 here since it's multi-threaded kernel

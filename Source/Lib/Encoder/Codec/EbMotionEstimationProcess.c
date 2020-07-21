@@ -2574,7 +2574,6 @@ void *inloop_me_kernel(void *input_ptr) {
                         uint16_t frame_stride = input_picture_ptr->stride_y;
                         uint16_t local_stride = context_ptr->me_context_ptr->quarter_sb_buffer_stride;
                         uint8_t decim_step = 2;
-                        uint8_t half_decim_step = decim_step >> 1;
 
                         if (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) {
                             // load filtered down sample into quarter_sb_buffer
@@ -2596,14 +2595,13 @@ void *inloop_me_kernel(void *input_ptr) {
                         uint16_t frame_stride = input_picture_ptr->stride_y;
                         uint16_t local_stride = context_ptr->me_context_ptr->sixteenth_sb_buffer_stride;
                         uint8_t decim_step = 4;
-                        uint8_t half_decim_step = decim_step >> 1;
 
                         if (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) {
                             // load filtered down sample into sixteenth_sb_buffer
                             if (context_ptr->me_context_ptr->hme_search_method == FULL_SAD_SEARCH)
-                            downsample_2d(frame_ptr, frame_stride, BLOCK_SIZE_64, BLOCK_SIZE_64, local_ptr,local_stride, decim_step);
+                                downsample_2d(frame_ptr, frame_stride, BLOCK_SIZE_64, BLOCK_SIZE_64, local_ptr,local_stride, decim_step);
                             else
-                            downsample_2d(frame_ptr, frame_stride << 1, BLOCK_SIZE_64, BLOCK_SIZE_64, local_ptr,local_stride, decim_step);
+                                downsample_2d(frame_ptr, frame_stride << 1, BLOCK_SIZE_64, BLOCK_SIZE_64, local_ptr,local_stride, decim_step);
                         } else {
                             if (context_ptr->me_context_ptr->hme_search_method ==
                                     FULL_SAD_SEARCH) {
