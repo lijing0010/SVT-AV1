@@ -2024,25 +2024,29 @@ void *motion_estimation_kernel(void *input_ptr) {
             signal_derivation_me_kernel_oq(scs_ptr, pcs_ptr, context_ptr);
 
 #if INL_ME
-            pa_ref_obj_ = (EbPaReferenceObject *)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr;
-            // Set 1/4 and 1/16 ME input buffer(s); filtered or decimated
-            quarter_picture_ptr =
-                (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED)
-                ? (EbPictureBufferDesc *)pa_ref_obj_->quarter_filtered_picture_ptr
-                : (EbPictureBufferDesc *)pa_ref_obj_->quarter_decimated_picture_ptr;
+            if (!scs_ptr->in_loop_me) {
+                pa_ref_obj_ = (EbPaReferenceObject *)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr;
+                // Set 1/4 and 1/16 ME input buffer(s); filtered or decimated
+                quarter_picture_ptr =
+                    (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED)
+                    ? (EbPictureBufferDesc *)pa_ref_obj_->quarter_filtered_picture_ptr
+                    : (EbPictureBufferDesc *)pa_ref_obj_->quarter_decimated_picture_ptr;
 
-            sixteenth_picture_ptr =
-                (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED)
-                ? (EbPictureBufferDesc *)pa_ref_obj_->sixteenth_filtered_picture_ptr
-                : (EbPictureBufferDesc *)pa_ref_obj_->sixteenth_decimated_picture_ptr;
-            input_padded_picture_ptr = (EbPictureBufferDesc *)pa_ref_obj_->input_padded_picture_ptr;
-
+                sixteenth_picture_ptr =
+                    (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED)
+                    ? (EbPictureBufferDesc *)pa_ref_obj_->sixteenth_filtered_picture_ptr
+                    : (EbPictureBufferDesc *)pa_ref_obj_->sixteenth_decimated_picture_ptr;
+                input_padded_picture_ptr = (EbPictureBufferDesc *)pa_ref_obj_->input_padded_picture_ptr;
+            }
             input_picture_ptr = pcs_ptr->enhanced_unscaled_picture_ptr;
 #endif
 
             // Global motion estimation
             // Compute only for the first fragment.
             // TODO: create an other kernel ?
+#if INL_ME
+            if (!scs_ptr->in_loop_me)
+#endif
 #if GM_DOWN_16
             if (pcs_ptr->gm_level == GM_FULL || pcs_ptr->gm_level == GM_DOWN || pcs_ptr->gm_level == GM_DOWN16) {
 #else
@@ -2071,7 +2075,11 @@ void *motion_estimation_kernel(void *input_ptr) {
             y_sb_end_index = SEGMENT_END_IDX(
                 y_segment_index, picture_height_in_sb, pcs_ptr->me_segments_row_count);
             // *** MOTION ESTIMATION CODE ***
+#if INL_ME
+            if (pcs_ptr->slice_type != I_SLICE && !scs_ptr->in_loop_me) {
+#else
             if (pcs_ptr->slice_type != I_SLICE) {
+#endif
                 // SB Loop
                 for (y_sb_index = y_sb_start_index; y_sb_index < y_sb_end_index; ++y_sb_index) {
                     for (x_sb_index = x_sb_start_index; x_sb_index < x_sb_end_index; ++x_sb_index) {
@@ -2231,7 +2239,12 @@ void *motion_estimation_kernel(void *input_ptr) {
 
             // ZZ SADs Computation
             // 1 lookahead frame is needed to get valid (0,0) SAD
+#if INL_ME
+            if (scs_ptr->static_config.look_ahead_distance != 0 &&
+                    !scs_ptr->in_loop_me) {
+#else
             if (scs_ptr->static_config.look_ahead_distance != 0) {
+#endif
                 // when DG is ON, the ZZ SADs are computed @ the PD process
                 {
                     // ZZ SADs Computation using decimated picture
@@ -2253,6 +2266,77 @@ void *motion_estimation_kernel(void *input_ptr) {
 
             eb_block_on_mutex(pcs_ptr->rc_distortion_histogram_mutex);
 
+#if INL_ME
+            if (scs_ptr->static_config.rate_control_mode) {
+                for (y_sb_index = y_sb_start_index; y_sb_index < y_sb_end_index; ++y_sb_index) {
+                    for (x_sb_index = x_sb_start_index; x_sb_index < x_sb_end_index;
+                            ++x_sb_index) {
+                        sb_origin_x = x_sb_index * scs_ptr->sb_sz;
+                        sb_origin_y = y_sb_index * scs_ptr->sb_sz;
+                        sb_width =
+                            (pcs_ptr->aligned_width - sb_origin_x) < BLOCK_SIZE_64
+                            ? pcs_ptr->aligned_width - sb_origin_x
+                            : BLOCK_SIZE_64;
+                        sb_height =
+                            (pcs_ptr->aligned_height - sb_origin_y) < BLOCK_SIZE_64
+                            ? pcs_ptr->aligned_height - sb_origin_y
+                            : BLOCK_SIZE_64;
+
+                        sb_index = (uint16_t)(x_sb_index + y_sb_index * pic_width_in_sb);
+                        pcs_ptr->inter_sad_interval_index[sb_index] = 0;
+                        pcs_ptr->intra_sad_interval_index[sb_index] = 0;
+
+                        if (sb_width == BLOCK_SIZE_64 && sb_height == BLOCK_SIZE_64) {
+                            if (pcs_ptr->slice_type != I_SLICE && !scs_ptr->in_loop_me) {
+                                uint16_t sad_interval_index = (uint16_t)(
+                                        pcs_ptr->rc_me_distortion[sb_index] >>
+                                        (12 - SAD_PRECISION_INTERVAL)); //change 12 to 2*log2(64)
+
+                                // SVT_LOG("%d\n", sad_interval_index);
+
+                                sad_interval_index = (uint16_t)(sad_interval_index >> 2);
+                                if (sad_interval_index > (NUMBER_OF_SAD_INTERVALS >> 1) - 1) {
+                                    uint16_t sad_interval_index_temp =
+                                        sad_interval_index - ((NUMBER_OF_SAD_INTERVALS >> 1) - 1);
+
+                                    sad_interval_index = ((NUMBER_OF_SAD_INTERVALS >> 1) - 1) +
+                                        (sad_interval_index_temp >> 3);
+                                }
+                                if (sad_interval_index >= NUMBER_OF_SAD_INTERVALS - 1)
+                                    sad_interval_index = NUMBER_OF_SAD_INTERVALS - 1;
+
+                                pcs_ptr->inter_sad_interval_index[sb_index] = sad_interval_index;
+
+                                pcs_ptr->me_distortion_histogram[sad_interval_index]++;
+                            }
+
+                            intra_sad_interval_index =
+                                pcs_ptr->variance[sb_index][ME_TIER_ZERO_PU_64x64] >> 4;
+                            intra_sad_interval_index =
+                                (uint16_t)(intra_sad_interval_index >> 2);
+                            if (intra_sad_interval_index > (NUMBER_OF_SAD_INTERVALS >> 1) - 1) {
+                                uint32_t sad_interval_index_temp =
+                                    intra_sad_interval_index -
+                                    ((NUMBER_OF_SAD_INTERVALS >> 1) - 1);
+
+                                intra_sad_interval_index =
+                                    ((NUMBER_OF_SAD_INTERVALS >> 1) - 1) +
+                                    (sad_interval_index_temp >> 3);
+                            }
+                            if (intra_sad_interval_index >= NUMBER_OF_SAD_INTERVALS - 1)
+                                intra_sad_interval_index = NUMBER_OF_SAD_INTERVALS - 1;
+
+                            pcs_ptr->intra_sad_interval_index[sb_index] =
+                                intra_sad_interval_index;
+
+                            pcs_ptr->ois_distortion_histogram[intra_sad_interval_index]++;
+
+                            ++pcs_ptr->full_sb_count;
+                        }
+                    }
+                }
+            }
+#else
             if (scs_ptr->static_config.rate_control_mode) {
                 if (pcs_ptr->slice_type != I_SLICE) {
                     uint16_t sad_interval_index;
@@ -2369,6 +2453,7 @@ void *motion_estimation_kernel(void *input_ptr) {
                     }
                 }
             }
+#endif
 
             eb_release_mutex(pcs_ptr->rc_distortion_histogram_mutex);
 
