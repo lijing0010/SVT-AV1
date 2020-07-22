@@ -2554,7 +2554,7 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
 
 
 #if INL_ME
-    scs_ptr->in_loop_me = 1;
+    scs_ptr->in_loop_me = 0;
 #endif
     // Set over_boundary_block_mode     Settings
     // 0                            0: not allowed
