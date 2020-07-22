@@ -382,6 +382,10 @@ EbErrorType copy_sequence_control_set(SequenceControlSet *dst, SequenceControlSe
 #if INL_ME
     dst->in_loop_me                     = src->in_loop_me;
 #endif
+
+#if INL_ME_GM_MEM_OPT
+    dst->gm_level                       = src->gm_level;
+#endif
     return EB_ErrorNone;
 }
 

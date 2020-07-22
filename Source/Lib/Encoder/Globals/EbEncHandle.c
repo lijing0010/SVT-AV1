@@ -1122,8 +1122,11 @@ static int create_down_scaled_buf_descs(EbEncHandle *enc_handle_ptr, uint32_t in
     sixteenth_pic_buf_desc_init_data.split_mode = EB_FALSE;
     //useless
     sixteenth_pic_buf_desc_init_data.down_sampled_filtered = EB_FALSE;
+
     eb_down_scale_obj_init_data.quarter_picture_desc_init_data = quart_pic_buf_desc_init_data;
     eb_down_scale_obj_init_data.sixteenth_picture_desc_init_data = sixteenth_pic_buf_desc_init_data;
+    eb_down_scale_obj_init_data.gm_quarter_luma_input = (scs_ptr->gm_level == GM_DOWN) ? 1 : 0;
+    eb_down_scale_obj_init_data.gm_sixteenth_luma_input = (scs_ptr->gm_level == GM_DOWN16) ? 1 : 0;
     EB_NEW(enc_handle_ptr->down_scaled_picture_pool_ptr_array[instance_index],
             eb_system_resource_ctor,
             scs_ptr->input_buffer_fifo_init_count,
@@ -1240,7 +1243,7 @@ static int create_ref_buf_descs(EbEncHandle *enc_handle_ptr, uint32_t instance_i
 #endif
 
     // TODO:
-    // Check HME configuration to see if we need 1/4 or 1/16 HME
+    // Need to put hme_decimation/enable_hme_flag into init stage to figure out whether we need down scaled_recon or not
     eb_ref_obj_ect_desc_init_data_structure.hme_quarter_luma_recon = scs_ptr->in_loop_me;
     eb_ref_obj_ect_desc_init_data_structure.hme_sixteenth_luma_recon = scs_ptr->in_loop_me;
 
@@ -2551,7 +2554,7 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
 
 
 #if INL_ME
-    scs_ptr->in_loop_me = 0;
+    scs_ptr->in_loop_me = 1;
 #endif
     // Set over_boundary_block_mode     Settings
     // 0                            0: not allowed
@@ -3894,6 +3897,19 @@ EB_API EbErrorType eb_svt_enc_set_parameter(
 
     return_error = load_default_buffer_configuration_settings(
         enc_handle->scs_instance_array[instance_index]->scs_ptr);
+#if INL_ME_GM_MEM_OPT
+    // Global motion level                        Settings
+    // GM_FULL                                    Exhaustive search mode.
+    // GM_DOWN                                    Downsampled resolution with a
+    // downsampling factor of 2 in each dimension GM_TRAN_ONLY Translation only
+    // using ME MV.
+    if (enc_handle->scs_instance_array[instance_index]->scs_ptr->static_config.enc_mode <= ENC_M2)
+        enc_handle->scs_instance_array[instance_index]->scs_ptr->gm_level = GM_FULL;
+    else if (enc_handle->scs_instance_array[instance_index]->scs_ptr->static_config.enc_mode <= ENC_M4)
+        enc_handle->scs_instance_array[instance_index]->scs_ptr->gm_level = GM_DOWN;
+    else
+        enc_handle->scs_instance_array[instance_index]->scs_ptr->gm_level = GM_DOWN16;
+#endif
 
     print_lib_params(
         enc_handle->scs_instance_array[instance_index]->scs_ptr);

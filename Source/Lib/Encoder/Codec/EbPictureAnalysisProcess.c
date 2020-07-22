@@ -4070,6 +4070,121 @@ void downsample_filtering_input_picture(PictureParentControlSet *pcs_ptr,
     }
 }
 
+#if INL_ME
+// Current down sampled input is not used for HME, but mainly used for GM
+// So don't do the unnecessary check here
+void downsample_filtering_input_picture_ex(
+                                        EbPictureBufferDesc *    input_padded_picture_ptr,
+                                        EbPictureBufferDesc *    quarter_picture_ptr,
+                                        EbPictureBufferDesc *    sixteenth_picture_ptr) {
+    if (quarter_picture_ptr) {
+        downsample_2d(
+                &input_padded_picture_ptr->buffer_y[input_padded_picture_ptr->origin_x +
+                input_padded_picture_ptr->origin_y *
+                input_padded_picture_ptr->stride_y],
+                input_padded_picture_ptr->stride_y,
+                input_padded_picture_ptr->width,
+                input_padded_picture_ptr->height,
+                &quarter_picture_ptr
+                ->buffer_y[quarter_picture_ptr->origin_x +
+                quarter_picture_ptr->origin_x * quarter_picture_ptr->stride_y],
+                quarter_picture_ptr->stride_y,
+                2);
+        generate_padding(&quarter_picture_ptr->buffer_y[0],
+                quarter_picture_ptr->stride_y,
+                quarter_picture_ptr->width,
+                quarter_picture_ptr->height,
+                quarter_picture_ptr->origin_x,
+                quarter_picture_ptr->origin_y);
+    }
+
+    if (sixteenth_picture_ptr) {
+        // Sixteenth Input Picture Downsampling
+        if (quarter_picture_ptr)
+            downsample_2d(
+                    &quarter_picture_ptr
+                    ->buffer_y[quarter_picture_ptr->origin_x +
+                    quarter_picture_ptr->origin_y * quarter_picture_ptr->stride_y],
+                    quarter_picture_ptr->stride_y,
+                    quarter_picture_ptr->width,
+                    quarter_picture_ptr->height,
+                    &sixteenth_picture_ptr->buffer_y[sixteenth_picture_ptr->origin_x +
+                    sixteenth_picture_ptr->origin_x *
+                    sixteenth_picture_ptr->stride_y],
+                    sixteenth_picture_ptr->stride_y,
+                    2);
+        else
+            downsample_2d(
+                    &input_padded_picture_ptr->buffer_y[input_padded_picture_ptr->origin_x +
+                    input_padded_picture_ptr->origin_y *
+                    input_padded_picture_ptr->stride_y],
+                    input_padded_picture_ptr->stride_y,
+                    input_padded_picture_ptr->width,
+                    input_padded_picture_ptr->height,
+                    &sixteenth_picture_ptr->buffer_y[sixteenth_picture_ptr->origin_x +
+                    sixteenth_picture_ptr->origin_x *
+                    sixteenth_picture_ptr->stride_y],
+                    sixteenth_picture_ptr->stride_y,
+                    4);
+
+        generate_padding(&sixteenth_picture_ptr->buffer_y[0],
+                sixteenth_picture_ptr->stride_y,
+                sixteenth_picture_ptr->width,
+                sixteenth_picture_ptr->height,
+                sixteenth_picture_ptr->origin_x,
+                sixteenth_picture_ptr->origin_y);
+    }
+}
+
+void downsample_decimation_input_picture_ex(
+                                         EbPictureBufferDesc *    input_padded_picture_ptr,
+                                         EbPictureBufferDesc *    quarter_decimated_picture_ptr,
+                                         EbPictureBufferDesc *    sixteenth_decimated_picture_ptr) {
+    if (quarter_decimated_picture_ptr) {
+        decimation_2d(
+                &input_padded_picture_ptr->buffer_y[input_padded_picture_ptr->origin_x +
+                input_padded_picture_ptr->origin_y *
+                input_padded_picture_ptr->stride_y],
+                input_padded_picture_ptr->stride_y,
+                input_padded_picture_ptr->width,
+                input_padded_picture_ptr->height,
+                &quarter_decimated_picture_ptr->buffer_y[quarter_decimated_picture_ptr->origin_x +
+                quarter_decimated_picture_ptr->origin_x *
+                quarter_decimated_picture_ptr->stride_y],
+                quarter_decimated_picture_ptr->stride_y,
+                2);
+        generate_padding(&quarter_decimated_picture_ptr->buffer_y[0],
+                quarter_decimated_picture_ptr->stride_y,
+                quarter_decimated_picture_ptr->width,
+                quarter_decimated_picture_ptr->height,
+                quarter_decimated_picture_ptr->origin_x,
+                quarter_decimated_picture_ptr->origin_y);
+    }
+
+    if (sixteenth_decimated_picture_ptr) {
+        decimation_2d(
+                &input_padded_picture_ptr->buffer_y[input_padded_picture_ptr->origin_x +
+                input_padded_picture_ptr->origin_y *
+                input_padded_picture_ptr->stride_y],
+                input_padded_picture_ptr->stride_y,
+                input_padded_picture_ptr->width,
+                input_padded_picture_ptr->height,
+                &sixteenth_decimated_picture_ptr->buffer_y[sixteenth_decimated_picture_ptr->origin_x +
+                sixteenth_decimated_picture_ptr->origin_x *
+                sixteenth_decimated_picture_ptr->stride_y],
+                sixteenth_decimated_picture_ptr->stride_y,
+                4);
+
+        generate_padding(&sixteenth_decimated_picture_ptr->buffer_y[0],
+                sixteenth_decimated_picture_ptr->stride_y,
+                sixteenth_decimated_picture_ptr->width,
+                sixteenth_decimated_picture_ptr->height,
+                sixteenth_decimated_picture_ptr->origin_x,
+                sixteenth_decimated_picture_ptr->origin_y);
+    }
+}
+#endif
+
 /* Picture Analysis Kernel */
 
 /*********************************************************************************
@@ -4210,14 +4325,12 @@ void *picture_analysis_kernel(void *input_ptr) {
                 // Get the 1/2, 1/4 of input picture, only used for global motion
                 // TODO: Check for global motion whether we need these
                 if (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) {
-                    downsample_filtering_input_picture(
-                            pcs_ptr,
+                    downsample_filtering_input_picture_ex(
                             input_picture_ptr,
                             (EbPictureBufferDesc *)ds_obj->quarter_picture_ptr,
                             (EbPictureBufferDesc *)ds_obj->sixteenth_picture_ptr);
                 } else {
-                    downsample_decimation_input_picture(
-                            pcs_ptr,
+                    downsample_decimation_input_picture_ex(
                             input_picture_ptr,
                             (EbPictureBufferDesc *)ds_obj->quarter_picture_ptr,
                             (EbPictureBufferDesc *)ds_obj->sixteenth_picture_ptr);

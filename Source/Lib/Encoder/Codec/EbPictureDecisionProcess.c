@@ -2627,6 +2627,7 @@ EbErrorType signal_derivation_multi_processes_oq(
         pcs_ptr->frm_hdr.use_ref_frame_mvs =
         scs_ptr->mfmv_enabled;
 
+#if !INL_ME_GM_MEM_OPT
     // Global motion level                        Settings
     // GM_FULL                                    Exhaustive search mode.
     // GM_DOWN                                    Downsampled resolution with a
@@ -2697,6 +2698,9 @@ EbErrorType signal_derivation_multi_processes_oq(
         pcs_ptr->gm_level = GM_FULL;
     else
         pcs_ptr->gm_level = GM_DOWN;
+#endif
+#else
+    pcs_ptr->gm_level = scs_ptr->gm_level;
 #endif
 
     // Exit TX size search when all coefficients are zero

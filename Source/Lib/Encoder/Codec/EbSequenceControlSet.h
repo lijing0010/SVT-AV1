@@ -95,6 +95,11 @@ typedef struct SequenceControlSet {
          Default is 0. */
     uint8_t in_loop_me;
 #endif
+
+#if INL_ME_GM_MEM_OPT
+    //TODO: Aggregate all possible "control" info here
+    uint8_t gm_level;
+#endif
     /*!< Allow the usage of motion field motion vector in the stream
         (The signal changes per preset; 0: Enabled, 1: Disabled) Default is 1. */
     uint8_t mfmv_enabled;

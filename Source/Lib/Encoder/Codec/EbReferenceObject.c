@@ -333,25 +333,30 @@ EbErrorType eb_pa_reference_object_creator(EbPtr *object_dbl_ptr, EbPtr object_i
 
 #if INL_ME
 static void eb_down_scaled_object_dctor(EbPtr p) {
-    EbDownScaledObject *obj = (EbDownScaledObject*)p;
-    EB_DELETE(obj->quarter_picture_ptr);
-    EB_DELETE(obj->sixteenth_picture_ptr);
+    EbDownScaledObject *ds_obj = (EbDownScaledObject*)p;
+    EB_DELETE(ds_obj->quarter_picture_ptr);
+    EB_DELETE(ds_obj->sixteenth_picture_ptr);
 }
 
-static EbErrorType eb_down_scaled_object_ctor(EbDownScaledObject *ds_obj_,
+static EbErrorType eb_down_scaled_object_ctor(EbDownScaledObject *ds_obj,
                                               EbPtr               object_init_data_ptr) {
-    EbPictureBufferDescInitData *picture_buffer_desc_init_data_ptr =
-        (EbPictureBufferDescInitData *)object_init_data_ptr;
+    EbDownScaledObjectDescInitData *ds_desc_init_data_ptr =
+        (EbDownScaledObjectDescInitData *)object_init_data_ptr;
 
-    ds_obj_->dctor = eb_down_scaled_object_dctor;
+    ds_obj->dctor = eb_down_scaled_object_dctor;
 
-    ds_obj_->picture_ptr = NULL;
-    EB_NEW(ds_obj_->quarter_picture_ptr,
-           eb_picture_buffer_desc_ctor,
-           (EbPtr)(picture_buffer_desc_init_data_ptr));
-    EB_NEW(ds_obj_->sixteenth_picture_ptr,
-           eb_picture_buffer_desc_ctor,
-           (EbPtr)(picture_buffer_desc_init_data_ptr + 1));
+    ds_obj->picture_ptr = NULL;
+    if (ds_desc_init_data_ptr->gm_quarter_luma_input) {
+        EB_NEW(ds_obj->quarter_picture_ptr,
+                eb_picture_buffer_desc_ctor,
+                (EbPtr)(&ds_desc_init_data_ptr->quarter_picture_desc_init_data));
+    }
+
+    if (ds_desc_init_data_ptr->gm_sixteenth_luma_input) {
+        EB_NEW(ds_obj->sixteenth_picture_ptr,
+                eb_picture_buffer_desc_ctor,
+                (EbPtr)(&ds_desc_init_data_ptr->sixteenth_picture_desc_init_data));
+    }
     return EB_ErrorNone;
 }
 

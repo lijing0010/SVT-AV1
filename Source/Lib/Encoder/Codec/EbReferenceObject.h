@@ -114,6 +114,12 @@ typedef struct EbDownScaledObject {
 typedef struct EbDownScaledObjectDescInitData {
     EbPictureBufferDescInitData quarter_picture_desc_init_data;
     EbPictureBufferDescInitData sixteenth_picture_desc_init_data;
+
+#if INL_ME_GM_MEM_OPT
+    // whether enable 1/4,1/16 8bit luma for in_loop global motion
+    uint8_t gm_quarter_luma_input;
+    uint8_t gm_sixteenth_luma_input;
+#endif
 } EbDownScaledObjectDescInitData;
 #endif
 

@@ -610,6 +610,8 @@ extern "C" {
 
 #define INL_ME  1 //In-Loop ME 
 #define INL_ME_PA_REFINE 1
+#define INL_ME_GM_MEM_OPT 1 // Only alloc 1/4, 1/16 input desc if GM needs it
+#define INL_ME_HME_MEM_OPT 1 // Only alloc 1/4, 1/16 recon desc if HME needs it. 
 
 #define NEW_DELAY  0
 
