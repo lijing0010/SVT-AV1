@@ -264,8 +264,10 @@ void *picture_manager_kernel(void *input_ptr) {
     EbObjectWrapper *    input_picture_demux_wrapper_ptr;
     PictureDemuxResults *input_picture_demux_ptr;
 
+#if !INL_ME
     EbObjectWrapper * output_wrapper_ptr;
     RateControlTasks *rate_control_tasks_ptr;
+#endif
 
     EbBool availability_flag;
 
@@ -1540,9 +1542,10 @@ void *picture_manager_kernel(void *input_ptr) {
 #if INL_ME
 
 #if 1
-                        printf("pic-MGR out  POC:%I64u  \n", child_pcs_ptr->picture_number);
+                        const uint32_t segment_counts =(scs_ptr->in_loop_me) ? child_pcs_ptr->parent_pcs_ptr->me_segments_total_count : 1;
+                        printf("pic-MGR out  POC:%ld, segment counts for in_loop %d\n", child_pcs_ptr->picture_number, segment_counts);
 #endif
-                        for (uint32_t segment_index = 0; segment_index < pcs_ptr->me_segments_total_count; ++segment_index) {
+                        for (uint32_t segment_index = 0; segment_index < segment_counts; ++segment_index) {
                             EbObjectWrapper               *out_results_wrapper_ptr;
                             // Get Empty Results Object
                             eb_get_empty_object(
