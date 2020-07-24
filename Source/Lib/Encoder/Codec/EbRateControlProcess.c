@@ -6126,6 +6126,23 @@ void *rate_control_kernel(void *input_ptr) {
 
         rate_control_tasks_ptr = (RateControlTasks *)rate_control_tasks_wrapper_ptr->object_ptr;
         task_type              = rate_control_tasks_ptr->task_type;
+#if INL_ME
+        if (task_type == RC_INPUT) {
+            uint32_t segment_index = rate_control_tasks_ptr->segment_index;
+            pcs_ptr = (PictureControlSet *)rate_control_tasks_ptr->pcs_wrapper_ptr->object_ptr;
+
+            // Set the segment mask
+            SEGMENT_COMPLETION_MASK_SET(pcs_ptr->parent_pcs_ptr->inloop_me_segments_completion_mask, segment_index);
+
+            // If the picture is complete, proceed
+            if (!(SEGMENT_COMPLETION_MASK_TEST(pcs_ptr->parent_pcs_ptr->inloop_me_segments_completion_mask,
+                        pcs_ptr->parent_pcs_ptr->inloop_me_segments_total_count))) {
+                //printf("RC got input %ld, segment %d\n", pcs_ptr->picture_number, segment_index);
+                eb_release_object(rate_control_tasks_wrapper_ptr);
+                continue;
+            }
+        }
+#endif
 
         // Modify these for different temporal layers later
         switch (task_type) {

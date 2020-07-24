@@ -1542,8 +1542,7 @@ void *picture_manager_kernel(void *input_ptr) {
 #if INL_ME
 
 #if 1
-                        const uint32_t segment_counts =(scs_ptr->in_loop_me) ? child_pcs_ptr->parent_pcs_ptr->me_segments_total_count : 1;
-                        printf("pic-MGR out  POC:%ld, segment counts for in_loop %d\n", child_pcs_ptr->picture_number, segment_counts);
+                        const uint32_t segment_counts =  child_pcs_ptr->parent_pcs_ptr->inloop_me_segments_total_count;
 #endif
                         for (uint32_t segment_index = 0; segment_index < segment_counts; ++segment_index) {
                             EbObjectWrapper               *out_results_wrapper_ptr;

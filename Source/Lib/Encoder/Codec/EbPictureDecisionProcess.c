@@ -7383,10 +7383,33 @@ void* picture_decision_kernel(void *input_ptr)
                             set_all_ref_frame_type(pcs_ptr, pcs_ptr->ref_frame_type_arr, &pcs_ptr->tot_ref_frame_types);
 #endif
                             // Initialize Segments
+#if !INL_ME
                             pcs_ptr->me_segments_column_count = (uint8_t)(scs_ptr->me_segment_column_count_array[pcs_ptr->temporal_layer_index]);
                             pcs_ptr->me_segments_row_count = (uint8_t)(scs_ptr->me_segment_row_count_array[pcs_ptr->temporal_layer_index]);
                             pcs_ptr->me_segments_total_count = (uint16_t)(pcs_ptr->me_segments_column_count  * pcs_ptr->me_segments_row_count);
                             pcs_ptr->me_segments_completion_mask = 0;
+#else
+                            pcs_ptr->me_segments_completion_mask = 0;
+                            pcs_ptr->inloop_me_segments_completion_mask = 0;
+
+                            pcs_ptr->me_segments_column_count = 1;
+                            pcs_ptr->me_segments_row_count = 1;
+                            pcs_ptr->inloop_me_segments_column_count = 1;
+                            pcs_ptr->inloop_me_segments_row_count = 1;
+
+                            if (scs_ptr->in_loop_me) {
+                                pcs_ptr->inloop_me_segments_column_count = (uint8_t)(scs_ptr->me_segment_column_count_array[pcs_ptr->temporal_layer_index]);
+                                pcs_ptr->inloop_me_segments_row_count = (uint8_t)(scs_ptr->me_segment_row_count_array[pcs_ptr->temporal_layer_index]);
+                                //TODO:
+                                //for in_loop_me, may still set thread of open loop me to some number, given it's doing GM and intra search
+                            } else {
+                                pcs_ptr->me_segments_column_count = (uint8_t)(scs_ptr->me_segment_column_count_array[pcs_ptr->temporal_layer_index]);
+                                pcs_ptr->me_segments_row_count = (uint8_t)(scs_ptr->me_segment_row_count_array[pcs_ptr->temporal_layer_index]);
+                            }
+                            pcs_ptr->me_segments_total_count = (uint16_t)(pcs_ptr->me_segments_column_count  * pcs_ptr->me_segments_row_count);
+                            pcs_ptr->inloop_me_segments_total_count = (uint16_t)(pcs_ptr->inloop_me_segments_column_count  * pcs_ptr->inloop_me_segments_row_count);
+#endif
+
 #if DECOUPLE_ME_RES
                             uint32_t pic_it = out_stride_diff64 - context_ptr->mini_gop_start_index[mini_gop_index];
                             context_ptr->mg_pictures_array[pic_it] = pcs_ptr;

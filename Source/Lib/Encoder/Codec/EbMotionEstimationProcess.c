@@ -2024,19 +2024,21 @@ void *motion_estimation_kernel(void *input_ptr) {
             signal_derivation_me_kernel_oq(scs_ptr, pcs_ptr, context_ptr);
 
 #if INL_ME
-            pa_ref_obj_ = (EbPaReferenceObject *)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr;
-            // Set 1/4 and 1/16 ME input buffer(s); filtered or decimated
-            quarter_picture_ptr =
-                (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED)
-                ? (EbPictureBufferDesc *)pa_ref_obj_->quarter_filtered_picture_ptr
-                : (EbPictureBufferDesc *)pa_ref_obj_->quarter_decimated_picture_ptr;
+            if (!scs_ptr->in_loop_me) {
+                pa_ref_obj_ = (EbPaReferenceObject *)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr;
+                // Set 1/4 and 1/16 ME input buffer(s); filtered or decimated
+                quarter_picture_ptr =
+                    (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED)
+                    ? (EbPictureBufferDesc *)pa_ref_obj_->quarter_filtered_picture_ptr
+                    : (EbPictureBufferDesc *)pa_ref_obj_->quarter_decimated_picture_ptr;
 
-            sixteenth_picture_ptr =
-                (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED)
-                ? (EbPictureBufferDesc *)pa_ref_obj_->sixteenth_filtered_picture_ptr
-                : (EbPictureBufferDesc *)pa_ref_obj_->sixteenth_decimated_picture_ptr;
-            input_padded_picture_ptr = (EbPictureBufferDesc *)pa_ref_obj_->input_padded_picture_ptr;
-            input_picture_ptr = pcs_ptr->enhanced_unscaled_picture_ptr;
+                sixteenth_picture_ptr =
+                    (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED)
+                    ? (EbPictureBufferDesc *)pa_ref_obj_->sixteenth_filtered_picture_ptr
+                    : (EbPictureBufferDesc *)pa_ref_obj_->sixteenth_decimated_picture_ptr;
+                input_padded_picture_ptr = (EbPictureBufferDesc *)pa_ref_obj_->input_padded_picture_ptr;
+                input_picture_ptr = pcs_ptr->enhanced_unscaled_picture_ptr;
+            }
 #endif
 
             // Global motion estimation
@@ -2573,10 +2575,10 @@ void *inloop_me_kernel(void *input_ptr) {
         ppcs_ptr = pcs->parent_pcs_ptr;
         scs_ptr = (SequenceControlSet *)ppcs_ptr->scs_wrapper_ptr->object_ptr;
 
-        printf("iME-IN  POC:%ld, segment %d/%d\n",
-                ppcs_ptr->picture_number,
-                in_results_ptr->segment_index,
-                ppcs_ptr->me_segments_total_count);
+        //printf("iME-IN  POC:%ld, segment %d/%d\n",
+        //        ppcs_ptr->picture_number,
+        //        in_results_ptr->segment_index,
+        //        ppcs_ptr->inloop_me_segments_total_count);
         if (scs_ptr->in_loop_me) {
             input_picture_ptr = ppcs_ptr->enhanced_unscaled_picture_ptr;
 
@@ -2622,15 +2624,15 @@ void *inloop_me_kernel(void *input_ptr) {
             picture_height_in_sb =
                 (ppcs_ptr->aligned_height + scs_ptr->sb_sz - 1) / scs_ptr->sb_sz;
             SEGMENT_CONVERT_IDX_TO_XY(
-                    segment_index, x_segment_index, y_segment_index, ppcs_ptr->me_segments_column_count);
+                    segment_index, x_segment_index, y_segment_index, ppcs_ptr->inloop_me_segments_column_count);
             x_sb_start_index = SEGMENT_START_IDX(
-                    x_segment_index, pic_width_in_sb, ppcs_ptr->me_segments_column_count);
+                    x_segment_index, pic_width_in_sb, ppcs_ptr->inloop_me_segments_column_count);
             x_sb_end_index = SEGMENT_END_IDX(
-                    x_segment_index, pic_width_in_sb, ppcs_ptr->me_segments_column_count);
+                    x_segment_index, pic_width_in_sb, ppcs_ptr->inloop_me_segments_column_count);
             y_sb_start_index = SEGMENT_START_IDX(
-                    y_segment_index, picture_height_in_sb, ppcs_ptr->me_segments_row_count);
+                    y_segment_index, picture_height_in_sb, ppcs_ptr->inloop_me_segments_row_count);
             y_sb_end_index = SEGMENT_END_IDX(
-                    y_segment_index, picture_height_in_sb, ppcs_ptr->me_segments_row_count);
+                    y_segment_index, picture_height_in_sb, ppcs_ptr->inloop_me_segments_row_count);
 
             if (ppcs_ptr->slice_type != I_SLICE) {
                 // SB Loop
@@ -2748,6 +2750,9 @@ void *inloop_me_kernel(void *input_ptr) {
         rate_control_tasks_ptr->pcs_wrapper_ptr = in_results_ptr->pcs_wrapper_ptr;
         rate_control_tasks_ptr->task_type = RC_INPUT;
         rate_control_tasks_ptr->segment_index = segment_index;
+
+        // Release the Input Results
+        eb_release_object(in_results_wrapper_ptr);
 
         // Post the Full Results Object
         eb_post_full_object(out_results_wrapper_ptr);
