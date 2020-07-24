@@ -6600,8 +6600,14 @@ void* picture_decision_kernel(void *input_ptr)
                                 // release the overlay PCS for non alt ref pictures. First picture does not have overlay PCS
                                 else if (pcs_ptr->picture_number) {
                                     eb_release_object(pcs_ptr->overlay_ppcs_ptr->input_picture_wrapper_ptr);
+
                                     // release the pa_reference_picture
+#if INL_ME
+                                    if (!scs_ptr->in_loop_me)
+                                        eb_release_object(pcs_ptr->overlay_ppcs_ptr->pa_reference_picture_wrapper_ptr);
+#else
                                     eb_release_object(pcs_ptr->overlay_ppcs_ptr->pa_reference_picture_wrapper_ptr);
+#endif
                                     // release the parent pcs
                                     eb_release_object(pcs_ptr->overlay_ppcs_ptr->p_pcs_wrapper_ptr);
                                     pcs_ptr->overlay_ppcs_ptr = EB_NULL;
@@ -6617,7 +6623,9 @@ void* picture_decision_kernel(void *input_ptr)
                                 }
                                 // Set the Slice type
                                 pcs_ptr->slice_type = picture_type;
+#if !INL_ME
                                 ((EbPaReferenceObject*)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr)->slice_type = pcs_ptr->slice_type;
+#endif
 
                                 switch (picture_type) {
                                 case I_SLICE:
@@ -6910,7 +6918,14 @@ void* picture_decision_kernel(void *input_ptr)
                                 if (!pcs_ptr->is_overlay)
                                 {
                                     input_entry_ptr = encode_context_ptr->picture_decision_pa_reference_queue[encode_context_ptr->picture_decision_pa_reference_queue_tail_index];
+#if !INL_ME
                                     input_entry_ptr->input_object_ptr = pcs_ptr->pa_reference_picture_wrapper_ptr;
+#else
+                                    if (scs_ptr->in_loop_me) 
+                                        input_entry_ptr->input_object_ptr = NULL; 
+                                    else
+                                        input_entry_ptr->input_object_ptr = pcs_ptr->pa_reference_picture_wrapper_ptr;
+#endif
                                     input_entry_ptr->picture_number = pcs_ptr->picture_number;
 #if !DECOUPLE_ME_RES
                                     input_entry_ptr->reference_entry_index = encode_context_ptr->picture_decision_pa_reference_queue_tail_index;
@@ -7117,7 +7132,9 @@ void* picture_decision_kernel(void *input_ptr)
                                     input_entry_ptr->dep_list1_count = input_entry_ptr->list1.list_count;
                                     input_entry_ptr->dependent_count = input_entry_ptr->dep_list0_count + input_entry_ptr->dep_list1_count;
 
+#if !INL_ME
                                     ((EbPaReferenceObject*)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr)->dependent_pictures_count = input_entry_ptr->dependent_count;
+#endif
                                 }
 
                                 CHECK_REPORT_ERROR(

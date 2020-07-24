@@ -89,11 +89,11 @@ typedef struct EbPaReferenceObject {
     EbPictureBufferDesc *quarter_filtered_picture_ptr;
     EbPictureBufferDesc *sixteenth_filtered_picture_ptr;
 #if !INL_ME
-    //uint16_t             variance[MAX_NUMBER_OF_TREEBLOCKS_PER_PICTURE];
-    //uint8_t              y_mean[MAX_NUMBER_OF_TREEBLOCKS_PER_PICTURE];
-#endif
+    uint16_t             variance[MAX_NUMBER_OF_TREEBLOCKS_PER_PICTURE];
+    uint8_t              y_mean[MAX_NUMBER_OF_TREEBLOCKS_PER_PICTURE];
     EB_SLICE             slice_type;
     uint32_t             dependent_pictures_count; //number of pic using this reference frame
+#endif
 
 } EbPaReferenceObject;
 
