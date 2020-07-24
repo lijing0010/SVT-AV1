@@ -6143,7 +6143,7 @@ void *rate_control_kernel(void *input_ptr) {
 #endif
 
 #if 1
-            printf("RC-IN  POC:%I64u  \n", pcs_ptr->picture_number);
+            printf("RC-IN  POC:%ld  \n", pcs_ptr->picture_number);
 #endif
             if (pcs_ptr->picture_number == 0) {
                 //init rate control parameters
@@ -6686,6 +6686,11 @@ void *rate_control_kernel(void *input_ptr) {
 #endif
             total_number_of_fb_frames++;
 
+#if INL_ME
+            // Release the down scaled input for in_loop_me mode
+            if (scs_ptr->in_loop_me)
+                eb_release_object(parentpicture_control_set_ptr->down_scaled_picture_wrapper_ptr);
+#endif
             // Release the SequenceControlSet
             eb_release_object(parentpicture_control_set_ptr->scs_wrapper_ptr);
             // Release the ParentPictureControlSet

@@ -9950,6 +9950,7 @@ void integer_search_sb(
     uint8_t num_of_ref_pic_to_search;
     EbPaReferenceObject *reference_object; // input parameter, reference Object Ptr
 #if INL_ME
+    EbDownScaledObject *inl_downscaled_object;
     EbReferenceObject *inl_reference_object;
     PictureControlSet *child_pcs_ptr = NULL;
     if (context_ptr->me_in_loop)
@@ -10007,8 +10008,16 @@ void integer_search_sb(
         // Ref Picture Loop
         for (ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search; ++ref_pic_index) {
             if (context_ptr->me_alt_ref == EB_TRUE) {
-                reference_object = (EbPaReferenceObject *)context_ptr->alt_ref_reference_ptr;
 #if INL_ME
+                if (scs_ptr->in_loop_me) {
+                    inl_downscaled_object = (EbDownScaledObject*)context_ptr->alt_ref_reference_ptr_inl;
+                    ref_pic_ptr = inl_downscaled_object->picture_ptr;
+                } else {
+                    reference_object = (EbPaReferenceObject *)context_ptr->alt_ref_reference_ptr;
+                    ref_pic_ptr = (EbPictureBufferDesc *)reference_object->input_padded_picture_ptr;
+                }
+#else
+                reference_object = (EbPaReferenceObject *)context_ptr->alt_ref_reference_ptr;
                 ref_pic_ptr = (EbPictureBufferDesc *)reference_object->input_padded_picture_ptr;
 #endif
             } else {

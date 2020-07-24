@@ -6228,7 +6228,7 @@ void* picture_decision_kernel(void *input_ptr)
         encode_context_ptr = (EncodeContext*)scs_ptr->encode_context_ptr;
         loop_count++;
 
-        printf("PD-IN POC:%I64u \n",pcs_ptr->picture_number);
+        printf("PD-IN POC:%ld \n",pcs_ptr->picture_number);
 
 
         // Input Picture Analysis Results into the Picture Decision Reordering Queue
@@ -6410,12 +6410,12 @@ void* picture_decision_kernel(void *input_ptr)
                     (pcs_ptr->pred_structure == EB_PRED_LOW_DELAY_B))
                 {
 
-                    if(encode_context_ptr->pre_assignment_buffer_intra_count > 0)
-                       printf("PRE-ASSIGN INTRA   (%i pictures)  POC:%I64u \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
-                    if (encode_context_ptr->pre_assignment_buffer_count == (uint32_t)(1 << scs_ptr->static_config.hierarchical_levels))
-                        printf("PRE-ASSIGN COMPLETE   (%i pictures)  POC:%I64u \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
-                    if((encode_context_ptr->pre_assignment_buffer_eos_flag == EB_TRUE))
-                        printf("PRE-ASSIGN EOS   (%i pictures)  POC:%I64u \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
+                    //if(encode_context_ptr->pre_assignment_buffer_intra_count > 0)
+                    //   printf("PRE-ASSIGN INTRA   (%i pictures)  POC:%I64u \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
+                    //if (encode_context_ptr->pre_assignment_buffer_count == (uint32_t)(1 << scs_ptr->static_config.hierarchical_levels))
+                    //    printf("PRE-ASSIGN COMPLETE   (%i pictures)  POC:%I64u \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
+                    //if((encode_context_ptr->pre_assignment_buffer_eos_flag == EB_TRUE))
+                    //    printf("PRE-ASSIGN EOS   (%i pictures)  POC:%I64u \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
 
                     // Initialize Picture Block Params
                     context_ptr->mini_gop_start_index[0] = 0;
@@ -6602,12 +6602,8 @@ void* picture_decision_kernel(void *input_ptr)
                                     eb_release_object(pcs_ptr->overlay_ppcs_ptr->input_picture_wrapper_ptr);
 
                                     // release the pa_reference_picture
-#if INL_ME
-                                    if (!scs_ptr->in_loop_me)
-                                        eb_release_object(pcs_ptr->overlay_ppcs_ptr->pa_reference_picture_wrapper_ptr);
-#else
                                     eb_release_object(pcs_ptr->overlay_ppcs_ptr->pa_reference_picture_wrapper_ptr);
-#endif
+
                                     // release the parent pcs
                                     eb_release_object(pcs_ptr->overlay_ppcs_ptr->p_pcs_wrapper_ptr);
                                     pcs_ptr->overlay_ppcs_ptr = EB_NULL;
@@ -6918,14 +6914,7 @@ void* picture_decision_kernel(void *input_ptr)
                                 if (!pcs_ptr->is_overlay)
                                 {
                                     input_entry_ptr = encode_context_ptr->picture_decision_pa_reference_queue[encode_context_ptr->picture_decision_pa_reference_queue_tail_index];
-#if !INL_ME
                                     input_entry_ptr->input_object_ptr = pcs_ptr->pa_reference_picture_wrapper_ptr;
-#else
-                                    if (scs_ptr->in_loop_me) 
-                                        input_entry_ptr->input_object_ptr = NULL; 
-                                    else
-                                        input_entry_ptr->input_object_ptr = pcs_ptr->pa_reference_picture_wrapper_ptr;
-#endif
                                     input_entry_ptr->picture_number = pcs_ptr->picture_number;
 #if !DECOUPLE_ME_RES
                                     input_entry_ptr->reference_entry_index = encode_context_ptr->picture_decision_pa_reference_queue_tail_index;
@@ -7319,8 +7308,9 @@ void* picture_decision_kernel(void *input_ptr)
                                         }
 #endif
                                             // Set the Reference Object
-                                        pcs_ptr->ref_pa_pic_ptr_array[REF_LIST_0][ref_pic_index] = pa_reference_entry_ptr->input_object_ptr;
                                         pcs_ptr->ref_pic_poc_array[REF_LIST_0][ref_pic_index] = ref_poc;
+                                        pcs_ptr->ref_pa_pic_ptr_array[REF_LIST_0][ref_pic_index] = pa_reference_entry_ptr->input_object_ptr;
+
                                         // Increment the PA Reference's liveCount by the number of tiles in the input picture
                                         eb_object_inc_live_count(
                                             pa_reference_entry_ptr->input_object_ptr,
@@ -7360,14 +7350,15 @@ void* picture_decision_kernel(void *input_ptr)
                                             scs_ptr->bits_for_picture_order_count*/);
 #endif
                                         // Set the Reference Object
-                                        pcs_ptr->ref_pa_pic_ptr_array[REF_LIST_1][ref_pic_index] = pa_reference_entry_ptr->input_object_ptr;
                                         pcs_ptr->ref_pic_poc_array[REF_LIST_1][ref_pic_index] = ref_poc;
+                                        pcs_ptr->ref_pa_pic_ptr_array[REF_LIST_1][ref_pic_index] = pa_reference_entry_ptr->input_object_ptr;
 
                                         // Increment the PA Reference's liveCount by the number of tiles in the input picture
                                         eb_object_inc_live_count(
                                             pa_reference_entry_ptr->input_object_ptr,
                                             1);
                                         --pa_reference_entry_ptr->dependent_count;
+
                                     }
                                 }
                             }
@@ -7478,7 +7469,7 @@ void* picture_decision_kernel(void *input_ptr)
 
                             pcs_ptr->pa_me_data = (MotionEstimationData *)me_wrapper_ptr->object_ptr;
 
-                            printf("PD-OUT  POC:%I64u \n",  pcs_ptr->picture_number);
+                            printf("PD-OUT  POC:%ld \n",  pcs_ptr->picture_number);
 
                             for (uint32_t segment_index = 0; segment_index < pcs_ptr->me_segments_total_count; ++segment_index) {
                                 // Get Empty Results Object

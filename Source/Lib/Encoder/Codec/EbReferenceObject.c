@@ -294,6 +294,16 @@ EbErrorType eb_pa_reference_object_ctor(EbPaReferenceObject *pa_ref_obj_,
 
     pa_ref_obj_->dctor = eb_pa_reference_object_dctor;
 
+#if INL_ME
+    EbPaReferenceObjectDescInitData *pa_ref_init_data_ptr =
+        (EbPaReferenceObjectDescInitData *)object_init_data_ptr;
+
+    if (pa_ref_init_data_ptr->empty_pa_buffers)
+        return EB_ErrorNone;
+#endif
+
+
+
     // Reference picture constructor
     EB_NEW(pa_ref_obj_->input_padded_picture_ptr,
            eb_picture_buffer_desc_ctor,

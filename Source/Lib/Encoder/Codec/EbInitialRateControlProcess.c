@@ -473,11 +473,7 @@ void release_pa_reference_objects(SequenceControlSet *scs_ptr, PictureParentCont
     uint32_t num_of_list_to_search;
     uint32_t list_index;
     uint32_t ref_pic_index;
-#if INL_ME
-    if (pcs_ptr->slice_type != I_SLICE && !scs_ptr->in_loop_me) {
-#else
     if (pcs_ptr->slice_type != I_SLICE) {
-#endif
         num_of_list_to_search = (pcs_ptr->slice_type == P_SLICE) ? REF_LIST_0 : REF_LIST_1;
 
         // List Loop

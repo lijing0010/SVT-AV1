@@ -2024,20 +2024,18 @@ void *motion_estimation_kernel(void *input_ptr) {
             signal_derivation_me_kernel_oq(scs_ptr, pcs_ptr, context_ptr);
 
 #if INL_ME
-            if (!scs_ptr->in_loop_me) {
-                pa_ref_obj_ = (EbPaReferenceObject *)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr;
-                // Set 1/4 and 1/16 ME input buffer(s); filtered or decimated
-                quarter_picture_ptr =
-                    (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED)
-                    ? (EbPictureBufferDesc *)pa_ref_obj_->quarter_filtered_picture_ptr
-                    : (EbPictureBufferDesc *)pa_ref_obj_->quarter_decimated_picture_ptr;
+            pa_ref_obj_ = (EbPaReferenceObject *)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr;
+            // Set 1/4 and 1/16 ME input buffer(s); filtered or decimated
+            quarter_picture_ptr =
+                (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED)
+                ? (EbPictureBufferDesc *)pa_ref_obj_->quarter_filtered_picture_ptr
+                : (EbPictureBufferDesc *)pa_ref_obj_->quarter_decimated_picture_ptr;
 
-                sixteenth_picture_ptr =
-                    (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED)
-                    ? (EbPictureBufferDesc *)pa_ref_obj_->sixteenth_filtered_picture_ptr
-                    : (EbPictureBufferDesc *)pa_ref_obj_->sixteenth_decimated_picture_ptr;
-                input_padded_picture_ptr = (EbPictureBufferDesc *)pa_ref_obj_->input_padded_picture_ptr;
-            }
+            sixteenth_picture_ptr =
+                (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED)
+                ? (EbPictureBufferDesc *)pa_ref_obj_->sixteenth_filtered_picture_ptr
+                : (EbPictureBufferDesc *)pa_ref_obj_->sixteenth_decimated_picture_ptr;
+            input_padded_picture_ptr = (EbPictureBufferDesc *)pa_ref_obj_->input_padded_picture_ptr;
             input_picture_ptr = pcs_ptr->enhanced_unscaled_picture_ptr;
 #endif
 
@@ -2557,7 +2555,7 @@ void *inloop_me_kernel(void *input_ptr) {
     uint32_t sb_height;
 
     // Segments
-    uint32_t segment_index;
+    uint32_t segment_index = 0;
     uint32_t x_segment_index;
     uint32_t y_segment_index;
     uint32_t x_sb_start_index;
@@ -2575,7 +2573,10 @@ void *inloop_me_kernel(void *input_ptr) {
         ppcs_ptr = pcs->parent_pcs_ptr;
         scs_ptr = (SequenceControlSet *)ppcs_ptr->scs_wrapper_ptr->object_ptr;
 
-        printf("iME-IN  POC:%ld  \n", ppcs_ptr->picture_number);
+        printf("iME-IN  POC:%ld, segment %d/%d\n",
+                ppcs_ptr->picture_number,
+                in_results_ptr->segment_index,
+                ppcs_ptr->me_segments_total_count);
         if (scs_ptr->in_loop_me) {
             input_picture_ptr = ppcs_ptr->enhanced_unscaled_picture_ptr;
 
@@ -2736,6 +2737,9 @@ void *inloop_me_kernel(void *input_ptr) {
             }
         }
 
+        //TODO:
+        //Aggregate segment count
+
         // Get Empty Results Object
         eb_get_empty_object(context_ptr->output_fifo_ptr,
                 &out_results_wrapper_ptr);
@@ -2743,6 +2747,7 @@ void *inloop_me_kernel(void *input_ptr) {
         RateControlTasks * rate_control_tasks_ptr = (RateControlTasks *)out_results_wrapper_ptr->object_ptr;
         rate_control_tasks_ptr->pcs_wrapper_ptr = in_results_ptr->pcs_wrapper_ptr;
         rate_control_tasks_ptr->task_type = RC_INPUT;
+        rate_control_tasks_ptr->segment_index = segment_index;
 
         // Post the Full Results Object
         eb_post_full_object(out_results_wrapper_ptr);

@@ -928,6 +928,9 @@ static void eb_enc_handle_dctor(EbPtr p)
 #endif
     EB_DELETE_PTR_ARRAY(enc_handle_ptr->picture_control_set_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
     EB_DELETE_PTR_ARRAY(enc_handle_ptr->pa_reference_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
+#if INL_ME
+    EB_DELETE_PTR_ARRAY(enc_handle_ptr->down_scaled_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
+#endif
     EB_DELETE_PTR_ARRAY(enc_handle_ptr->overlay_input_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
     EB_DELETE(enc_handle_ptr->input_buffer_resource_ptr);
     EB_DELETE_PTR_ARRAY(enc_handle_ptr->output_stream_buffer_resource_ptr_array, enc_handle_ptr->encode_instance_total_count);
@@ -1125,8 +1128,9 @@ static int create_down_scaled_buf_descs(EbEncHandle *enc_handle_ptr, uint32_t in
 
     eb_down_scale_obj_init_data.quarter_picture_desc_init_data = quart_pic_buf_desc_init_data;
     eb_down_scale_obj_init_data.sixteenth_picture_desc_init_data = sixteenth_pic_buf_desc_init_data;
-    eb_down_scale_obj_init_data.gm_quarter_luma_input = (scs_ptr->gm_level == GM_DOWN) ? 1 : 0;
-    eb_down_scale_obj_init_data.gm_sixteenth_luma_input = (scs_ptr->gm_level == GM_DOWN16) ? 1 : 0;
+    //TODO: Need 1/4 and 1/16 for alt-ref
+    eb_down_scale_obj_init_data.gm_quarter_luma_input = 1;//(scs_ptr->gm_level == GM_DOWN) ? 1 : 0;
+    eb_down_scale_obj_init_data.gm_sixteenth_luma_input = 1;//(scs_ptr->gm_level == GM_DOWN16) ? 1 : 0;
     EB_NEW(enc_handle_ptr->down_scaled_picture_pool_ptr_array[instance_index],
             eb_system_resource_ctor,
             scs_ptr->input_buffer_fifo_init_count,
@@ -1140,10 +1144,11 @@ static int create_down_scaled_buf_descs(EbEncHandle *enc_handle_ptr, uint32_t in
     return 0;
 }
 
-static int create_pa_ref_buf_descs(EbEncHandle *enc_handle_ptr, uint32_t instance_index) 
+static int create_pa_ref_buf_descs(EbEncHandle *enc_handle_ptr, uint32_t instance_index, uint8_t in_loop_me) 
 {
         SequenceControlSet* scs_ptr = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr;
         EbPaReferenceObjectDescInitData   eb_pa_ref_obj_ect_desc_init_data_structure;
+        eb_pa_ref_obj_ect_desc_init_data_structure.empty_pa_buffers = in_loop_me;
         EbPictureBufferDescInitData       ref_pic_buf_desc_init_data;
         EbPictureBufferDescInitData       quart_pic_buf_desc_init_data;
         EbPictureBufferDescInitData       sixteenth_pic_buf_desc_init_data;
@@ -1463,11 +1468,9 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
 #if INL_ME
     if (enc_handle_ptr->scs_instance_array[0]->scs_ptr->in_loop_me)
         EB_ALLOC_PTR_ARRAY(enc_handle_ptr->down_scaled_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
-    else
-        EB_ALLOC_PTR_ARRAY(enc_handle_ptr->pa_reference_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
-#else
-    EB_ALLOC_PTR_ARRAY(enc_handle_ptr->pa_reference_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
+    // Always create pa pool with empty buffer descs, just for use in PD
 #endif
+    EB_ALLOC_PTR_ARRAY(enc_handle_ptr->pa_reference_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
 
     EB_ALLOC_PTR_ARRAY(enc_handle_ptr->overlay_input_picture_pool_ptr_array, enc_handle_ptr->encode_instance_total_count);
 
@@ -1595,8 +1598,9 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
         // TODO: Move the signal_xxx before init_encoder, so we can know whether need these for GM
 		if (enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->in_loop_me) {
             create_down_scaled_buf_descs(enc_handle_ptr, instance_index); 
+            create_pa_ref_buf_descs(enc_handle_ptr, instance_index, 1); // create dummy pa surfaces 
 		} else {
-            create_pa_ref_buf_descs(enc_handle_ptr, instance_index); 
+            create_pa_ref_buf_descs(enc_handle_ptr, instance_index, 0); 
         }
 #endif
 
@@ -2554,7 +2558,7 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
 
 
 #if INL_ME
-    scs_ptr->in_loop_me = 0;
+    scs_ptr->in_loop_me = 1;
 #endif
     // Set over_boundary_block_mode     Settings
     // 0                            0: not allowed
@@ -3750,7 +3754,7 @@ EbErrorType eb_svt_enc_init_parameter(
 
     return return_error;
 }
-//#define DEBUG_BUFFERS
+#define DEBUG_BUFFERS
 static void print_lib_params(
     SequenceControlSet* scs) {
     EbSvtAv1EncConfiguration*   config = &scs->static_config;

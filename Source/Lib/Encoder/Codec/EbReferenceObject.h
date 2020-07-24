@@ -101,6 +101,7 @@ typedef struct EbPaReferenceObjectDescInitData {
     EbPictureBufferDescInitData reference_picture_desc_init_data;
     EbPictureBufferDescInitData quarter_picture_desc_init_data;
     EbPictureBufferDescInitData sixteenth_picture_desc_init_data;
+    uint8_t empty_pa_buffers;
 } EbPaReferenceObjectDescInitData;
 
 #if INL_ME
