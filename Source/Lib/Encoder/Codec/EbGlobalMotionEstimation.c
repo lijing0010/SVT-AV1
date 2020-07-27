@@ -144,13 +144,9 @@ void global_motion_estimation_inl(PictureParentControlSet *pcs_ptr, MeContext *c
         (EbDownScaledObject*)pcs_ptr->down_scaled_picture_wrapper_ptr->object_ptr;
     EbPictureBufferDesc *quarter_picture_ptr = ds_object->quarter_picture_ptr;
     EbPictureBufferDesc *sixteenth_picture_ptr = ds_object->sixteenth_picture_ptr;
+    PictureControlSet *child_pcs_ptr = pcs_ptr->child_pcs;
 
-    EbReferenceObject *ref_object =
-        (EbReferenceObject*)pcs_ptr->reference_picture_wrapper_ptr->object_ptr;
-    EbPictureBufferDesc *quarter_ref_pic_ptr = ref_object->quarter_reference_picture;
-    EbPictureBufferDesc *sixteenth_ref_pic_ptr = ref_object->sixteenth_reference_picture;
-    EbPictureBufferDesc *ref_picture_ptr = ref_object->reference_picture;
-
+    EbPictureBufferDesc *ref_picture_ptr = NULL;
 
     uint32_t num_of_list_to_search =
         (pcs_ptr->slice_type == P_SLICE) ? (uint32_t)REF_LIST_0 : (uint32_t)REF_LIST_1;
@@ -185,11 +181,20 @@ void global_motion_estimation_inl(PictureParentControlSet *pcs_ptr, MeContext *c
         // Ref Picture Loop
         for (uint32_t ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search;
              ++ref_pic_index) {
+            EbReferenceObject *reference_object;
+
+            if (context_ptr->me_alt_ref == EB_TRUE)
+                reference_object = (EbReferenceObject *)context_ptr->alt_ref_reference_ptr_inl;
+            else
+                reference_object =
+                    (EbReferenceObject *)child_pcs_ptr->ref_pic_ptr_array[list_index][ref_pic_index]
+                        ->object_ptr;
+
             // Set the source and the reference picture to be used by the global motion search
             // based on the input search mode
 #if GM_DOWN_16
             if (pcs_ptr->gm_level == GM_DOWN16) {
-                ref_picture_ptr = sixteenth_ref_pic_ptr;
+                ref_picture_ptr = reference_object->sixteenth_reference_picture;
                 input_picture_ptr = sixteenth_picture_ptr;
 
             }
@@ -197,10 +202,10 @@ void global_motion_estimation_inl(PictureParentControlSet *pcs_ptr, MeContext *c
 #else
             if (pcs_ptr->gm_level == GM_DOWN) {
 #endif
-                ref_picture_ptr   = quarter_ref_pic_ptr;
+                ref_picture_ptr   = reference_object->quarter_reference_picture;
                 input_picture_ptr = quarter_picture_ptr;
             } else {
-                //ref_picture_ptr = (EbPictureBufferDesc *)reference_object->input_padded_picture_ptr;
+                ref_picture_ptr = (EbPictureBufferDesc *)reference_object->reference_picture;
             }
 
             compute_global_motion(input_picture_ptr,
