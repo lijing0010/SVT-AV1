@@ -6027,10 +6027,25 @@ int32_t search_this_pic(PictureParentControlSet**buf, uint32_t buf_size, uint64_
   Tells if an Intra picture should be delayed to get next mini-gop
 */
 EbBool is_delayed_intra(PictureParentControlSet *pcs) {
+
+#if FIX_ALL_I    
+    if (pcs->idr_flag || pcs->cra_flag) {    
+        if (pcs->scs_ptr->static_config.intra_period_length == 0 || pcs->end_of_sequence_flag)
+            return 0;
+        else if (pcs->idr_flag || (pcs->cra_flag && pcs->pre_assignment_buffer_count < pcs->pred_struct_ptr->pred_struct_period))
+            return 1;
+        else 
+            return 0;
+    }
+    else
+        return 0;
+
+#else
     return(
         (pcs->end_of_sequence_flag == EB_FALSE && pcs->idr_flag) ||
         (pcs->cra_flag && pcs->pre_assignment_buffer_count < pcs->pred_struct_ptr->pred_struct_period)
         );
+#endif
 }
 
 /*
@@ -6352,19 +6367,25 @@ void store_tpl_pictures(
     PictureDecisionContext  *ctx,
     uint32_t                 mg_size)
 {
+
+#if TPL_GRP_FIX
+    if(is_delayed_intra(pcs))
+    {
+#else
     if (pcs->idr_flag ||
         (pcs->cra_flag && pcs->pre_assignment_buffer_count < pcs->pred_struct_ptr->pred_struct_period)
         ) {
+#endif
         pcs->tpl_group[0] = (void*)pcs;
         memcpy(&pcs->tpl_group[1], ctx->mg_pictures_array, mg_size * sizeof(PictureParentControlSet*));
         pcs->tpl_group_size = 1 + mg_size;
 
-        //for (uint32_t pic_i = 0; pic_i < pcs->tpl_group_size; ++pic_i)
-        //    printf("TPL group Delayed-I  %I64u  \n", ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
-
-        //    printf("=====[%ld]: TPL group Delayed-I  %I64u  \n",
-        //            pcs->picture_number,
-        //            ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
+        for (uint32_t pic_i = 0; pic_i < pcs->tpl_group_size; ++pic_i) {
+            //printf("TPL group Delayed-I  %I64u  \n", ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
+            printf("=[%ld]: TPL group Delayed-I  %ld  \n",
+                    pcs->picture_number,
+                    ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
+        }
     }
     else {
         memcpy(&pcs->tpl_group[0], ctx->mg_pictures_array, mg_size * sizeof(PictureParentControlSet*));
@@ -6375,11 +6396,16 @@ void store_tpl_pictures(
                 pcs->tpl_group[mg_size + pic_i] = pcs->pd_window[2 + pic_i];
                 pcs->tpl_group_size++;
             }
+#if TPL_GRP_FIX
+            else
+                break;
+#endif
         }
 
-        //for (uint32_t pic_i = 0; pic_i < pcs->tpl_group_size; ++pic_i)
-        //    printf("TPL group Base %I64u  \n", ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
-        //    printf("====[%ld]: TPL group Base %I64u  \n",pcs->picture_number, ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
+        for (uint32_t pic_i = 0; pic_i < pcs->tpl_group_size; ++pic_i) {
+            //printf("TPL group Base %I64u  \n", ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
+            printf("=[%ld]: TPL group Base %ld  \n",pcs->picture_number, ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
+        }
     }
 
 #if INL_TPL_ME
@@ -6435,8 +6461,8 @@ void send_picture_out(
     pcs->pa_me_data = (MotionEstimationData *)me_wrapper->object_ptr;
 #endif
 
-    //char stype[] = { 'B','P','I' };
-    //printf("PD-OUT  POC:%ld  %c L%i\n", pcs->picture_number, stype[pcs->slice_type], pcs->temporal_layer_index);
+    char stype[] = { 'B','P','I' };
+    printf("PD-OUT  POC:%ld  %c L%i\n", pcs->picture_number, stype[pcs->slice_type], pcs->temporal_layer_index);
 
     for (uint32_t segment_index = 0; segment_index < pcs->me_segments_total_count; ++segment_index) {
         // Get Empty Results Object
@@ -7152,8 +7178,8 @@ void* picture_decision_kernel(void *input_ptr)
         }
 
 #if  NEW_DELAY
-        //printf("\nPD Queue size:(%i)  ", get_reord_q_size(encode_context_ptr));
-        //print_pd_reord_queue(encode_context_ptr);
+        printf("\nPD Queue size:(%i)  ", get_reord_q_size(encode_context_ptr));
+        print_pd_reord_queue(encode_context_ptr);
 #endif
         // Process the head of the Picture Decision Reordering Queue (Entry N)
         // P.S. The Picture Decision Reordering Queue should be parsed in the display order to be able to construct a pred structure
@@ -7169,6 +7195,10 @@ void* picture_decision_kernel(void *input_ptr)
             previous_entry_index = QUEUE_GET_PREVIOUS_SPOT(encode_context_ptr->picture_decision_reorder_queue_head_index);
 #if NOISE_BASED_TF_FRAMES
 #if  NEW_DELAY
+
+#if TPL_GRP_FIX
+            pcs_ptr = (PictureParentControlSet*)queue_entry_ptr->parent_pcs_wrapper_ptr->object_ptr;
+#endif
             memset(pcs_ptr->pd_window, 0, PD_WINDOW_SIZE * sizeof(PictureParentControlSet*));
 #else
             parent_pcs_window[ 0] = parent_pcs_window[ 1] = parent_pcs_window[ 2] = parent_pcs_window[ 3] = parent_pcs_window[ 4] = parent_pcs_window[ 5] =
@@ -7262,6 +7292,18 @@ void* picture_decision_kernel(void *input_ptr)
 
                 pcs_ptr->target_bit_rate = scs_ptr->static_config.target_bit_rate;
 
+#if 0
+                printf("pd_window pic:%I64u \n ", pcs_ptr->picture_number);
+                for (int i = 0; i < 8; i++)
+                {
+                    if (pcs_ptr->pd_window[i])
+                        printf("%i:  %I64u \n",i, ((PictureParentControlSet *)pcs_ptr->pd_window[i])->picture_number);
+                    else
+                        printf("%i:  N \n", i );
+                }
+                printf(" \n ");
+#endif
+
 #if DECOUPLE_ME_RES
                 pcs_ptr->self_updated_links = 0;
                 pcs_ptr->other_updated_links_cnt = 0;
@@ -7294,6 +7336,17 @@ void* picture_decision_kernel(void *input_ptr)
                         pcs_ptr->idr_flag;
                 }
 
+#if FIX_LAD_DEADLOCK 
+                //TODO: scene change update
+                if (scs_ptr->intra_period_length == 0)
+                    pcs_ptr->is_next_frame_intra = 1;
+                else if (scs_ptr->intra_period_length == -1)
+                    pcs_ptr->is_next_frame_intra = 0; 
+                else
+                    pcs_ptr->is_next_frame_intra = (encode_context_ptr->intra_period_position + 1) == (uint32_t)scs_ptr->intra_period_length;
+#endif
+
+
                 encode_context_ptr->pre_assignment_buffer_eos_flag = (pcs_ptr->end_of_sequence_flag) ? (uint32_t)EB_TRUE : encode_context_ptr->pre_assignment_buffer_eos_flag;
 
                 // Increment the Pre-Assignment Buffer Intra Count
@@ -7313,7 +7366,7 @@ void* picture_decision_kernel(void *input_ptr)
                 }
 
 #if NEW_DELAY
-                //print_pre_ass(encode_context_ptr);
+                print_pre_ass(encode_context_ptr);
 #endif
                 // Determine if Pictures can be released from the Pre-Assignment Buffer
                 if ((encode_context_ptr->pre_assignment_buffer_intra_count > 0) ||
@@ -7324,13 +7377,15 @@ void* picture_decision_kernel(void *input_ptr)
                 {
 
 #if NEW_DELAY
-                    //if (encode_context_ptr->pre_assignment_buffer_intra_count > 0)
-                    //    printf("PRE-ASSIGN INTRA   (%i pictures)  POC:%I64u \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
-                    //if (encode_context_ptr->pre_assignment_buffer_count == (uint32_t)(1 << scs_ptr->static_config.hierarchical_levels))
-                    //    printf("PRE-ASSIGN COMPLETE   (%i pictures)  POC:%I64u \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
-                    //if ((encode_context_ptr->pre_assignment_buffer_eos_flag == EB_TRUE))
-                    //    printf("PRE-ASSIGN EOS   (%i pictures)  POC:%I64u \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
+                    if (encode_context_ptr->pre_assignment_buffer_intra_count > 0)
+                        printf("PRE-ASSIGN INTRA   (%i pictures)  POC:%ld \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
+                    if (encode_context_ptr->pre_assignment_buffer_count == (uint32_t)(1 << scs_ptr->static_config.hierarchical_levels))
+                        printf("PRE-ASSIGN COMPLETE   (%i pictures)  POC:%ld \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
+                    if ((encode_context_ptr->pre_assignment_buffer_eos_flag == EB_TRUE))
+                        printf("PRE-ASSIGN EOS   (%i pictures)  POC:%ld \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
 #endif
+
+
                     // Initialize Picture Block Params
                     context_ptr->mini_gop_start_index[0] = 0;
                     context_ptr->mini_gop_end_index[0] = encode_context_ptr->pre_assignment_buffer_count - 1;
@@ -7407,6 +7462,9 @@ void* picture_decision_kernel(void *input_ptr)
                             frm_hdr = &pcs_ptr->frm_hdr;
                             // Keep track of the mini GOP size to which the input picture belongs - needed @ PictureManagerProcess()
                             pcs_ptr->pre_assignment_buffer_count = context_ptr->mini_gop_length[mini_gop_index];
+
+
+
 
                             // Update the Pred Structure if cutting short a Random Access period
 #if DECOUPLE_ME_RES
@@ -7594,6 +7652,8 @@ void* picture_decision_kernel(void *input_ptr)
 
                                     break;
                                 }
+
+
                                 pcs_ptr->pred_struct_index = (uint8_t)encode_context_ptr->pred_struct_position;
                                 if (pcs_ptr->is_overlay) {
                                     // set the overlay frame as non reference frame with max temporal layer index
@@ -8414,8 +8474,12 @@ void* picture_decision_kernel(void *input_ptr)
                             }
                             else {
 
+#if TPL_GRP_FIX
+                                if ( pcs_ptr->temporal_layer_index == 0 )
+#else
                                 if (pcs_ptr->end_of_sequence_flag == EB_FALSE &&
                                     /*scs_ptr->static_config.enable_tpl_la &&*/ pcs_ptr->temporal_layer_index == 0 /*Add more TPL conditions*/)
+#endif
                                     store_tpl_pictures(pcs_ptr, context_ptr, mg_size);
 
                                 mctf_frame(scs_ptr, pcs_ptr, context_ptr, out_stride_diff64);

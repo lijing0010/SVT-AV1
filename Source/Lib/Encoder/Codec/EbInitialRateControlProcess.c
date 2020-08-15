@@ -2000,6 +2000,29 @@ EbErrorType tpl_mc_flow(
 }
 #endif
 #endif
+
+void print_irc_queue(EncodeContext *            encode_context_ptr)
+{
+    
+    uint32_t h = encode_context_ptr->initial_rate_control_reorder_queue_head_index;
+
+    printf("iRC Queue:   ");
+    while (encode_context_ptr->initial_rate_control_reorder_queue[h]->parent_pcs_wrapper_ptr != EB_NULL)
+    {
+        PictureParentControlSet* curr_pcs = (PictureParentControlSet*)(encode_context_ptr->initial_rate_control_reorder_queue[h]->parent_pcs_wrapper_ptr)->object_ptr;
+
+        printf("%I64u  ", curr_pcs->picture_number);
+
+        h++;
+    }
+    printf("\n");
+
+   
+
+}
+
+
+
 /* Initial Rate Control Kernel */
 
 /*********************************************************************************
@@ -2173,6 +2196,11 @@ void *initial_rate_control_kernel(void *input_ptr) {
             pcs_ptr->historgram_life_count = 0;
             pcs_ptr->scene_change_in_gop   = EB_FALSE;
             move_slide_window_flag = EB_TRUE;
+
+#if 1
+            print_irc_queue(encode_context_ptr);
+#endif
+
             while (move_slide_window_flag) {
                 // Check if the sliding window condition is valid
                 queue_entry_index_temp =
@@ -2200,6 +2228,15 @@ void *initial_rate_control_kernel(void *input_ptr) {
                         (queue_entry_index_temp > INITIAL_RATE_CONTROL_REORDER_QUEUE_MAX_DEPTH - 1)
                             ? queue_entry_index_temp - INITIAL_RATE_CONTROL_REORDER_QUEUE_MAX_DEPTH
                             : queue_entry_index_temp;
+
+#if FIX_LAD_DEADLOCK 
+                    if (encode_context_ptr->initial_rate_control_reorder_queue[queue_entry_index_temp2]->parent_pcs_wrapper_ptr != EB_NULL) {
+                        PictureParentControlSet* pcs = (PictureParentControlSet*)(encode_context_ptr->initial_rate_control_reorder_queue[queue_entry_index_temp]->parent_pcs_wrapper_ptr)->object_ptr;
+                        if (pcs->is_next_frame_intra)
+                            break;
+                    }
+#endif
+
 
                     move_slide_window_flag =
                         (EbBool)(move_slide_window_flag &&
@@ -2250,18 +2287,18 @@ void *initial_rate_control_kernel(void *input_ptr) {
                                     ? queue_entry_index_temp -
                                           INITIAL_RATE_CONTROL_REORDER_QUEUE_MAX_DEPTH
                                     : queue_entry_index_temp;
-                            pcs_ptr_temp = ((PictureParentControlSet
-                                                 *)(encode_context_ptr
-                                                        ->initial_rate_control_reorder_queue
-                                                            [queue_entry_index_temp2]
-                                                        ->parent_pcs_wrapper_ptr)
-                                                ->object_ptr);
+
+#if FIX_LAD_DEADLOCK 
+                            //exit if we hit a non valid entry
+                            if (encode_context_ptr->initial_rate_control_reorder_queue[queue_entry_index_temp2]->parent_pcs_wrapper_ptr == NULL)
+                                break;
+#endif
+
+
+                            pcs_ptr_temp = ((PictureParentControlSet *)(encode_context_ptr->initial_rate_control_reorder_queue[queue_entry_index_temp2]->parent_pcs_wrapper_ptr)->object_ptr);
                             if (scs_ptr->intra_period_length != -1) {
-                                if (pcs_ptr->picture_number %
-                                        ((scs_ptr->intra_period_length + 1)) ==
-                                    0) {
-                                    pcs_ptr
-                                        ->frames_in_interval[pcs_ptr_temp->temporal_layer_index]++;
+                                if (pcs_ptr->picture_number %((scs_ptr->intra_period_length + 1)) == 0) {
+                                    pcs_ptr->frames_in_interval[pcs_ptr_temp->temporal_layer_index]++;
                                     if (pcs_ptr_temp->scene_change_flag)
                                         pcs_ptr->scene_change_in_gop = EB_TRUE;
                                 }
@@ -2355,6 +2392,8 @@ void *initial_rate_control_kernel(void *input_ptr) {
                             tpl_mc_flow(encode_context_ptr, scs_ptr, pcs_ptr);
                         }
 #endif
+
+                        printf("IRC-OUT  POC:%I64u  \n", pcs_ptr->picture_number);
 
                         // Get Empty Results Object
                         eb_get_empty_object(

@@ -963,6 +963,10 @@ typedef struct PictureParentControlSet {
 #if INL_TPL_ME
     uint8_t tpl_me_done;
 #endif
+
+#if FIX_LAD_DEADLOCK
+    uint8_t is_next_frame_intra;
+#endif 
 } PictureParentControlSet;
 
 typedef struct PictureControlSetInitData {

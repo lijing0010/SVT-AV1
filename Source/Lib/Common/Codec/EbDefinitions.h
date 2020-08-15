@@ -621,7 +621,12 @@ extern "C" {
 #define REF_PRUNE_CAT_TUNE 1 // Tune the allowable references per category to improve trade-offs
 
 #define FIX_MV_BOUND       1 //Clip inherited ME MVs to stay within pic boundaries
-#define NEW_DELAY          1 //Change delay some sorts of I in PicDecision
+#define NEW_DELAY          1//Change delay some sorts of I in PicDecision
+#if NEW_DELAY
+#define TPL_GRP_FIX           1 //fix generation of tpl group
+#define FIX_LAD_DEADLOCK      1 //fix deadlock when lad>0 + iperiod>0
+#define FIX_ALL_I             1 //fix all intra case
+#endif
 
 #define PR_1349 1 //Port fixes for SIMD kernels from AOM
 #define PR_1359 1 //Valgrind fix
@@ -663,7 +668,13 @@ extern "C" {
 
 #if NEW_DELAY
 #define SCD_LAD            6  //number of future frames
+
+#if TPL_GRP_FIX
+#define PD_WINDOW_SIZE     (SCD_LAD +2) //adding previous+current to future
+#else
 #define PD_WINDOW_SIZE     SCD_LAD +2 //adding previous+current to future
+#endif
+
 #define MAX_TPL_GROUP_SIZE 64 //enough to cover 6L gop
 #endif
 
