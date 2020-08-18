@@ -9964,6 +9964,10 @@ void integer_search_sb(
         (pcs_ptr->slice_type == P_SLICE) ? (uint32_t)REF_LIST_0 : (uint32_t)REF_LIST_1;
 
     if (context_ptr->me_alt_ref == EB_TRUE) num_of_list_to_search = 0;
+#if INL_TPL_ME
+    if (context_ptr->me_inl_tpl)
+        num_of_list_to_search = context_ptr->tpl_ref_list1_count ? 1 : 0;
+#endif
 
     // Uni-Prediction motion estimation loop
     // List Loop
@@ -9974,10 +9978,23 @@ void integer_search_sb(
 
 #if MRP_CTRL
 #if ON_OFF_FEATURE_MRP
+#if INL_TPL_ME
+            if (context_ptr->me_inl_tpl) {
+                num_of_ref_pic_to_search = list_index == REF_LIST_0 ?
+                    context_ptr->tpl_ref_list0_count:
+                    context_ptr->tpl_ref_list1_count;
+            } else {
+                num_of_ref_pic_to_search = (pcs_ptr->slice_type == P_SLICE)
+                    ? pcs_ptr->mrp_ctrls.ref_list0_count_try
+                    : (list_index == REF_LIST_0) ? pcs_ptr->mrp_ctrls.ref_list0_count_try
+                    : pcs_ptr->mrp_ctrls.ref_list1_count_try;
+            }
+#else
             num_of_ref_pic_to_search = (pcs_ptr->slice_type == P_SLICE)
                 ? pcs_ptr->mrp_ctrls.ref_list0_count_try
                 : (list_index == REF_LIST_0) ? pcs_ptr->mrp_ctrls.ref_list0_count_try
                 : pcs_ptr->mrp_ctrls.ref_list1_count_try;
+#endif
 #else
             num_of_ref_pic_to_search = (pcs_ptr->slice_type == P_SLICE)
                 ? pcs_ptr->ref_list0_count_try
@@ -9990,17 +10007,6 @@ void integer_search_sb(
                                            ? pcs_ptr->ref_list0_count
                                            : (list_index == REF_LIST_0) ? pcs_ptr->ref_list0_count
                                                                         : pcs_ptr->ref_list1_count;
-#endif
-#if INL_ME
-            if (context_ptr->me_in_loop)
-                inl_reference_object =
-                    child_pcs_ptr->ref_pic_ptr_array[0][0]->object_ptr;
-            else
-                reference_object =
-                    (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
-#else
-            reference_object =
-                (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
 #endif
         }
 
@@ -10020,7 +10026,9 @@ void integer_search_sb(
 #endif
             } else {
 #if INL_ME
-                if (context_ptr->me_in_loop) {
+                if (context_ptr->me_inl_tpl) {
+                    ref_pic_ptr = pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->picture_ptr;
+                } else if (context_ptr->me_in_loop) {
                     inl_reference_object =
                         child_pcs_ptr->ref_pic_ptr_array[list_index][ref_pic_index]->object_ptr;
                     ref_pic_ptr = inl_reference_object->reference_picture;
@@ -10029,16 +10037,9 @@ void integer_search_sb(
 #endif
                 } else {
                     reference_object =
-                        (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index]
+                        (EbPaReferenceObject *)pcs_ptr
+                        ->ref_pa_pic_ptr_array[list_index][ref_pic_index]
                         ->object_ptr;
-#if INL_TPL_ME
-                    if (context_ptr->me_inl_tpl &&
-                            context_ptr->tpl_ref_can_skip &&
-                            (reference_object->picture_number > context_ptr->tpl_base_poc + 3 ||
-                            reference_object->decode_order < context_ptr->tpl_base_decode_order)) {
-                        continue;
-                    }
-#endif
                     ref_pic_ptr = (EbPictureBufferDesc *)reference_object->input_padded_picture_ptr;
                 }
 #else
@@ -10698,6 +10699,10 @@ void hme_level0_sb(
 
     if (context_ptr->me_alt_ref == EB_TRUE)
         num_of_list_to_search = 0;
+#if INL_TPL_ME
+    if (context_ptr->me_inl_tpl)
+        num_of_list_to_search = context_ptr->tpl_ref_list1_count ? 1 : 0;
+#endif
 
     // Uni-Prediction motion estimation loop
     // List Loop
@@ -10706,25 +10711,17 @@ void hme_level0_sb(
         if (context_ptr->me_alt_ref == EB_TRUE) {
             num_of_ref_pic_to_search = 1;
         }
-        else {
+        else if (context_ptr->me_inl_tpl == EB_TRUE) {
+            num_of_ref_pic_to_search = list_index == REF_LIST_0 ?
+                context_ptr->tpl_ref_list0_count:
+                context_ptr->tpl_ref_list1_count;
+        } else {
             num_of_ref_pic_to_search =
                 (pcs_ptr->slice_type == P_SLICE)
                 ? pcs_ptr->ref_list0_count
                 : (list_index == REF_LIST_0)
                 ? pcs_ptr->ref_list0_count
                 : pcs_ptr->ref_list1_count;
-#if INL_ME
-            if (context_ptr->me_in_loop)
-                inl_reference_object = child_pcs_ptr->ref_pic_ptr_array[0][0]->object_ptr;
-            else
-                referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
-#else
-            referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
-#endif
-
-#if !FIX_WARNINGS
-            ref0Poc = pcs_ptr->ref_pic_poc_array[0][0];
-#endif
         }
 
         // Ref Picture Loop
@@ -10748,39 +10745,33 @@ void hme_level0_sb(
             }
             else {
 #if INL_ME
-            if (context_ptr->me_in_loop) {
-                inl_reference_object =
-                    (EbReferenceObject *)child_pcs_ptr
-                    ->ref_pic_ptr_array[list_index][ref_pic_index]
-                    ->object_ptr;
-                sixteenthRefPicPtr = inl_reference_object->sixteenth_reference_picture;
-#if INL_ME_ON_INPUT_DBG
-                sixteenthRefPicPtr = inl_reference_object->sixteenth_input_picture;
-#endif
-            } else {
-                referenceObject =
-                    (EbPaReferenceObject *)pcs_ptr
-                    ->ref_pa_pic_ptr_array[list_index][ref_pic_index]
-                    ->object_ptr;
-#if INL_TPL_ME
-                if (context_ptr->me_inl_tpl &&
-                        context_ptr->tpl_ref_can_skip &&
-                        (referenceObject->picture_number > context_ptr->tpl_base_poc + 3 ||
-                         referenceObject->decode_order < context_ptr->tpl_base_decode_order)) {
-                    continue;
+                if (context_ptr->me_inl_tpl == EB_TRUE) {
+                    sixteenthRefPicPtr = pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->sixteenth_picture_ptr;
 #if INL_TPL_ME_DBG
-                } else {
                     if (scs_ptr->in_loop_me && sb_origin_x == 0 && sb_origin_y == 0)
                         printf("\t Running ME %ld => %ld\n",
                                 pcs_ptr->picture_number,
-                                referenceObject->picture_number);
+                                pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->picture_number);
 #endif
+                } else if (context_ptr->me_in_loop) {
+                    inl_reference_object =
+                        (EbReferenceObject *)child_pcs_ptr
+                        ->ref_pic_ptr_array[list_index][ref_pic_index]
+                        ->object_ptr;
+                    sixteenthRefPicPtr = inl_reference_object->sixteenth_reference_picture;
+#if INL_ME_ON_INPUT_DBG
+                    sixteenthRefPicPtr = inl_reference_object->sixteenth_input_picture;
+#endif
+                } else {
+                    // open loop
+                    referenceObject =
+                        (EbPaReferenceObject *)pcs_ptr
+                        ->ref_pa_pic_ptr_array[list_index][ref_pic_index]
+                        ->object_ptr;
+                    sixteenthRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
+                        (EbPictureBufferDesc*)referenceObject->sixteenth_filtered_picture_ptr :
+                        (EbPictureBufferDesc*)referenceObject->sixteenth_decimated_picture_ptr;
                 }
-#endif
-                sixteenthRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
-                    (EbPictureBufferDesc*)referenceObject->sixteenth_filtered_picture_ptr :
-                    (EbPictureBufferDesc*)referenceObject->sixteenth_decimated_picture_ptr;
-            }
 #else
                 referenceObject =
                     (EbPaReferenceObject *)pcs_ptr
@@ -10980,33 +10971,31 @@ void hme_level1_sb(
         ? (uint32_t)REF_LIST_0
         : (uint32_t)REF_LIST_1;
 
+
     if (context_ptr->me_alt_ref == EB_TRUE)
         num_of_list_to_search = 0;
+#if INL_TPL_ME
+    if (context_ptr->me_inl_tpl)
+        num_of_list_to_search = context_ptr->tpl_ref_list1_count ? 1 : 0;
+#endif
+
     // Uni-Prediction motion estimation loop
     // List Loop
     for (list_index = REF_LIST_0; list_index <= num_of_list_to_search; ++list_index) {
         if (context_ptr->me_alt_ref == EB_TRUE) {
             num_of_ref_pic_to_search = 1;
         }
-        else {
+        else if (context_ptr->me_inl_tpl == EB_TRUE) {
+            num_of_ref_pic_to_search = list_index == REF_LIST_0 ?
+                context_ptr->tpl_ref_list0_count:
+                context_ptr->tpl_ref_list1_count;
+        } else {
             num_of_ref_pic_to_search =
                 (pcs_ptr->slice_type == P_SLICE)
                 ? pcs_ptr->ref_list0_count
                 : (list_index == REF_LIST_0)
                 ? pcs_ptr->ref_list0_count
                 : pcs_ptr->ref_list1_count;
-#if INL_ME
-            if (context_ptr->me_in_loop)
-                inl_reference_object = child_pcs_ptr->ref_pic_ptr_array[0][0]->object_ptr;
-            else
-                referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
-#else
-            referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
-#endif
-
-#if !FIX_WARNINGS
-            ref0Poc = pcs_ptr->ref_pic_poc_array[0][0];
-#endif
         }
         // Ref Picture Loop
         for (ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search;++ref_pic_index){
@@ -11027,32 +11016,26 @@ void hme_level1_sb(
             }
             else {
 #if INL_ME
-            if (context_ptr->me_in_loop) {
-                inl_reference_object =
-                    (EbReferenceObject *)child_pcs_ptr
-                    ->ref_pic_ptr_array[list_index][ref_pic_index]
-                    ->object_ptr;
-                quarterRefPicPtr = inl_reference_object->quarter_reference_picture;
+                if (context_ptr->me_inl_tpl == EB_TRUE) {
+                    quarterRefPicPtr = pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->quarter_picture_ptr;
+                } else if (context_ptr->me_in_loop) {
+                    inl_reference_object =
+                        (EbReferenceObject *)child_pcs_ptr
+                        ->ref_pic_ptr_array[list_index][ref_pic_index]
+                        ->object_ptr;
+                    quarterRefPicPtr = inl_reference_object->quarter_reference_picture;
 #if INL_ME_ON_INPUT_DBG
-                quarterRefPicPtr = inl_reference_object->quarter_input_picture;
+                    quarterRefPicPtr = inl_reference_object->quarter_input_picture;
 #endif
-            } else {
-                referenceObject =
-                    (EbPaReferenceObject *)pcs_ptr
-                    ->ref_pa_pic_ptr_array[list_index][ref_pic_index]
-                    ->object_ptr;
-#if INL_TPL_ME
-                if (context_ptr->me_inl_tpl &&
-                        context_ptr->tpl_ref_can_skip &&
-                        (referenceObject->picture_number > context_ptr->tpl_base_poc + 3 ||
-                         referenceObject->decode_order < context_ptr->tpl_base_decode_order)) {
-                    continue;
+                } else {
+                    referenceObject =
+                        (EbPaReferenceObject *)pcs_ptr
+                        ->ref_pa_pic_ptr_array[list_index][ref_pic_index]
+                        ->object_ptr;
+                    quarterRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
+                        (EbPictureBufferDesc*)referenceObject->quarter_filtered_picture_ptr :
+                        (EbPictureBufferDesc*)referenceObject->quarter_decimated_picture_ptr;
                 }
-#endif
-                quarterRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
-                    (EbPictureBufferDesc*)referenceObject->quarter_filtered_picture_ptr :
-                    (EbPictureBufferDesc*)referenceObject->quarter_decimated_picture_ptr;
-            }
 #else
                 referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index]->object_ptr;
 #endif
@@ -11228,12 +11211,23 @@ void hme_level2_sb(
         : (uint32_t)REF_LIST_1;
     if (context_ptr->me_alt_ref == EB_TRUE)
         num_of_list_to_search = 0;
+#if INL_TPL_ME
+    if (context_ptr->me_inl_tpl)
+        num_of_list_to_search = context_ptr->tpl_ref_list1_count ? 1 : 0;
+#endif
+
     // Uni-Prediction motion estimation loop
     // List Loop
     for (list_index = REF_LIST_0; list_index <= num_of_list_to_search; ++list_index) {
         if (context_ptr->me_alt_ref == EB_TRUE) {
             num_of_ref_pic_to_search = 1;
         }
+#if INL_TPL_ME
+        else if (context_ptr->me_inl_tpl == EB_TRUE) {
+            num_of_ref_pic_to_search = list_index == REF_LIST_0 ?
+                context_ptr->tpl_ref_list0_count:
+                context_ptr->tpl_ref_list1_count; }
+#endif
         else {
             num_of_ref_pic_to_search =
                 (pcs_ptr->slice_type == P_SLICE)
@@ -11242,17 +11236,6 @@ void hme_level2_sb(
                 ? pcs_ptr->ref_list0_count
                 : pcs_ptr->ref_list1_count;
 
-#if INL_ME
-            if (context_ptr->me_in_loop)
-                inl_reference_object = child_pcs_ptr->ref_pic_ptr_array[0][0]->object_ptr;
-            else
-                referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
-#else
-            referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[0][0]->object_ptr;
-#endif
-#if !FIX_WARNINGS
-            ref0Poc = pcs_ptr->ref_pic_poc_array[0][0];
-#endif
         }
         // Ref Picture Loop
         for (ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search; ++ref_pic_index){
@@ -11271,7 +11254,9 @@ void hme_level2_sb(
             }
             else {
 #if INL_ME
-                if (context_ptr->me_in_loop) {
+                if (context_ptr->me_inl_tpl) {
+                    refPicPtr = pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->picture_ptr;
+                } else if (context_ptr->me_in_loop) {
                     inl_reference_object =
                         (EbReferenceObject *)child_pcs_ptr
                         ->ref_pic_ptr_array[list_index][ref_pic_index]
@@ -11285,14 +11270,6 @@ void hme_level2_sb(
                         (EbPaReferenceObject *)pcs_ptr
                         ->ref_pa_pic_ptr_array[list_index][ref_pic_index]
                         ->object_ptr;
-#if INL_TPL_ME
-                    if (context_ptr->me_inl_tpl &&
-                            context_ptr->tpl_ref_can_skip &&
-                            (referenceObject->picture_number > context_ptr->tpl_base_poc + 3 ||
-                             referenceObject->decode_order < context_ptr->tpl_base_decode_order)) {
-                        continue;
-                    }
-#endif
                     refPicPtr = (EbPictureBufferDesc*)referenceObject->input_padded_picture_ptr;
                 }
 #else
@@ -13292,7 +13269,11 @@ EbErrorType motion_estimate_sb(
         }
     }
 #endif
+#if INL_TPL_ME
+    if (context_ptr->me_alt_ref == EB_FALSE && context_ptr->me_inl_tpl == EB_FALSE) {
+#else
     if (context_ptr->me_alt_ref == EB_FALSE) {
+#endif
         // Bi-Prediction motion estimation loop
         for (pu_index = 0; pu_index < max_number_of_pus_per_sb; ++pu_index) {
 #if !REMOVE_ME_BIPRED_SEARCH

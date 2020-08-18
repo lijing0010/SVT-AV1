@@ -660,6 +660,7 @@ extern "C" {
 #define INL_GM_ON_INPUT_DBG 1 //GM on original debug
 #endif
 #define INL_TPL_ME          1 // TPL ME
+#define NEW_INL_TPL_ME      0 // TPL ME
 #if INL_TPL_ME
 #define INL_TPL_ME_DBG      1 // TPL ME debug info
 #endif

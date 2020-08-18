@@ -12270,8 +12270,17 @@ void *enc_dec_kernel(void *input_ptr) {
             pcs_ptr->parent_pcs_ptr->av1x->rdmult = context_ptr->full_lambda;
 #endif
 #if DECOUPLE_ME_RES
+#if INL_TPL_ME
+            if (pcs_ptr->slice_type != I_SLICE) {
+                //printf("[%ld]: Release ME object, ptr %p\n", pcs_ptr->picture_number,
+                //        pcs_ptr->parent_pcs_ptr->me_data_wrapper_ptr);
+                eb_release_object(pcs_ptr->parent_pcs_ptr->me_data_wrapper_ptr);
+                pcs_ptr->parent_pcs_ptr->me_data_wrapper_ptr = (EbObjectWrapper *)EB_NULL;
+            }
+#else
             eb_release_object(pcs_ptr->parent_pcs_ptr->me_data_wrapper_ptr);
             pcs_ptr->parent_pcs_ptr->me_data_wrapper_ptr = (EbObjectWrapper *)EB_NULL;
+#endif
 #endif
         }
 

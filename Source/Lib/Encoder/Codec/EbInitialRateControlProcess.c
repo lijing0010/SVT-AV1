@@ -2011,7 +2011,7 @@ void print_irc_queue(EncodeContext *            encode_context_ptr)
     {
         PictureParentControlSet* curr_pcs = (PictureParentControlSet*)(encode_context_ptr->initial_rate_control_reorder_queue[h]->parent_pcs_wrapper_ptr)->object_ptr;
 
-        printf("%I64u  ", curr_pcs->picture_number);
+        printf("%ld  ", curr_pcs->picture_number);
 
         h++;
     }
@@ -2393,7 +2393,7 @@ void *initial_rate_control_kernel(void *input_ptr) {
                         }
 #endif
 
-                        printf("IRC-OUT  POC:%I64u  \n", pcs_ptr->picture_number);
+                        printf("IRC-OUT  POC:%ld  \n", pcs_ptr->picture_number);
 
                         // Get Empty Results Object
                         eb_get_empty_object(

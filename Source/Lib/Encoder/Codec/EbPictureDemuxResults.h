@@ -53,7 +53,8 @@ typedef struct PictureManagerResults {
 #if INL_TPL_ME
     uint64_t         tpl_base_picture_number;
     uint64_t         tpl_base_decode_order;
-    EbBool           tpl_ref_skip;
+    uint8_t          tpl_ref_list0_count;
+    uint8_t          tpl_ref_list1_count;
 #endif
 } PictureManagerResults;
 

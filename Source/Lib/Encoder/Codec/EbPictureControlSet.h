@@ -59,6 +59,25 @@ typedef struct DepCntPicInfo {
     int32_t      dep_cnt_diff; //increase(e.g 4L->5L) or decrease of dep cnt . not including the run-time decrease
 } DepCntPicInfo;
 #endif
+
+#if INL_ME
+typedef struct EbDownScaledObject {
+    EbDctor              dctor;
+    EbPictureBufferDesc *picture_ptr; // original picture, just a pointer, don't allocate resource here
+    EbPictureBufferDesc *quarter_picture_ptr;
+    EbPictureBufferDesc *sixteenth_picture_ptr;
+    uint64_t            picture_number;
+} EbDownScaledObject;
+
+typedef struct EbDownScaledObjectDescInitData {
+    EbPictureBufferDescInitData quarter_picture_desc_init_data;
+    EbPictureBufferDescInitData sixteenth_picture_desc_init_data;
+
+    // whether enable 1/4,1/16 8bit luma for in_loop global motion
+    uint8_t enable_quarter_luma_input;
+    uint8_t enable_sixteenth_luma_input;
+} EbDownScaledObjectDescInitData;
+#endif
 typedef struct MacroblockPlane {
     // Quantizer setings
     // These are used/accessed only in the quantization process
@@ -610,6 +629,10 @@ typedef struct PictureParentControlSet {
 
     // Pre Analysis
     EbObjectWrapper *ref_pa_pic_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
+#if INL_TPL_ME
+    EbDownScaledObject *downscaled_input_pic;
+    EbDownScaledObject *tpl_ref_ds_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
+#endif
     uint64_t         ref_pic_poc_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     uint16_t **      variance;
     uint8_t **       y_mean;
@@ -956,7 +979,7 @@ typedef struct PictureParentControlSet {
     MotionEstimationData *pa_me_data;
 #endif
 #if NEW_DELAY
-    void* tpl_group[MAX_TPL_GROUP_SIZE]; //stores pcs pictures needed for tpl algorithm
+    struct PictureParentControlSet* tpl_group[MAX_TPL_GROUP_SIZE]; //stores pcs pictures needed for tpl algorithm
     uint32_t tpl_group_size;             //size of above buffer
     void* pd_window[PD_WINDOW_SIZE]; //stores previous, current, future pictures from pd-reord-queue. empty for first I.
 #endif

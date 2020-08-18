@@ -118,25 +118,6 @@ typedef struct EbPaReferenceObjectDescInitData {
 #endif
 } EbPaReferenceObjectDescInitData;
 
-#if INL_ME
-typedef struct EbDownScaledObject {
-    EbDctor              dctor;
-    EbPictureBufferDesc *picture_ptr; // original picture, just a pointer, don't allocate resource here
-    EbPictureBufferDesc *quarter_picture_ptr;
-    EbPictureBufferDesc *sixteenth_picture_ptr;
-} EbDownScaledObject;
-
-typedef struct EbDownScaledObjectDescInitData {
-    EbPictureBufferDescInitData quarter_picture_desc_init_data;
-    EbPictureBufferDescInitData sixteenth_picture_desc_init_data;
-
-#if INL_ME
-    // whether enable 1/4,1/16 8bit luma for in_loop global motion
-    uint8_t enable_quarter_luma_input;
-    uint8_t enable_sixteenth_luma_input;
-#endif
-} EbDownScaledObjectDescInitData;
-#endif
 
 
 /**************************************

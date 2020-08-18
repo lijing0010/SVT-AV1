@@ -231,10 +231,81 @@ void copy_dep_cnt_cleaning_list(
 }
 #endif
 #if INL_TPL_ME
+static uint8_t tpl_setup_me_refs(
+    SequenceControlSet              *scs_ptr,
+    PictureParentControlSet         *pcs_tpl_group_frame_ptr,
+    PictureParentControlSet         *pcs_tpl_base_ptr,
+    uint8_t                         *ref0_count, //out
+    uint8_t                         *ref1_count) {
+    *ref0_count = 0;
+    *ref1_count = 0;
+    PredictionStructure* base_pred_struct_ptr = get_prediction_structure(
+            scs_ptr->encode_context_ptr->prediction_structure_group_ptr,
+            pcs_tpl_base_ptr->pred_structure,
+            scs_ptr->reference_count,
+            pcs_tpl_base_ptr->hierarchical_levels);
+    int init_idx = base_pred_struct_ptr->init_pic_index;
+    int pred_struct_idx = init_idx +
+        pcs_tpl_group_frame_ptr->picture_number % base_pred_struct_ptr->pred_struct_period;
+    pred_struct_idx += pcs_tpl_group_frame_ptr->picture_number / base_pred_struct_ptr->pred_struct_period ?
+        base_pred_struct_ptr->pred_struct_period: 0;
+    pred_struct_idx = pred_struct_idx % base_pred_struct_ptr->pred_struct_entry_count;
+
+
+    EB_MEMSET(pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_0],
+            0,
+            REF_LIST_MAX_DEPTH * sizeof(EbObjectWrapper*));
+    EB_MEMSET(pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_1],
+            0,
+            REF_LIST_MAX_DEPTH * sizeof(EbObjectWrapper*));
+    // Set tpl refs on L0
+    int ref_list_count = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list0.reference_list_count;
+    int list_index = REF_LIST_0;
+    for (int i = 0; i < ref_list_count; i++) {
+        int delta_poc = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list0.reference_list[i];
+        int ref_poc = pcs_tpl_group_frame_ptr->picture_number - delta_poc;
+        assert(ref_poc >= 0);
+        for (uint32_t j = 0; j < pcs_tpl_base_ptr->tpl_group_size; j++) {
+            if (ref_poc == (int)pcs_tpl_base_ptr->tpl_group[j]->picture_number) {
+                // Some refs in L0 are out of order (1, 9, 8, 17), which will make (valid, NULL, valid, NULL)
+                // So needs reorder to (valid, valid, NULL, NULL)
+                pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref0_count] = pcs_tpl_base_ptr->tpl_group[j]->downscaled_input_pic;
+                *ref0_count += 1;
+                printf("\t Set ref on L0(%d): %ld => %ld\n",
+                        ref_list_count,
+                        pcs_tpl_group_frame_ptr->picture_number,
+                        pcs_tpl_base_ptr->tpl_group[j]->picture_number);
+                break;
+            }
+        }
+    }
+
+    // Set tpl refs on L1
+    ref_list_count = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list1.reference_list_count;
+    list_index = REF_LIST_1;
+    for (int i = 0; i < ref_list_count; i++) {
+        int delta_poc = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list1.reference_list[i];
+        int ref_poc = pcs_tpl_group_frame_ptr->picture_number - delta_poc;
+        for (uint32_t j = 0; j < pcs_tpl_base_ptr->tpl_group_size; j++) {
+            if (ref_poc == (int)pcs_tpl_base_ptr->tpl_group[j]->picture_number) {
+                pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref1_count] = pcs_tpl_base_ptr->tpl_group[j]->downscaled_input_pic;
+                *ref1_count += 1;
+                printf("\t Set ref on L1(%d): %ld => %ld\n",
+                        ref_list_count,
+                        pcs_tpl_group_frame_ptr->picture_number,
+                        pcs_tpl_base_ptr->tpl_group[j]->picture_number);
+                break;
+            }
+        }
+    }
+    return 0;
+}
+
 static EbErrorType tpl_get_open_loop_me(
     PictureManagerContext           *context_ptr,
     SequenceControlSet              *scs_ptr,
     PictureParentControlSet         *pcs_tpl_base_ptr) {
+    //printf("[%ld]: PM got input\n", pcs_tpl_base_ptr->picture_number);
     if (scs_ptr->in_loop_me &&
             scs_ptr->static_config.enable_tpl_la &&
             pcs_tpl_base_ptr->temporal_layer_index == 0) {
@@ -243,11 +314,17 @@ static EbErrorType tpl_get_open_loop_me(
         for (int i = pcs_tpl_base_ptr->tpl_group_size - 1; i >= 0; i--) {
             PictureParentControlSet* pcs_tpl_group_frame_ptr = pcs_tpl_base_ptr->tpl_group[i];
             if (!pcs_tpl_group_frame_ptr->tpl_me_done) {
+                uint8_t ref_list0_count = 0;
+                uint8_t ref_list1_count = 0;
 #if INL_TPL_ME_DBG
                 printf("[%ld]: Sending TPL ME request for frame %ld\n",
                         pcs_tpl_base_ptr->picture_number,
                         pcs_tpl_group_frame_ptr->picture_number);
 #endif
+
+                tpl_setup_me_refs(scs_ptr,
+                        pcs_tpl_group_frame_ptr, pcs_tpl_base_ptr,
+                        &ref_list0_count, &ref_list1_count);
 
                 if (pcs_tpl_group_frame_ptr->do_mctf) {
                     // Wait for MCTF
@@ -278,7 +355,8 @@ static EbErrorType tpl_get_open_loop_me(
                         out_results_ptr->task_type = 2;
                         out_results_ptr->tpl_base_picture_number = pcs_tpl_base_ptr->picture_number;
                         out_results_ptr->tpl_base_decode_order = pcs_tpl_base_ptr->decode_order;
-                        out_results_ptr->tpl_ref_skip = !pcs_tpl_base_ptr->idr_flag;
+                        out_results_ptr->tpl_ref_list0_count = ref_list0_count;
+                        out_results_ptr->tpl_ref_list1_count = ref_list1_count;
                         eb_post_full_object(out_results_wrapper_ptr);
                     }
 
@@ -286,8 +364,10 @@ static EbErrorType tpl_get_open_loop_me(
 
                     // When TPL16, flag tpl_me_done of 17/18/19 will be set done during TPL32
                     if (pcs_tpl_base_ptr->idr_flag ||
-                            pcs_tpl_group_frame_ptr->picture_number > pcs_tpl_base_ptr->picture_number)
+                            pcs_tpl_group_frame_ptr->picture_number < pcs_tpl_base_ptr->picture_number) {
                         pcs_tpl_group_frame_ptr->tpl_me_done = 1;
+                        printf("%ld TPL ME done\n", pcs_tpl_group_frame_ptr->picture_number);
+                    }
                 }
             }
         }

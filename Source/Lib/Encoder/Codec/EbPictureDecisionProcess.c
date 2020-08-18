@@ -6380,12 +6380,13 @@ void store_tpl_pictures(
         memcpy(&pcs->tpl_group[1], ctx->mg_pictures_array, mg_size * sizeof(PictureParentControlSet*));
         pcs->tpl_group_size = 1 + mg_size;
 
+#if INL_TPL_ME_DBG
         for (uint32_t pic_i = 0; pic_i < pcs->tpl_group_size; ++pic_i) {
-            //printf("TPL group Delayed-I  %I64u  \n", ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
             printf("=[%ld]: TPL group Delayed-I  %ld  \n",
                     pcs->picture_number,
                     ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
         }
+#endif
     }
     else {
         memcpy(&pcs->tpl_group[0], ctx->mg_pictures_array, mg_size * sizeof(PictureParentControlSet*));
@@ -6402,17 +6403,18 @@ void store_tpl_pictures(
 #endif
         }
 
+#if INL_TPL_ME_DBG
         for (uint32_t pic_i = 0; pic_i < pcs->tpl_group_size; ++pic_i) {
-            //printf("TPL group Base %I64u  \n", ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
             printf("=[%ld]: TPL group Base %ld  \n",pcs->picture_number, ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
         }
+#endif
     }
 
 #if INL_TPL_ME
     for (uint32_t pic_i = 0; pic_i < pcs->tpl_group_size; ++pic_i) {
 
         PictureParentControlSet* pcs_tpl_ptr = (PictureParentControlSet *)pcs->tpl_group[pic_i];
-        if (!pcs_tpl_ptr->me_data_wrapper_ptr) {
+        if (!pcs_tpl_ptr->me_data_wrapper_ptr && pcs_tpl_ptr->slice_type != I_SLICE) {
             EbObjectWrapper               *me_wrapper;
             eb_get_empty_object(ctx->me_fifo_ptr, &me_wrapper);
             pcs_tpl_ptr->me_data_wrapper_ptr = me_wrapper;
@@ -6448,11 +6450,11 @@ void send_picture_out(
     }
     //get a new ME data buffer
 #if INL_TPL_ME
-    if (!pcs->me_data_wrapper_ptr) {
+    if (!pcs->me_data_wrapper_ptr && pcs->slice_type != I_SLICE) {
         eb_get_empty_object(ctx->me_fifo_ptr, &me_wrapper);
         pcs->me_data_wrapper_ptr = me_wrapper;
         pcs->pa_me_data = (MotionEstimationData *)me_wrapper->object_ptr;
-        //printf("[%ld]: Got me data %p\n", pcs->picture_number, pcs->pa_me_data);
+        //printf("---[%ld]: Got me data %p\n", pcs->picture_number, pcs->pa_me_data);
     }
 #else
     eb_get_empty_object(ctx->me_fifo_ptr, &me_wrapper);
@@ -6462,7 +6464,9 @@ void send_picture_out(
 #endif
 
     char stype[] = { 'B','P','I' };
+#if INL_TPL_ME_DBG
     printf("PD-OUT  POC:%ld  %c L%i\n", pcs->picture_number, stype[pcs->slice_type], pcs->temporal_layer_index);
+#endif
 
     for (uint32_t segment_index = 0; segment_index < pcs->me_segments_total_count; ++segment_index) {
         // Get Empty Results Object
@@ -7177,7 +7181,7 @@ void* picture_decision_kernel(void *input_ptr)
             pcs_ptr->pic_decision_reorder_queue_idx = queue_entry_index;
         }
 
-#if  NEW_DELAY
+#if  0//NEW_DELAY
         printf("\nPD Queue size:(%i)  ", get_reord_q_size(encode_context_ptr));
         print_pd_reord_queue(encode_context_ptr);
 #endif
@@ -7365,7 +7369,7 @@ void* picture_decision_kernel(void *input_ptr)
                     encode_context_ptr->intra_period_position = ((encode_context_ptr->intra_period_position == (uint32_t)scs_ptr->intra_period_length) || (pcs_ptr->scene_change_flag == EB_TRUE)) ? 0 : encode_context_ptr->intra_period_position + 1;
                 }
 
-#if NEW_DELAY
+#if 0//NEW_DELAY
                 print_pre_ass(encode_context_ptr);
 #endif
                 // Determine if Pictures can be released from the Pre-Assignment Buffer
@@ -7376,7 +7380,7 @@ void* picture_decision_kernel(void *input_ptr)
                     (pcs_ptr->pred_structure == EB_PRED_LOW_DELAY_B))
                 {
 
-#if NEW_DELAY
+#if 0//NEW_DELAY
                     if (encode_context_ptr->pre_assignment_buffer_intra_count > 0)
                         printf("PRE-ASSIGN INTRA   (%i pictures)  POC:%ld \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
                     if (encode_context_ptr->pre_assignment_buffer_count == (uint32_t)(1 << scs_ptr->static_config.hierarchical_levels))
@@ -8291,6 +8295,7 @@ void* picture_decision_kernel(void *input_ptr)
                                             // Set the Reference Object
                                         pcs_ptr->ref_pa_pic_ptr_array[REF_LIST_0][ref_pic_index] = pa_reference_entry_ptr->input_object_ptr;
                                         pcs_ptr->ref_pic_poc_array[REF_LIST_0][ref_pic_index] = ref_poc;
+                                        //printf("[%ld]: setup ref_pa_pic_ptr_array\n", pcs_ptr->picture_number);
                                         // Increment the PA Reference's liveCount by the number of tiles in the input picture
                                         eb_object_inc_live_count(
                                             pa_reference_entry_ptr->input_object_ptr,

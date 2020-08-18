@@ -586,6 +586,7 @@ typedef struct MeContext {
 #endif
 #if INL_TPL_ME
     EbBool me_inl_tpl;
+    void *   inl_tpl_reference_ptr;
 #endif
     // tf
 #if FAST_M8_V1 // tf_hp
@@ -617,7 +618,8 @@ typedef struct MeContext {
 #if INL_TPL_ME
     uint64_t tpl_base_poc;
     uint64_t tpl_base_decode_order;
-    uint64_t tpl_ref_can_skip;
+    uint64_t tpl_ref_list0_count;
+    uint64_t tpl_ref_list1_count;
 #endif
 } MeContext;
 

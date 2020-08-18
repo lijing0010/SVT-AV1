@@ -4337,6 +4337,8 @@ void *picture_analysis_kernel(void *input_ptr) {
                     (EbDownScaledObject*)pcs_ptr->down_scaled_picture_wrapper_ptr->object_ptr;
 
                 ds_obj->picture_ptr = input_picture_ptr; // Save original picture pointer
+                ds_obj->picture_number = pcs_ptr->picture_number;
+                pcs_ptr->downscaled_input_pic = ds_obj;
 
                 // Get the 1/2, 1/4 of input picture, only used for global motion
                 // TODO: Check for global motion whether we need these

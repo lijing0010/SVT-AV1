@@ -2752,7 +2752,8 @@ void *inloop_me_kernel(void *input_ptr) {
                 context_ptr->me_context_ptr->me_inl_tpl = EB_TRUE;
 				context_ptr->me_context_ptr->tpl_base_poc = in_results_ptr->tpl_base_picture_number;
 				context_ptr->me_context_ptr->tpl_base_decode_order = in_results_ptr->tpl_base_decode_order;
-				context_ptr->me_context_ptr->tpl_ref_can_skip = in_results_ptr->tpl_ref_skip; //if base IDR, no skip ref
+				context_ptr->me_context_ptr->tpl_ref_list0_count = in_results_ptr->tpl_ref_list0_count;
+				context_ptr->me_context_ptr->tpl_ref_list1_count = in_results_ptr->tpl_ref_list1_count;
             }
 #endif
 
@@ -2814,6 +2815,8 @@ void *inloop_me_kernel(void *input_ptr) {
                             ppcs_ptr, context_ptr->me_context_ptr, input_picture_ptr);
                 }
 
+                //printf("[%ld]: iME, sending to RC kernel\n",
+                //        ppcs_ptr->picture_number);
                 eb_get_empty_object(context_ptr->output_fifo_ptr,
                         &out_results_wrapper_ptr);
 
