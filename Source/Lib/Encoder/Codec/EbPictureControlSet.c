@@ -1362,6 +1362,10 @@ static void picture_parent_control_set_dctor(EbPtr p) {
     EB_DESTROY_MUTEX(obj->temp_filt_mutex);
     EB_DESTROY_MUTEX(obj->debug_mutex);
     EB_FREE_ARRAY(obj->tile_group_info);
+#if INL_ME
+    EB_DESTROY_SEMAPHORE(obj->tpl_me_done_semaphore);
+    EB_DESTROY_MUTEX(obj->tpl_me_mutex);
+#endif
     if(obj->frame_superres_enabled){
         eb_pcs_sb_structs_dctor(obj);
         EB_DELETE(obj->enhanced_picture_ptr);
@@ -1532,10 +1536,19 @@ EbErrorType picture_parent_control_set_ctor(PictureParentControlSet *object_ptr,
 #endif
     EB_CREATE_MUTEX(object_ptr->rc_distortion_histogram_mutex);
     EB_MALLOC_ARRAY(object_ptr->sb_depth_mode_array, object_ptr->sb_total_count);
+#if INL_ME
+    EB_CREATE_SEMAPHORE(object_ptr->temp_filt_done_semaphore, 0, 2);
+#else
     EB_CREATE_SEMAPHORE(object_ptr->temp_filt_done_semaphore, 0, 1);
+#endif
     EB_CREATE_MUTEX(object_ptr->temp_filt_mutex);
     EB_CREATE_MUTEX(object_ptr->debug_mutex);
     EB_MALLOC_ARRAY(object_ptr->av1_cm, 1);
+
+#if INL_ME
+    EB_CREATE_SEMAPHORE(object_ptr->tpl_me_done_semaphore, 0, 1);
+    EB_CREATE_MUTEX(object_ptr->tpl_me_mutex);
+#endif
 
     object_ptr->av1_cm->interp_filter = SWITCHABLE;
 

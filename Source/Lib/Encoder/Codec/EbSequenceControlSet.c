@@ -318,6 +318,9 @@ EbErrorType copy_sequence_control_set(SequenceControlSet *dst, SequenceControlSe
     write_count += sizeof(int32_t);
     dst->initial_rate_control_fifo_init_count = src->initial_rate_control_fifo_init_count;
     write_count += sizeof(int32_t);
+#if INL_ME
+    dst->in_loop_me_fifo_init_count = src->in_loop_me_fifo_init_count;
+#endif
     dst->picture_demux_fifo_init_count = src->picture_demux_fifo_init_count;
     write_count += sizeof(int32_t);
     dst->rate_control_tasks_fifo_init_count = src->rate_control_tasks_fifo_init_count;
@@ -386,6 +389,9 @@ EbErrorType copy_sequence_control_set(SequenceControlSet *dst, SequenceControlSe
     dst->use_input_stat_file            = src->use_input_stat_file;
     dst->use_output_stat_file           = src->use_output_stat_file;
     dst->scd_delay                      = src->scd_delay;
+#if INL_ME
+    dst->in_loop_me                     = src->in_loop_me;
+#endif
     return EB_ErrorNone;
 }
 

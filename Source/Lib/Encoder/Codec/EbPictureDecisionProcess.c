@@ -5861,10 +5861,16 @@ void perform_simple_picture_analysis_for_overlay(PictureParentControlSet     *pc
         input_picture_ptr);
 
     // Pre processing operations performed on the input picture
+#if INL_ME
+    picture_pre_processing_operations(
+        pcs_ptr,
+        scs_ptr);
+#else
     picture_pre_processing_operations(
         pcs_ptr,
         scs_ptr,
         sb_total_count);
+#endif
 
     if (input_picture_ptr->color_format >= EB_YUV422) {
         // Jing: Do the conversion of 422/444=>420 here since it's multi-threaded kernel
@@ -6237,6 +6243,9 @@ void mctf_frame(
 
 #endif
 
+#if INL_ME
+    pcs_ptr->do_mctf = context_ptr->tf_ctrls.enabled;
+#endif
 
     if (context_ptr->tf_ctrls.enabled) {
 
@@ -6308,8 +6317,10 @@ void store_tpl_pictures(
         memcpy(&pcs->tpl_group[1], ctx->mg_pictures_array, mg_size * sizeof(PictureParentControlSet*));
         pcs->tpl_group_size = 1 + mg_size;
 
+#if NEW_DELAY_DBG_MSG
         for (uint32_t pic_i = 0; pic_i < pcs->tpl_group_size; ++pic_i)
-            printf("TPL group Delayed-I  %I64u  \n", ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
+            printf("TPL group Delayed-I  %ld  \n", ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
+#endif
 
     }
     else {
@@ -6327,9 +6338,25 @@ void store_tpl_pictures(
 #endif
         }
 
+#if NEW_DELAY_DBG_MSG
         for (uint32_t pic_i = 0; pic_i < pcs->tpl_group_size; ++pic_i)
-            printf("TPL group Base %I64u  \n", ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
+            printf("TPL group Base %ld  \n", ((PictureParentControlSet *)pcs->tpl_group[pic_i])->picture_number);
+#endif
     }
+
+#if INL_ME
+    for (uint32_t pic_i = 0; pic_i < pcs->tpl_group_size; ++pic_i) {
+        PictureParentControlSet* pcs_tpl_ptr = (PictureParentControlSet *)pcs->tpl_group[pic_i];
+        if (!pcs_tpl_ptr->me_data_wrapper_ptr && pcs_tpl_ptr->slice_type != I_SLICE) {
+            EbObjectWrapper               *me_wrapper;
+            eb_get_empty_object(ctx->me_fifo_ptr, &me_wrapper);
+            pcs_tpl_ptr->me_data_wrapper_ptr = me_wrapper;
+            pcs_tpl_ptr->pa_me_data = (MotionEstimationData *)me_wrapper->object_ptr;
+            //printf("[%ld]: Got me data %p\n", pcs_tpl_ptr->picture_number, pcs_tpl_ptr->pa_me_data);
+        }
+        //printf("====[%ld]: TPL group Base %ld, TPL group size %d\n",pcs->picture_number, pcs_tpl_ptr->picture_number, pcs->tpl_group_size);
+    }
+#endif
 }
 /* Sends a picture out from Picture Decision
 */
@@ -6354,13 +6381,23 @@ void send_picture_out(
         eb_object_inc_live_count(pcs->reference_picture_wrapper_ptr, 1);
     }
     //get a new ME data buffer
+#if INL_ME
+    if (!pcs->me_data_wrapper_ptr && pcs->slice_type != I_SLICE) {
+        eb_get_empty_object(ctx->me_fifo_ptr, &me_wrapper);
+        pcs->me_data_wrapper_ptr = me_wrapper;
+        pcs->pa_me_data = (MotionEstimationData *)me_wrapper->object_ptr;
+    }
+#else
     eb_get_empty_object(ctx->me_fifo_ptr, &me_wrapper);
     pcs->me_data_wrapper_ptr = me_wrapper;
 
     pcs->pa_me_data = (MotionEstimationData *)me_wrapper->object_ptr;
+#endif
 
+#if NEW_DELAY_DBG_MSG
     char stype[] = { 'B','P','I' };
-    printf("PD-OUT  POC:%I64u  %c L%i\n", pcs->picture_number, stype[pcs->slice_type], pcs->temporal_layer_index);
+    printf("PD-OUT  POC:%ld  %c L%i\n", pcs->picture_number, stype[pcs->slice_type], pcs->temporal_layer_index);
+#endif
 
     for (uint32_t segment_index = 0; segment_index < pcs->me_segments_total_count; ++segment_index) {
         // Get Empty Results Object
@@ -6385,7 +6422,7 @@ void print_pre_ass(EncodeContext *ctxt)
     for (uint32_t pic = 0; pic < ctxt->pre_assignment_buffer_count; pic++) {
 
         PictureParentControlSet *pcs = (PictureParentControlSet*)ctxt->pre_assignment_buffer[pic]->object_ptr;
-        SVT_LOG("%I64u ", pcs->picture_number);
+        SVT_LOG("%ld ", pcs->picture_number);
     }
     SVT_LOG("\n");
 }
@@ -6397,7 +6434,7 @@ void print_pd_reord_queue(EncodeContext *ctxt)
     while (queue_entry->parent_pcs_wrapper_ptr != EB_NULL) {
 
         PictureParentControlSet *pcs = (PictureParentControlSet*)queue_entry->parent_pcs_wrapper_ptr->object_ptr;
-        SVT_LOG("%I64u  ", pcs->picture_number);
+        SVT_LOG("%ld  ", pcs->picture_number);
         queue_entry = ctxt->picture_decision_reorder_queue[++idx];
     }
     SVT_LOG("\n");
@@ -7074,7 +7111,7 @@ void* picture_decision_kernel(void *input_ptr)
             pcs_ptr->pic_decision_reorder_queue_idx = queue_entry_index;
         }
 
-#if  NEW_DELAY
+#if NEW_DELAY_DBG_MSG
         printf("\nPD Queue size:(%i)  ", get_reord_q_size(encode_context_ptr));
         print_pd_reord_queue(encode_context_ptr);
 #endif
@@ -7240,7 +7277,7 @@ void* picture_decision_kernel(void *input_ptr)
                 else if (scs_ptr->intra_period_length == -1)
                     pcs_ptr->is_next_frame_intra = 0; 
                 else
-                    pcs_ptr->is_next_frame_intra = (encode_context_ptr->intra_period_position + 1) == scs_ptr->intra_period_length;
+                    pcs_ptr->is_next_frame_intra = (int32_t)(encode_context_ptr->intra_period_position + 1) == scs_ptr->intra_period_length;
 #endif
 
 
@@ -7262,7 +7299,7 @@ void* picture_decision_kernel(void *input_ptr)
                     encode_context_ptr->intra_period_position = ((encode_context_ptr->intra_period_position == (uint32_t)scs_ptr->intra_period_length) || (pcs_ptr->scene_change_flag == EB_TRUE)) ? 0 : encode_context_ptr->intra_period_position + 1;
                 }
 
-#if NEW_DELAY
+#if NEW_DELAY_DBG_MSG
                 print_pre_ass(encode_context_ptr);
 #endif
                 // Determine if Pictures can be released from the Pre-Assignment Buffer
@@ -7273,13 +7310,13 @@ void* picture_decision_kernel(void *input_ptr)
                     (pcs_ptr->pred_structure == EB_PRED_LOW_DELAY_B))
                 {
 
-#if NEW_DELAY
+#if NEW_DELAY_DBG_MSG
                     if (encode_context_ptr->pre_assignment_buffer_intra_count > 0)
-                        printf("PRE-ASSIGN INTRA   (%i pictures)  POC:%I64u \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
+                        printf("PRE-ASSIGN INTRA   (%i pictures)  POC:%ld \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
                     if (encode_context_ptr->pre_assignment_buffer_count == (uint32_t)(1 << scs_ptr->static_config.hierarchical_levels))
-                        printf("PRE-ASSIGN COMPLETE   (%i pictures)  POC:%I64u \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
+                        printf("PRE-ASSIGN COMPLETE   (%i pictures)  POC:%ld \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
                     if ((encode_context_ptr->pre_assignment_buffer_eos_flag == EB_TRUE))
-                        printf("PRE-ASSIGN EOS   (%i pictures)  POC:%I64u \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
+                        printf("PRE-ASSIGN EOS   (%i pictures)  POC:%ld \n", encode_context_ptr->pre_assignment_buffer_count, pcs_ptr->picture_number);
 #endif
 
 
@@ -7486,7 +7523,9 @@ void* picture_decision_kernel(void *input_ptr)
                                 }
                                 // Set the Slice type
                                 pcs_ptr->slice_type = picture_type;
+#if !INL_ME
                                 ((EbPaReferenceObject*)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr)->slice_type = pcs_ptr->slice_type;
+#endif
 
                                 switch (picture_type) {
                                 case I_SLICE:
@@ -7988,7 +8027,9 @@ void* picture_decision_kernel(void *input_ptr)
                                     input_entry_ptr->dep_list1_count = input_entry_ptr->list1.list_count;
                                     input_entry_ptr->dependent_count = input_entry_ptr->dep_list0_count + input_entry_ptr->dep_list1_count;
 
+#if !INL_ME
                                     ((EbPaReferenceObject*)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr)->dependent_pictures_count = input_entry_ptr->dependent_count;
+#endif
                                 }
 
                                 CHECK_REPORT_ERROR(
@@ -8097,6 +8138,11 @@ void* picture_decision_kernel(void *input_ptr)
                             }
                             else
                                 pcs_ptr->decode_order = pcs_ptr->picture_number_alt;
+#if INL_ME
+                            //TODO: seems not use anymore
+                            //((EbPaReferenceObject*)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr)->picture_number = pcs_ptr->picture_number;
+                            //((EbPaReferenceObject*)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr)->decode_order = pcs_ptr->decode_order;
+#endif
                             encode_context_ptr->terminating_sequence_flag_received = (pcs_ptr->end_of_sequence_flag == EB_TRUE) ?
                                 EB_TRUE :
                                 encode_context_ptr->terminating_sequence_flag_received;
@@ -8251,10 +8297,26 @@ void* picture_decision_kernel(void *input_ptr)
                             set_all_ref_frame_type(pcs_ptr, pcs_ptr->ref_frame_type_arr, &pcs_ptr->tot_ref_frame_types);
 #endif
                             // Initialize Segments
+#if !INL_ME
                             pcs_ptr->me_segments_column_count = (uint8_t)(scs_ptr->me_segment_column_count_array[pcs_ptr->temporal_layer_index]);
                             pcs_ptr->me_segments_row_count = (uint8_t)(scs_ptr->me_segment_row_count_array[pcs_ptr->temporal_layer_index]);
                             pcs_ptr->me_segments_total_count = (uint16_t)(pcs_ptr->me_segments_column_count  * pcs_ptr->me_segments_row_count);
                             pcs_ptr->me_segments_completion_mask = 0;
+#else
+                            pcs_ptr->me_segments_completion_mask = 0;
+                            pcs_ptr->inloop_me_segments_completion_mask = 0;
+
+                            pcs_ptr->inloop_me_segments_column_count = 1;
+                            pcs_ptr->inloop_me_segments_row_count = 1;
+                            pcs_ptr->me_segments_column_count = (uint8_t)(scs_ptr->me_segment_column_count_array[pcs_ptr->temporal_layer_index]);
+                            pcs_ptr->me_segments_row_count = (uint8_t)(scs_ptr->me_segment_row_count_array[pcs_ptr->temporal_layer_index]);
+                            if (scs_ptr->in_loop_me) {
+                                pcs_ptr->inloop_me_segments_column_count = (uint8_t)(scs_ptr->me_segment_column_count_array[pcs_ptr->temporal_layer_index]);
+                                pcs_ptr->inloop_me_segments_row_count = (uint8_t)(scs_ptr->me_segment_row_count_array[pcs_ptr->temporal_layer_index]);
+                            }
+                            pcs_ptr->me_segments_total_count = (uint16_t)(pcs_ptr->me_segments_column_count * pcs_ptr->me_segments_row_count);
+                            pcs_ptr->inloop_me_segments_total_count = (uint16_t)(pcs_ptr->inloop_me_segments_column_count * pcs_ptr->inloop_me_segments_row_count);
+#endif
 #if IMPROVE_GMV
                             pcs_ptr->me_processed_sb_count = 0;
 #endif

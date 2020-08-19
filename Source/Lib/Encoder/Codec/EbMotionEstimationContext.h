@@ -578,6 +578,13 @@ typedef struct MeContext {
     uint16_t adj_search_area_height;
     EbBool   me_alt_ref;
     void *   alt_ref_reference_ptr;
+
+#if INL_ME
+    // Open Loop ME
+    EbBool me_in_loop;
+    EbBool me_inl_tpl;
+    void * alt_ref_reference_ptr_inl;
+#endif
     // tf
     int tf_frame_index;
     int tf_index_center;
@@ -602,6 +609,10 @@ typedef struct MeContext {
     uint8_t mrp_level;
 #endif
     // -------
+#if INL_ME
+    uint64_t tpl_ref_list0_count;
+    uint64_t tpl_ref_list1_count;
+#endif
 } MeContext;
 
 typedef uint64_t (*EB_ME_DISTORTION_FUNC)(uint8_t *src, uint32_t src_stride, uint8_t *ref,

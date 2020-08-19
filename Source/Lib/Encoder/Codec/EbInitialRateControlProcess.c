@@ -464,6 +464,7 @@ EbErrorType initial_rate_control_context_ctor(EbThreadContext *  thread_context_
     return EB_ErrorNone;
 }
 
+#if !INL_ME
 /************************************************
 * Release Pa Reference Objects
 ** Check if reference pictures are needed
@@ -501,6 +502,8 @@ void release_pa_reference_objects(SequenceControlSet *scs_ptr, PictureParentCont
 
     return;
 }
+#endif
+
 #if !IMPROVE_GMV
 /************************************************
 * Global Motion Detection Based on ME information
@@ -1106,7 +1109,6 @@ void tpl_mc_flow_dispenser(
     uint32_t    me_mb_offset = 0;
     TxSize      tx_size = TX_16X16;
     EbPictureBufferDesc  *ref_pic_ptr;
-    EbReferenceObject    *referenceObject;
     struct      ScaleFactors sf;
     BlockGeom   blk_geom;
     uint32_t    kernel = (EIGHTTAP_REGULAR << 16) | EIGHTTAP_REGULAR;
@@ -2051,7 +2053,7 @@ void print_irc_queue(EncodeContext *            encode_context_ptr)
     {
         PictureParentControlSet* curr_pcs = (PictureParentControlSet*)(encode_context_ptr->initial_rate_control_reorder_queue[h]->parent_pcs_wrapper_ptr)->object_ptr;
 
-        printf("%I64u  ", curr_pcs->picture_number);
+        printf("%ld  ", curr_pcs->picture_number);
 
         h++;
     }
@@ -2144,7 +2146,13 @@ void *initial_rate_control_kernel(void *input_ptr) {
 #if TPL_LA
             if (scs_ptr->static_config.look_ahead_distance == 0 || scs_ptr->static_config.enable_tpl_la == 0) {
                 // Release Pa Ref pictures when not needed
+#if INL_ME
+                // Release Pa ref after TPL
+                if (!scs_ptr->in_loop_me)
+                    release_pa_reference_objects(scs_ptr, pcs_ptr);
+#else
                 release_pa_reference_objects(scs_ptr, pcs_ptr);
+#endif
             }
 #else
             // Release Pa Ref pictures when not needed
@@ -2231,7 +2239,7 @@ void *initial_rate_control_kernel(void *input_ptr) {
             pcs_ptr->scene_change_in_gop   = EB_FALSE;
             move_slide_window_flag = EB_TRUE;
 
-#if 1
+#if NEW_DELAY_DBG_MSG
             print_irc_queue(encode_context_ptr);
 #endif
 
@@ -2427,7 +2435,9 @@ void *initial_rate_control_kernel(void *input_ptr) {
                         }
 #endif
 
-                        printf("IRC-OUT  POC:%I64u  \n", pcs_ptr->picture_number);
+#if NEW_DELAY_DBG_MSG
+                        printf("IRC-OUT  POC:%ld  \n", pcs_ptr->picture_number);
+#endif
 
                         // Get Empty Results Object
                         eb_get_empty_object(

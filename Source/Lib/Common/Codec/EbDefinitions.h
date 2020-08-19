@@ -626,6 +626,7 @@ extern "C" {
 #define TPL_GRP_FIX           1 //fix generation of tpl group
 #define FIX_LAD_DEADLOCK      1 //fix deadlock when lad>0 + iperiod>0
 #define FIX_ALL_I             1 //fix all intra case
+#define NEW_DELAY_DBG_MSG     0
 #endif
 
 
@@ -644,7 +645,17 @@ extern "C" {
 #define INCREASE_WM_CANDS 1 // Use WM for PME candidates; increase number of NEW_MV cands used for WM
 #define UPGRADE_SUBPEL    1 // Upgrade subpel of me and of pme to use libaom subpel search
 #define TX_EARLY_EXIT     1 // Variance/cost_depth_1-to-cost_depth_0 based early txs exit
+
 #define PAD_CHROMA_AFTER_MCTF 1 // Padding chroma after altref
+#define INL_ME 1 //In loop me
+#if INL_ME
+#define INL_ME_DBG 0 //In loop me for debug
+#define INL_TPL_ME_DBG 0
+#if INL_ME_DBG
+#define INL_ME_ON_INPUT_DBG 1 //ME on original debug
+#define INL_GM_ON_INPUT_DBG 1 //GM on original debug
+#endif
+#endif
 #endif
 // END  SVT_02_TEMP /////////////////////////////////////////////////////////
 

@@ -43,5 +43,21 @@ typedef struct PictureResultInitData {
  * Extern Function Declarations
  **************************************/
 extern EbErrorType picture_results_creator(EbPtr *object_dbl_ptr, EbPtr object_init_data_ptr);
+#if INL_ME
+typedef struct PictureManagerResults {
+    EbDctor          dctor;
+    EbObjectWrapper *pcs_wrapper_ptr;
+    uint32_t         segment_index;
+    uint8_t          task_type;
+    uint8_t          tpl_ref_list0_count;
+    uint8_t          tpl_ref_list1_count;
+} PictureManagerResults;
 
+typedef struct PictureManagerResultInitData {
+    int32_t junk;
+} PictureManagerResultInitData;
+
+extern EbErrorType picture_manager_result_creator(EbPtr *object_dbl_ptr,
+    EbPtr  object_init_data_ptr);
+#endif
 #endif //EbPictureResults_h

@@ -59,6 +59,25 @@ typedef struct DepCntPicInfo {
     int32_t      dep_cnt_diff; //increase(e.g 4L->5L) or decrease of dep cnt . not including the run-time decrease
 } DepCntPicInfo;
 #endif
+#if INL_ME
+typedef struct EbDownScaledObject {
+    EbDctor              dctor;
+    EbPictureBufferDesc *picture_ptr; // original picture, just a pointer, don't allocate resource here
+    EbPictureBufferDesc *quarter_picture_ptr;
+    EbPictureBufferDesc *sixteenth_picture_ptr;
+    uint64_t            picture_number;
+} EbDownScaledObject;
+
+typedef struct EbDownScaledObjectDescInitData {
+    EbPictureBufferDescInitData quarter_picture_desc_init_data;
+    EbPictureBufferDescInitData sixteenth_picture_desc_init_data;
+
+    // whether enable 1/4,1/16 8bit luma for in_loop global motion
+    uint8_t enable_quarter_luma_input;
+    uint8_t enable_sixteenth_luma_input;
+} EbDownScaledObjectDescInitData;
+#endif
+
 typedef struct MacroblockPlane {
     // Quantizer setings
     // These are used/accessed only in the quantization process
@@ -251,6 +270,9 @@ typedef struct PictureControlSet {
     // Packetization (used to encode SPS, PPS, etc)
     Bitstream *bitstream_ptr;
 
+#if INL_ME
+    EbObjectWrapper *          c_pcs_wrapper_ptr;
+#endif
     // Reference Lists
     // Reference Lists
     EbObjectWrapper *ref_pic_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
@@ -512,6 +534,9 @@ typedef struct PictureParentControlSet {
     EbObjectWrapper *    input_picture_wrapper_ptr;
     EbObjectWrapper *    reference_picture_wrapper_ptr;
     EbObjectWrapper *    pa_reference_picture_wrapper_ptr;
+#if INL_ME
+    EbObjectWrapper *    down_scaled_picture_wrapper_ptr;
+#endif
     EbPictureBufferDesc *enhanced_picture_ptr;
     EbPictureBufferDesc *enhanced_downscaled_picture_ptr;
     EbPictureBufferDesc *enhanced_unscaled_picture_ptr;
@@ -602,6 +627,12 @@ typedef struct PictureParentControlSet {
     uint32_t cr_sse;
     uint32_t cb_sse;
 
+#if INL_ME
+    // iME TPL
+    EbDownScaledObject *downscaled_input_pic;
+    EbDownScaledObject *tpl_ref_ds_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
+#endif
+
     // Pre Analysis
     EbObjectWrapper *ref_pa_pic_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     uint64_t         ref_pic_poc_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
@@ -636,6 +667,13 @@ typedef struct PictureParentControlSet {
     uint8_t  me_segments_column_count;
     uint8_t  me_segments_row_count;
     uint64_t me_segments_completion_mask;
+
+#if INL_ME
+    uint16_t inloop_me_segments_total_count;
+    uint8_t  inloop_me_segments_column_count;
+    uint8_t  inloop_me_segments_row_count;
+    uint64_t inloop_me_segments_completion_mask;
+#endif
 
     // Motion Estimation Results
     uint8_t       max_number_of_pus_per_sb;
@@ -872,6 +910,16 @@ typedef struct PictureParentControlSet {
 
     uint8_t  temp_filt_prep_done;
     uint16_t temp_filt_seg_acc;
+#if INL_ME
+    // TPL ME
+    EbHandle tpl_me_done_semaphore;
+    EbHandle tpl_me_mutex;
+    uint16_t tpl_me_seg_acc;
+    int16_t  tpl_me_segments_total_count;
+    uint8_t  tpl_me_segments_column_count;
+    uint8_t  tpl_me_segments_row_count;
+    uint8_t  do_mctf;
+#endif
 
     int16_t tf_segments_total_count;
     uint8_t tf_segments_column_count;
@@ -928,7 +976,7 @@ typedef struct PictureParentControlSet {
     MotionEstimationData *pa_me_data;
 #endif
 #if NEW_DELAY
-    void* tpl_group[MAX_TPL_GROUP_SIZE]; //stores pcs pictures needed for tpl algorithm
+    struct PictureParentControlSet* tpl_group[MAX_TPL_GROUP_SIZE]; //stores pcs pictures needed for tpl algorithm
     uint32_t tpl_group_size;             //size of above buffer
     void* pd_window[PD_WINDOW_SIZE]; //stores previous, current, future pictures from pd-reord-queue. empty for first I.
 #endif
@@ -936,6 +984,10 @@ typedef struct PictureParentControlSet {
 #if FIX_LAD_DEADLOCK
     uint8_t is_next_frame_intra;
 #endif 
+
+#if INL_ME
+    uint8_t tpl_me_done;
+#endif
 } PictureParentControlSet;
 
 typedef struct PictureControlSetInitData {

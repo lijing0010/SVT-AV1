@@ -103,8 +103,14 @@ EbErrorType picture_manager_context_ctor(EbThreadContext *  thread_context_ptr,
 
     context_ptr->picture_input_fifo_ptr =
         eb_system_resource_get_consumer_fifo(enc_handle_ptr->picture_demux_results_resource_ptr, 0);
+#if INL_ME
+    UNUSED(rate_control_index);
+    context_ptr->picture_manager_output_fifo_ptr = eb_system_resource_get_producer_fifo(
+        enc_handle_ptr->pic_mgr_res_srm, 0);
+#else
     context_ptr->picture_manager_output_fifo_ptr = eb_system_resource_get_producer_fifo(
         enc_handle_ptr->rate_control_tasks_resource_ptr, rate_control_index);
+#endif
     context_ptr->picture_control_set_fifo_ptr = eb_system_resource_get_producer_fifo(
         enc_handle_ptr->picture_control_set_pool_ptr_array[0], 0); //The Child PCS Pool here
 
@@ -223,6 +229,161 @@ void copy_dep_cnt_cleaning_list(
 
 }
 #endif
+
+#if INL_ME
+static uint8_t tpl_setup_me_refs(
+    SequenceControlSet              *scs_ptr,
+    PictureParentControlSet         *pcs_tpl_group_frame_ptr,
+    PictureParentControlSet         *pcs_tpl_base_ptr,
+    uint8_t                         *ref0_count, //out
+    uint8_t                         *ref1_count) {
+    *ref0_count = 0;
+    *ref1_count = 0;
+    PredictionStructure* base_pred_struct_ptr = get_prediction_structure(
+            scs_ptr->encode_context_ptr->prediction_structure_group_ptr,
+            pcs_tpl_base_ptr->pred_structure,
+            scs_ptr->reference_count,
+            pcs_tpl_base_ptr->hierarchical_levels);
+    int init_idx = base_pred_struct_ptr->init_pic_index;
+    int pred_struct_idx = init_idx +
+        pcs_tpl_group_frame_ptr->picture_number % base_pred_struct_ptr->pred_struct_period;
+    pred_struct_idx += pcs_tpl_group_frame_ptr->picture_number / base_pred_struct_ptr->pred_struct_period ?
+        base_pred_struct_ptr->pred_struct_period: 0;
+    pred_struct_idx = pred_struct_idx % base_pred_struct_ptr->pred_struct_entry_count;
+
+
+    EB_MEMSET(pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_0],
+            0,
+            REF_LIST_MAX_DEPTH * sizeof(EbObjectWrapper*));
+    EB_MEMSET(pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_1],
+            0,
+            REF_LIST_MAX_DEPTH * sizeof(EbObjectWrapper*));
+    // Set tpl refs on L0
+    int ref_list_count = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list0.reference_list_count;
+    int list_index = REF_LIST_0;
+    for (int i = 0; i < ref_list_count; i++) {
+        int delta_poc = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list0.reference_list[i];
+        int ref_poc = pcs_tpl_group_frame_ptr->picture_number - delta_poc;
+        assert(ref_poc >= 0);
+        for (uint32_t j = 0; j < pcs_tpl_base_ptr->tpl_group_size; j++) {
+            if (ref_poc == (int)pcs_tpl_base_ptr->tpl_group[j]->picture_number) {
+                // Some refs in L0 are out of order (1, 9, 8, 17), which will make (valid, NULL, valid, NULL)
+                // So needs reorder to (valid, valid, NULL, NULL)
+                pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref0_count] = pcs_tpl_base_ptr->tpl_group[j]->downscaled_input_pic;
+                *ref0_count += 1;
+#if INL_TPL_ME_DBG
+                printf("\t Set ref on L0(%d): %ld => %ld\n",
+                        ref_list_count,
+                        pcs_tpl_group_frame_ptr->picture_number,
+                        pcs_tpl_base_ptr->tpl_group[j]->picture_number);
+#endif
+                break;
+            }
+        }
+    }
+
+    // Set tpl refs on L1
+    ref_list_count = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list1.reference_list_count;
+    list_index = REF_LIST_1;
+    for (int i = 0; i < ref_list_count; i++) {
+        int delta_poc = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list1.reference_list[i];
+        int ref_poc = pcs_tpl_group_frame_ptr->picture_number - delta_poc;
+        for (uint32_t j = 0; j < pcs_tpl_base_ptr->tpl_group_size; j++) {
+            if (ref_poc == (int)pcs_tpl_base_ptr->tpl_group[j]->picture_number) {
+                pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref1_count] = pcs_tpl_base_ptr->tpl_group[j]->downscaled_input_pic;
+                *ref1_count += 1;
+#if INL_TPL_ME_DBG
+                printf("\t Set ref on L1(%d): %ld => %ld\n",
+                        ref_list_count,
+                        pcs_tpl_group_frame_ptr->picture_number,
+                        pcs_tpl_base_ptr->tpl_group[j]->picture_number);
+#endif
+                break;
+            }
+        }
+    }
+    return 0;
+}
+
+static EbErrorType tpl_get_open_loop_me(
+    PictureManagerContext           *context_ptr,
+    SequenceControlSet              *scs_ptr,
+    PictureParentControlSet         *pcs_tpl_base_ptr) {
+    //printf("[%ld]: PM got input\n", pcs_tpl_base_ptr->picture_number);
+    if (scs_ptr->in_loop_me &&
+            scs_ptr->static_config.enable_tpl_la &&
+            pcs_tpl_base_ptr->temporal_layer_index == 0) {
+        // Do tpl ME to get ME results
+        // Do it in reverse order, for IDR, the 1st may need to wait for the mctf
+        for (int i = pcs_tpl_base_ptr->tpl_group_size - 1; i >= 0; i--) {
+            PictureParentControlSet* pcs_tpl_group_frame_ptr = pcs_tpl_base_ptr->tpl_group[i];
+            if (!pcs_tpl_group_frame_ptr->tpl_me_done) {
+                uint8_t ref_list0_count = 0;
+                uint8_t ref_list1_count = 0;
+#if INL_TPL_ME_DBG
+                printf("[%ld]: Sending TPL ME request for frame %ld\n",
+                        pcs_tpl_base_ptr->picture_number,
+                        pcs_tpl_group_frame_ptr->picture_number);
+#endif
+
+                tpl_setup_me_refs(scs_ptr,
+                        pcs_tpl_group_frame_ptr, pcs_tpl_base_ptr,
+                        &ref_list0_count, &ref_list1_count);
+
+                if (pcs_tpl_group_frame_ptr->do_mctf) {
+                    // Wait for MCTF
+#if INL_TPL_ME_DBG
+                    printf("\tpicture %ld need to do MCTF, wait for its done\n", pcs_tpl_group_frame_ptr->picture_number);
+#endif
+                    eb_block_on_semaphore(pcs_tpl_group_frame_ptr->temp_filt_done_semaphore);
+                }
+
+                if (pcs_tpl_group_frame_ptr->slice_type != I_SLICE &&
+                        pcs_tpl_group_frame_ptr != pcs_tpl_base_ptr) {
+                    // Initialize Segments
+                    pcs_tpl_group_frame_ptr->tpl_me_segments_column_count = 1;//scs_ptr->tf_segment_column_count;
+                    pcs_tpl_group_frame_ptr->tpl_me_segments_row_count = 1;//scs_ptr->tf_segment_row_count;
+                    pcs_tpl_group_frame_ptr->tpl_me_segments_total_count = (uint16_t)(pcs_tpl_group_frame_ptr->tpl_me_segments_column_count  * pcs_tpl_group_frame_ptr->tpl_me_segments_row_count);
+                    pcs_tpl_group_frame_ptr->tpl_me_seg_acc = 0;
+
+                    for (int16_t seg_idx = 0; seg_idx < pcs_tpl_group_frame_ptr->tpl_me_segments_total_count; ++seg_idx) {
+                        EbObjectWrapper               *out_results_wrapper_ptr;
+
+                        eb_get_empty_object(
+                                context_ptr->picture_manager_output_fifo_ptr,
+                                &out_results_wrapper_ptr);
+
+                        PictureManagerResults   *out_results_ptr = (PictureManagerResults*)out_results_wrapper_ptr->object_ptr;
+                        out_results_ptr->pcs_wrapper_ptr = pcs_tpl_group_frame_ptr->p_pcs_wrapper_ptr;
+                        out_results_ptr->segment_index = seg_idx;
+                        out_results_ptr->task_type = 2;
+                        out_results_ptr->tpl_ref_list0_count = ref_list0_count;
+                        out_results_ptr->tpl_ref_list1_count = ref_list1_count;
+                        eb_post_full_object(out_results_wrapper_ptr);
+                    }
+
+                    eb_block_on_semaphore(pcs_tpl_group_frame_ptr->tpl_me_done_semaphore);
+
+                    // When TPL16, flag tpl_me_done of 17/18/19 will be set done during TPL32
+                    if (pcs_tpl_base_ptr->idr_flag ||
+                            pcs_tpl_group_frame_ptr->picture_number < pcs_tpl_base_ptr->picture_number) {
+                        pcs_tpl_group_frame_ptr->tpl_me_done = 1;
+#if INL_TPL_ME_DBG
+                        printf("\t Picture %ld TPL ME done\n", pcs_tpl_group_frame_ptr->picture_number);
+#endif
+                    }
+                }
+            }
+        }
+    }
+
+    // Release pa reference
+    if (scs_ptr->in_loop_me)
+        release_pa_reference_objects(scs_ptr, pcs_tpl_base_ptr);
+    return 0;
+}
+#endif
+
 /* Picture Manager Kernel */
 
 /***************************************************************************************************
@@ -259,8 +420,10 @@ void *picture_manager_kernel(void *input_ptr) {
     EbObjectWrapper *    input_picture_demux_wrapper_ptr;
     PictureDemuxResults *input_picture_demux_ptr;
 
+#if !INL_ME
     EbObjectWrapper * output_wrapper_ptr;
     RateControlTasks *rate_control_tasks_ptr;
+#endif
 
     EbBool availability_flag;
 
@@ -309,6 +472,10 @@ void *picture_manager_kernel(void *input_ptr) {
             encode_context_ptr = scs_ptr->encode_context_ptr;
 
             //SVT_LOG("\nPicture Manager Process @ %d \n ", pcs_ptr->picture_number);
+
+#if INL_ME
+            tpl_get_open_loop_me(context_ptr, scs_ptr, pcs_ptr);
+#endif
 
 #if !DECOUPLE_ME_RES
             queue_entry_index = (int32_t)(
@@ -990,6 +1157,10 @@ void *picture_manager_kernel(void *input_ptr) {
                         eb_object_inc_live_count(child_pcs_wrapper_ptr, 1);
 
                         child_pcs_ptr = (PictureControlSet *)child_pcs_wrapper_ptr->object_ptr;
+#if INL_ME
+
+                        child_pcs_ptr->c_pcs_wrapper_ptr = child_pcs_wrapper_ptr;
+#endif
 
                         //1.Link The Child PCS to its Parent
                         child_pcs_ptr->picture_parent_control_set_wrapper_ptr =
@@ -1539,6 +1710,25 @@ void *picture_manager_kernel(void *input_ptr) {
                             eb_object_inc_live_count(child_pcs_ptr->parent_pcs_ptr->scs_wrapper_ptr,
                                                      1);
                         }
+#if INL_ME
+                        const uint32_t segment_counts =  child_pcs_ptr->parent_pcs_ptr->inloop_me_segments_total_count;
+                        for (uint32_t segment_index = 0; segment_index < segment_counts; ++segment_index) {
+                            EbObjectWrapper               *out_results_wrapper_ptr;
+                            // Get Empty Results Object
+                            eb_get_empty_object(
+                                context_ptr->picture_manager_output_fifo_ptr,
+                                &out_results_wrapper_ptr);
+
+                            PictureManagerResults   *out_results_ptr = (PictureManagerResults*)out_results_wrapper_ptr->object_ptr;
+                            // PM output ppcs to iME kernel
+                            out_results_ptr->pcs_wrapper_ptr = child_pcs_ptr->parent_pcs_ptr->p_pcs_wrapper_ptr;
+                            out_results_ptr->segment_index = segment_index;
+                            out_results_ptr->task_type = 0;
+                            // Post the Full Results Object
+                            eb_post_full_object(out_results_wrapper_ptr);
+                        }
+
+#else
 
                         // Get Empty Results Object
                         eb_get_empty_object(context_ptr->picture_manager_output_fifo_ptr,
@@ -1550,6 +1740,7 @@ void *picture_manager_kernel(void *input_ptr) {
 
                         // Post the Full Results Object
                         eb_post_full_object(output_wrapper_ptr);
+#endif
 
                         // Remove the Input Entry from the Input Queue
                         input_entry_ptr->input_object_ptr = (EbObjectWrapper *)EB_NULL;
