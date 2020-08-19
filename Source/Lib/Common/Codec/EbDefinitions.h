@@ -628,6 +628,11 @@ extern "C" {
 #define FIX_ALL_I             1 //fix all intra case
 #endif
 
+
+#define FIX_TPL_ME_ACCESS  1 //fixes access of ME results in TPL
+#define FIX_TPL_REF_OBJ    1 //fixes access of pa ref obj-lossless
+
+
 #define PR_1349 1 //Port fixes for SIMD kernels from AOM
 #define PR_1359 1 //Valgrind fix
 #define PR_1238 1 //Fix for AVX2/AVX512 kernels when non-multiple of 8 resolution is used

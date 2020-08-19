@@ -1058,6 +1058,34 @@ void eb_av1_build_quantizer(AomBitDepth bit_depth, int32_t y_dc_delta_q, int32_t
 double eb_av1_convert_qindex_to_q(int32_t qindex, AomBitDepth bit_depth);
 int32_t eb_av1_compute_qdelta(double qstart, double qtarget, AomBitDepth bit_depth);
 #endif
+
+#if FIX_TPL_ME_ACCESS
+//Given one reference frame identified by the pair (list_index,ref_index)
+//indicate if ME data is valid
+uint8_t is_me_data_valid(   
+    const MeSbResults           *me_results,   
+    uint32_t                     me_mb_offset,
+    uint8_t                      list_idx,
+    uint8_t                      ref_idx) {
+            
+    uint8_t total_me_cnt = me_results->total_me_candidate_index[me_mb_offset];
+    const MeCandidate *me_block_results = &me_results->me_candidate_array[me_mb_offset*MAX_PA_ME_CAND];
+
+    for (uint32_t me_cand_i = 0; me_cand_i < total_me_cnt; ++me_cand_i) {
+        const MeCandidate *me_cand = &me_block_results[me_cand_i];
+        assert(me_cand->direction >= 0 && me_cand->direction <= 2);
+        if (me_cand->direction == 0 || me_cand->direction == 2) {
+            if (list_idx == me_cand->ref0_list && ref_idx == me_cand->ref_idx_l0)
+                return 1;
+        }
+        if (me_cand->direction == 1 || me_cand->direction == 2) {
+            if (list_idx == me_cand->ref1_list && ref_idx == me_cand->ref_idx_l1)
+                return 1;
+        }
+    }
+    return 0;
+}
+#endif
 /************************************************
 * Genrate TPL MC Flow Dispenser  Based on Lookahead
 ** LAD Window: sliding window size
@@ -1224,6 +1252,14 @@ void tpl_mc_flow_dispenser(
                         uint32_t ref_pic_index = (scs_ptr->mrp_mode == 0) ? (rf_idx >= 4 ? (rf_idx - 4) : rf_idx)
                                                                           : (rf_idx >= 2 ? (rf_idx - 2) : rf_idx);
 #endif
+
+#if FIX_TPL_ME_ACCESS
+                        if( (list_index == 0 && (ref_pic_index+1) > pcs_ptr->mrp_ctrls.ref_list0_count_try) || 
+                            (list_index == 1 && (ref_pic_index+1) > pcs_ptr->mrp_ctrls.ref_list1_count_try) )
+                            continue;                      
+                        if( !is_me_data_valid( pcs_ptr->pa_me_data->me_results[sb_index], me_mb_offset, list_index, ref_pic_index))
+                            continue;
+#endif
                         if(!pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index])
                             continue;
                         uint32_t ref_poc = pcs_ptr->ref_order_hint[rf_idx];
@@ -1238,8 +1274,15 @@ void tpl_mc_flow_dispenser(
                             continue;
                         }
 
+#if FIX_TPL_REF_OBJ
+                        EbPaReferenceObject * referenceObject = (EbPaReferenceObject*)pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index]->object_ptr;
+                        ref_pic_ptr = (EbPictureBufferDesc*)referenceObject->input_padded_picture_ptr;
+#else
                         referenceObject = (EbReferenceObject*)pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index]->object_ptr;
                         ref_pic_ptr = /*is16bit ? (EbPictureBufferDesc*)referenceObject->reference_picture16bit : */(EbPictureBufferDesc*)referenceObject->reference_picture;
+
+#endif
+
                         const int ref_basic_offset = ref_pic_ptr->origin_y * ref_pic_ptr->stride_y + ref_pic_ptr->origin_x;
                         const int ref_mb_offset = mb_origin_y * ref_pic_ptr->stride_y + mb_origin_x;
                         uint8_t *ref_mb = ref_pic_ptr->buffer_y + ref_basic_offset + ref_mb_offset;
