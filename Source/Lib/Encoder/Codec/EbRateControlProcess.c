@@ -6119,6 +6119,7 @@ void *rate_control_kernel(void *input_ptr) {
     RateControlTaskTypes task_type;
     RATE_CONTROL         rc;
 
+    uint32_t segment_index = 0;
     for (;;) {
         // Get RateControl Task
         eb_get_full_object(context_ptr->rate_control_input_tasks_fifo_ptr,
@@ -6127,9 +6128,16 @@ void *rate_control_kernel(void *input_ptr) {
         rate_control_tasks_ptr = (RateControlTasks *)rate_control_tasks_wrapper_ptr->object_ptr;
         task_type              = rate_control_tasks_ptr->task_type;
 
+
+        // Modify these for different temporal layers later
+        switch (task_type) {
 #if INL_ME
-        if (task_type == RC_INPUT) {
-            uint32_t segment_index = rate_control_tasks_ptr->segment_index;
+        case RC_INPUT:
+#else
+        case RC_PICTURE_MANAGER_RESULT:
+#endif
+#if INL_ME
+            segment_index = rate_control_tasks_ptr->segment_index;
             pcs_ptr = (PictureControlSet *)rate_control_tasks_ptr->pcs_wrapper_ptr->object_ptr;
 
             // Set the segment mask
@@ -6142,17 +6150,8 @@ void *rate_control_kernel(void *input_ptr) {
                 eb_release_object(rate_control_tasks_wrapper_ptr);
                 continue;
             }
-        }
 #endif
 
-
-        // Modify these for different temporal layers later
-        switch (task_type) {
-#if INL_ME
-        case RC_INPUT:
-#else
-        case RC_PICTURE_MANAGER_RESULT:
-#endif
 
             pcs_ptr = (PictureControlSet *)rate_control_tasks_ptr->pcs_wrapper_ptr->object_ptr;
             scs_ptr = (SequenceControlSet *)pcs_ptr->scs_wrapper_ptr->object_ptr;

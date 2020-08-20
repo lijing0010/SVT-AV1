@@ -547,7 +547,7 @@ void reset_pcs_av1(PictureParentControlSet *pcs_ptr) {
     //  int32_t all_one_sided_refs;
 #if INL_ME
     pcs_ptr->tpl_me_done = 0;
-    pcs_ptr->do_mctf = 0;
+//    pcs_ptr->do_mctf = 0;
 #endif
 }
 /***********************************************

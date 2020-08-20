@@ -244,13 +244,22 @@ static uint8_t tpl_setup_me_refs(
             pcs_tpl_base_ptr->pred_structure,
             scs_ptr->reference_count,
             pcs_tpl_base_ptr->hierarchical_levels);
-    int init_idx = base_pred_struct_ptr->init_pic_index;
-    int pred_struct_idx = init_idx +
-        pcs_tpl_group_frame_ptr->picture_number % base_pred_struct_ptr->pred_struct_period;
-    pred_struct_idx += pcs_tpl_group_frame_ptr->picture_number / base_pred_struct_ptr->pred_struct_period ?
-        base_pred_struct_ptr->pred_struct_period: 0;
-    pred_struct_idx = pred_struct_idx % base_pred_struct_ptr->pred_struct_entry_count;
+    uint32_t init_idx = base_pred_struct_ptr->init_pic_index;
+    uint64_t curr_poc = pcs_tpl_group_frame_ptr->picture_number;
+    uint64_t base_poc = pcs_tpl_base_ptr->picture_number;
+    uint32_t tpl_base_minigop = base_pred_struct_ptr->pred_struct_period;
+    //uint32_t curr_minigop_entry_idx = (curr_poc + tpl_base_minigop - base_poc) % tpl_base_minigop;
+    uint32_t curr_minigop_entry_idx = (curr_poc > base_poc) ?
+                                      curr_poc - base_poc :
+                                      curr_poc + tpl_base_minigop - base_poc;
+    uint32_t pred_struct_idx = curr_minigop_entry_idx + init_idx;
 
+    // 17/18/19, which is out side of the minigop
+    EbBool trailing_frames = (!pcs_tpl_base_ptr->idr_flag) && (curr_poc > base_poc);
+#if INL_TPL_ME_DBG
+    printf("\tbase poc %ld, curr poc %ld, minigop idx %d, pred idx %d, is_trailing_frame %d\n",
+            base_poc, curr_poc, curr_minigop_entry_idx, pred_struct_idx, trailing_frames);
+#endif
 
     EB_MEMSET(pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_0],
             0,
@@ -260,23 +269,22 @@ static uint8_t tpl_setup_me_refs(
             REF_LIST_MAX_DEPTH * sizeof(EbObjectWrapper*));
     // Set tpl refs on L0
     int ref_list_count = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list0.reference_list_count; //chkn  pcs_ptr->mrp_ctrls.ref_list0_count_try
+    if (!trailing_frames)
+        ref_list_count = MIN(ref_list_count, pcs_tpl_group_frame_ptr->mrp_ctrls.ref_list0_count_try);
+    else
+        ref_list_count = MIN(ref_list_count, 2); //Jing: limit the ref count of trailing frames
+        
     int list_index = REF_LIST_0;
     for (int i = 0; i < ref_list_count; i++) {
         int delta_poc = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list0.reference_list[i];
-        int ref_poc = pcs_tpl_group_frame_ptr->picture_number - delta_poc;
-        assert(ref_poc >= 0);
+        assert((int)pcs_tpl_group_frame_ptr->picture_number >= delta_poc);
+        uint64_t ref_poc = pcs_tpl_group_frame_ptr->picture_number - delta_poc;
         for (uint32_t j = 0; j < pcs_tpl_base_ptr->tpl_group_size; j++) {
-            if (ref_poc == (int)pcs_tpl_base_ptr->tpl_group[j]->picture_number) {
+            if (ref_poc == pcs_tpl_base_ptr->tpl_group[j]->picture_number) {
                 // Some refs in L0 are out of order (1, 9, 8, 17), which will make (valid, NULL, valid, NULL)
                 // So needs reorder to (valid, valid, NULL, NULL)
                 pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref0_count] = pcs_tpl_base_ptr->tpl_group[j]->downscaled_input_pic;
                 *ref0_count += 1;
-#if INL_TPL_ME_DBG
-                printf("\t Set ref on L0(%d): %ld => %ld\n",
-                        ref_list_count,
-                        pcs_tpl_group_frame_ptr->picture_number,
-                        pcs_tpl_base_ptr->tpl_group[j]->picture_number);
-#endif
                 break;
             }
         }
@@ -284,24 +292,56 @@ static uint8_t tpl_setup_me_refs(
 
     // Set tpl refs on L1
     ref_list_count = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list1.reference_list_count;
+    if (!trailing_frames)
+        ref_list_count = MIN(ref_list_count, pcs_tpl_group_frame_ptr->mrp_ctrls.ref_list1_count_try);
+    else
+        ref_list_count = MIN(ref_list_count, 2); //Jing: limit the ref count of trailing frames
     list_index = REF_LIST_1;
     for (int i = 0; i < ref_list_count; i++) {
         int delta_poc = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list1.reference_list[i];
-        int ref_poc = pcs_tpl_group_frame_ptr->picture_number - delta_poc;
+        uint64_t ref_poc = pcs_tpl_group_frame_ptr->picture_number - delta_poc;
+        EbBool same_ref_in_l0 = EB_FALSE;
+        for (uint32_t j = 0; j < *ref0_count; j++) {
+            if (ref_poc == pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[0][j]->picture_number) {
+                same_ref_in_l0 = EB_TRUE;
+                break;
+            }
+        }
+        if (same_ref_in_l0) continue;
+
         for (uint32_t j = 0; j < pcs_tpl_base_ptr->tpl_group_size; j++) {
-            if (ref_poc == (int)pcs_tpl_base_ptr->tpl_group[j]->picture_number) {
+            if (ref_poc == pcs_tpl_base_ptr->tpl_group[j]->picture_number) {
                 pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref1_count] = pcs_tpl_base_ptr->tpl_group[j]->downscaled_input_pic;
                 *ref1_count += 1;
-#if INL_TPL_ME_DBG
-                printf("\t Set ref on L1(%d): %ld => %ld\n",
-                        ref_list_count,
-                        pcs_tpl_group_frame_ptr->picture_number,
-                        pcs_tpl_base_ptr->tpl_group[j]->picture_number);
-#endif
                 break;
             }
         }
     }
+
+    // If only have refs in L1 but no L0, copy it from L1 to L0 
+    if (*ref0_count == 0) {
+        assert(*ref1_count != 0);
+        printf("\t\t[%ld]: Replace L0 with L1\n", pcs_tpl_group_frame_ptr->picture_number);
+        for (int i = 0; i < *ref1_count; i++) {
+            pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_0][i] =
+                pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_1][i];
+            pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_1][i] = NULL;
+        }
+        *ref0_count = *ref1_count;
+        *ref1_count = 0;
+    }
+
+#if INL_TPL_ME_DBG
+    for (int i = REF_LIST_0; i <= REF_LIST_1; i++) {
+        int ref_count = (i == 0) ? *ref0_count: *ref1_count;
+        for (int j = 0; j < ref_count; j++) {
+            printf("\t\t Set ref on list: %d, total count %d: %ld => %ld\n",
+                    i, ref_count,
+                    pcs_tpl_group_frame_ptr->picture_number,
+                    pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[i][j]->picture_number);
+        }
+    }
+#endif
     return 0;
 }
 
@@ -314,46 +354,40 @@ static EbErrorType tpl_get_open_loop_me(
             scs_ptr->static_config.enable_tpl_la &&
             pcs_tpl_base_ptr->temporal_layer_index == 0) {
         // Do tpl ME to get ME results
-        // Do it in reverse order, for IDR, the 1st may need to wait for the mctf
-        for (int i = pcs_tpl_base_ptr->tpl_group_size - 1; i >= 0; i--) {
+        for (uint32_t i = 0; i < pcs_tpl_base_ptr->tpl_group_size; i++) {
             PictureParentControlSet* pcs_tpl_group_frame_ptr = pcs_tpl_base_ptr->tpl_group[i];
             if (!pcs_tpl_group_frame_ptr->tpl_me_done) {
                 uint8_t ref_list0_count = 0;
                 uint8_t ref_list1_count = 0;
-#if INL_TPL_ME_DBG
-                printf("[%ld]: Sending TPL ME request for frame %ld\n",
-                        pcs_tpl_base_ptr->picture_number,
-                        pcs_tpl_group_frame_ptr->picture_number);
-#endif
-
-                tpl_setup_me_refs(scs_ptr,
-                        pcs_tpl_group_frame_ptr, pcs_tpl_base_ptr,
-                        &ref_list0_count, &ref_list1_count);
-
-                if (pcs_tpl_group_frame_ptr->do_mctf) {
-                    // Wait for MCTF
-#if INL_TPL_ME_DBG
-                    printf("\tpicture %ld need to do MCTF, wait for its done\n", pcs_tpl_group_frame_ptr->picture_number);
-#endif
-                    eb_block_on_semaphore(pcs_tpl_group_frame_ptr->temp_filt_done_semaphore);
-                }
 
                 if (pcs_tpl_group_frame_ptr->slice_type != I_SLICE &&
                         pcs_tpl_group_frame_ptr != pcs_tpl_base_ptr) {
+#if INL_TPL_ME_DBG
+                    printf("[%ld]: Setup TPL ME refs for frame %ld\n",
+                            pcs_tpl_base_ptr->picture_number,
+                            pcs_tpl_group_frame_ptr->picture_number);
+#endif
+
+                    tpl_setup_me_refs(scs_ptr,
+                            pcs_tpl_group_frame_ptr, pcs_tpl_base_ptr,
+                            &ref_list0_count, &ref_list1_count);
+
                     // Initialize Segments
                     pcs_tpl_group_frame_ptr->tpl_me_segments_column_count = 1;//scs_ptr->tf_segment_column_count;
                     pcs_tpl_group_frame_ptr->tpl_me_segments_row_count = 1;//scs_ptr->tf_segment_row_count;
-                    pcs_tpl_group_frame_ptr->tpl_me_segments_total_count = (uint16_t)(pcs_tpl_group_frame_ptr->tpl_me_segments_column_count  * pcs_tpl_group_frame_ptr->tpl_me_segments_row_count);
+                    pcs_tpl_group_frame_ptr->tpl_me_segments_total_count =
+                        (uint16_t)(pcs_tpl_group_frame_ptr->tpl_me_segments_column_count *
+                                   pcs_tpl_group_frame_ptr->tpl_me_segments_row_count);
                     pcs_tpl_group_frame_ptr->tpl_me_seg_acc = 0;
 
                     for (int16_t seg_idx = 0; seg_idx < pcs_tpl_group_frame_ptr->tpl_me_segments_total_count; ++seg_idx) {
-                        EbObjectWrapper               *out_results_wrapper_ptr;
+                        EbObjectWrapper *out_results_wrapper_ptr;
 
                         eb_get_empty_object(
                                 context_ptr->picture_manager_output_fifo_ptr,
                                 &out_results_wrapper_ptr);
 
-                        PictureManagerResults   *out_results_ptr = (PictureManagerResults*)out_results_wrapper_ptr->object_ptr;
+                        PictureManagerResults *out_results_ptr = (PictureManagerResults*)out_results_wrapper_ptr->object_ptr;
                         out_results_ptr->pcs_wrapper_ptr = pcs_tpl_group_frame_ptr->p_pcs_wrapper_ptr;
                         out_results_ptr->segment_index = seg_idx;
                         out_results_ptr->task_type = 2;

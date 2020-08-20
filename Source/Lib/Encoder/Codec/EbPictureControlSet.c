@@ -1536,11 +1536,7 @@ EbErrorType picture_parent_control_set_ctor(PictureParentControlSet *object_ptr,
 #endif
     EB_CREATE_MUTEX(object_ptr->rc_distortion_histogram_mutex);
     EB_MALLOC_ARRAY(object_ptr->sb_depth_mode_array, object_ptr->sb_total_count);
-#if INL_ME
-    EB_CREATE_SEMAPHORE(object_ptr->temp_filt_done_semaphore, 0, 2);
-#else
     EB_CREATE_SEMAPHORE(object_ptr->temp_filt_done_semaphore, 0, 1);
-#endif
     EB_CREATE_MUTEX(object_ptr->temp_filt_mutex);
     EB_CREATE_MUTEX(object_ptr->debug_mutex);
     EB_MALLOC_ARRAY(object_ptr->av1_cm, 1);

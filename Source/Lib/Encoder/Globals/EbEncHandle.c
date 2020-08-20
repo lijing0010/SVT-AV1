@@ -2585,7 +2585,7 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
 #if INL_ME
     //if (scs_ptr->static_config.rate_control_mode == 0 && scs_ptr->static_config.enable_tpl_la ==0)
     //    scs_ptr->in_loop_me = 1;
-    scs_ptr->in_loop_me = 0;
+    scs_ptr->in_loop_me = 1;
 #endif
 
     // Set over_boundary_block_mode     Settings

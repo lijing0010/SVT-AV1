@@ -6243,10 +6243,6 @@ void mctf_frame(
 
 #endif
 
-#if INL_ME
-    pcs_ptr->do_mctf = context_ptr->tf_ctrls.enabled;
-#endif
-
     if (context_ptr->tf_ctrls.enabled) {
 
         derive_tf_window_params(

@@ -651,8 +651,8 @@ extern "C" {
 #define PAD_CHROMA_AFTER_MCTF 1 // Padding chroma after altref
 #define INL_ME 1 //In loop me
 #if INL_ME
+#define INL_TPL_ME_DBG 1
 #define INL_ME_DBG 0 //In loop me for debug
-#define INL_TPL_ME_DBG 0
 #if INL_ME_DBG
 #define INL_ME_ON_INPUT_DBG 1 //ME on original debug
 #define INL_GM_ON_INPUT_DBG 1 //GM on original debug

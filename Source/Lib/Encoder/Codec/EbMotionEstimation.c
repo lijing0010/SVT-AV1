@@ -10074,6 +10074,12 @@ void integer_search_sb(
                 ABS((int16_t)(context_ptr->tf_frame_index - context_ptr->tf_index_center)) :
                 ABS((int16_t)(pcs_ptr->picture_number -
                     pcs_ptr->ref_pic_poc_array[list_index][ref_pic_index]));
+
+#if INL_ME
+            if (context_ptr->me_inl_tpl)
+                dist = ABS((int16_t)(pcs_ptr->picture_number -
+                    pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->picture_number));
+#endif
             // factor to slowdown the ME search region growth to MAX
 #if UNIFY_SC_NSC
             if (context_ptr->me_alt_ref == 0) {
@@ -10718,7 +10724,7 @@ void hme_level0_sb(
             num_of_ref_pic_to_search = 1;
 #if INL_ME
         } else if (context_ptr->me_inl_tpl == EB_TRUE) {
-            num_of_ref_pic_to_search = list_index == REF_LIST_0 ?
+            num_of_ref_pic_to_search = (list_index == REF_LIST_0) ?
                 context_ptr->tpl_ref_list0_count:
                 context_ptr->tpl_ref_list1_count;
 #endif
@@ -10874,6 +10880,11 @@ void hme_level0_sb(
                         uint16_t dist = (context_ptr->me_alt_ref == EB_TRUE) ?
                             ABS((int16_t)(context_ptr->tf_frame_index - context_ptr->tf_index_center)) :
                             ABS((int16_t)(pcs_ptr->picture_number - pcs_ptr->ref_pic_poc_array[list_index][ref_pic_index]));
+#if INL_ME
+                        if (context_ptr->me_inl_tpl)
+                            dist = ABS((int16_t)(pcs_ptr->picture_number -
+                                        pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->picture_number));
+#endif
                         int32_t hme_sr_factor_x, hme_sr_factor_y;
                         // factor to scaledown the ME search region growth to MAX
                         int8_t round_up = ((dist%8) == 0) ? 0 : 1;
@@ -11117,6 +11128,11 @@ void hme_level1_sb(
                         uint16_t dist = (context_ptr->me_alt_ref == EB_TRUE) ?
                             ABS((int16_t)(context_ptr->tf_frame_index - context_ptr->tf_index_center)) :
                             ABS((int16_t)(pcs_ptr->picture_number - pcs_ptr->ref_pic_poc_array[list_index][ref_pic_index]));
+#if INL_ME
+                        if (context_ptr->me_inl_tpl)
+                            dist = ABS((int16_t)(pcs_ptr->picture_number -
+                                        pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->picture_number));
+#endif
                         int32_t hme_sr_factor_x, hme_sr_factor_y;
                         // factor to scaledown the ME search region growth to MAX
                         int8_t round_up = ((dist % 8) == 0) ? 0 : 1;
@@ -11364,6 +11380,11 @@ void hme_level2_sb(
                         uint16_t dist = (context_ptr->me_alt_ref == EB_TRUE) ?
                             ABS((int16_t)(context_ptr->tf_frame_index - context_ptr->tf_index_center)) :
                             ABS((int16_t)(pcs_ptr->picture_number - pcs_ptr->ref_pic_poc_array[list_index][ref_pic_index]));
+#if INL_ME
+                        if (context_ptr->me_inl_tpl)
+                            dist = ABS((int16_t)(pcs_ptr->picture_number -
+                                        pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->picture_number));
+#endif
                         int32_t hme_sr_factor_x, hme_sr_factor_y;
                         // factor to scaledown the ME search region growth to MAX
                         int8_t round_up = ((dist % 8) == 0) ? 0 : 1;
@@ -11551,13 +11572,25 @@ void set_final_seach_centre_sb(
     if (context_ptr->me_alt_ref == EB_TRUE)
         num_of_list_to_search = 0;
 
+#if INL_ME
+    if (context_ptr->me_inl_tpl)
+        num_of_list_to_search = context_ptr->tpl_ref_list1_count ? 1 : 0;
+#endif
+
     // Uni-Prediction motion estimation loop
     // List Loop
     for (list_index = REF_LIST_0; list_index <= num_of_list_to_search; ++list_index) {
         if (context_ptr->me_alt_ref == EB_TRUE) {
             num_of_ref_pic_to_search = 1;
-        }
-        else {
+#if INL_ME
+        } else if (context_ptr->me_inl_tpl == EB_TRUE) {
+            num_of_ref_pic_to_search = list_index == REF_LIST_0 ?
+                context_ptr->tpl_ref_list0_count:
+                context_ptr->tpl_ref_list1_count;
+            if (pcs_ptr->tpl_ref_ds_ptr_array[0][0])
+                ref0Poc = pcs_ptr->tpl_ref_ds_ptr_array[0][0]->picture_number;
+#endif
+        } else {
             num_of_ref_pic_to_search =
                 (pcs_ptr->slice_type == P_SLICE)
                 ? pcs_ptr->ref_list0_count
@@ -11586,7 +11619,15 @@ void set_final_seach_centre_sb(
                         ->object_ptr;
 #endif
 #endif
+#if INL_ME
+                    if (context_ptr->me_inl_tpl) {
+                        if (pcs_ptr->tpl_ref_ds_ptr_array[1][0])
+                            ref1Poc = pcs_ptr->tpl_ref_ds_ptr_array[1][0]->picture_number;
+                    } else
+                        ref1Poc = pcs_ptr->ref_pic_poc_array[1][0];
+#else
                     ref1Poc = pcs_ptr->ref_pic_poc_array[1][0];
+#endif
                 }
 #if !FIX_WARNINGS
                 referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index]->object_ptr;
@@ -11936,6 +11977,11 @@ void hme_sb(
         (pcs_ptr->slice_type == P_SLICE) ? (uint32_t)REF_LIST_0 : (uint32_t)REF_LIST_1;
 
     if (context_ptr->me_alt_ref == EB_TRUE) num_of_list_to_search = 0;
+
+#if INL_ME
+    if (context_ptr->me_inl_tpl)
+        num_of_list_to_search = context_ptr->tpl_ref_list1_count ? 1 : 0;
+#endif
     // Uni-Prediction motion estimation loop
     // List Loop
     for (list_index = REF_LIST_0; list_index <= num_of_list_to_search; ++list_index) {
@@ -12548,6 +12594,13 @@ void construct_me_candidate_array(
             ? pcs_ptr->ref_list0_count
             : pcs_ptr->ref_list1_count;
 #endif
+#if INL_ME
+        if (context_ptr->me_inl_tpl == EB_TRUE) {
+            num_of_ref_pic_to_search = list_index == REF_LIST_0 ?
+                context_ptr->tpl_ref_list0_count:
+                context_ptr->tpl_ref_list1_count;
+        }
+#endif
 
         // Ref Picture Loop
         for (ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search; ++ref_pic_index) {
@@ -12748,7 +12801,11 @@ EbErrorType motion_estimate_sb(
         for (uint32_t ri = 0; ri < REF_LIST_MAX_DEPTH; ri++) {
 #if INTER_COMP_REDESIGN
 #if DECOUPLE_ME_RES
+#if INL_ME
+            if(context_ptr->me_alt_ref == EB_FALSE && context_ptr->me_inl_tpl == EB_FALSE)
+#else
             if(context_ptr->me_alt_ref == EB_FALSE)
+#endif
                 pcs_ptr->pa_me_data->me_results[sb_index]->do_comp[li][ri] = 1;
 #else
             pcs_ptr->me_results[sb_index]->do_comp[li][ri] = 1;
@@ -12856,6 +12913,10 @@ EbErrorType motion_estimate_sb(
 #endif
 
     if (context_ptr->me_alt_ref == EB_TRUE) num_of_list_to_search = 0;
+#if INL_ME
+    if (context_ptr->me_inl_tpl)
+        num_of_list_to_search = context_ptr->tpl_ref_list1_count ? 1 : 0;
+#endif
 #if !REMOVE_ME_SUBPEL_CODE
     // Uni-Prediction motion estimation loop
     // List Loop
@@ -13339,11 +13400,7 @@ EbErrorType motion_estimate_sb(
     }
 #endif
 
-#if INL_ME
-    if (context_ptr->me_alt_ref == EB_FALSE && context_ptr->me_inl_tpl == EB_FALSE) {
-#else
     if (context_ptr->me_alt_ref == EB_FALSE) {
-#endif
         // Bi-Prediction motion estimation loop
         for (pu_index = 0; pu_index < max_number_of_pus_per_sb; ++pu_index) {
 #if !REMOVE_ME_BIPRED_SEARCH
@@ -13557,11 +13614,23 @@ EbErrorType motion_estimate_sb(
             for (list_index = REF_LIST_0; list_index <= num_of_list_to_search; ++list_index) {
 #if MRP_CTRL
 #if ON_OFF_FEATURE_MRP
+#if INL_ME
+                if (context_ptr->me_inl_tpl) {
+                    num_of_ref_pic_to_search = (list_index == REF_LIST_0) ?
+                        context_ptr->tpl_ref_list0_count:
+                        context_ptr->tpl_ref_list1_count;
+                } else {
+                    num_of_ref_pic_to_search = (pcs_ptr->slice_type == P_SLICE)
+                        ? pcs_ptr->mrp_ctrls.ref_list0_count_try
+                        : (list_index == REF_LIST_0) ? pcs_ptr->mrp_ctrls.ref_list0_count_try
+                        : pcs_ptr->mrp_ctrls.ref_list1_count_try;
+                }
+#else
                 num_of_ref_pic_to_search = (pcs_ptr->slice_type == P_SLICE)
                     ? pcs_ptr->mrp_ctrls.ref_list0_count_try
-                    : (list_index == REF_LIST_0)
-                    ? pcs_ptr->mrp_ctrls.ref_list0_count_try
+                    : (list_index == REF_LIST_0) ? pcs_ptr->mrp_ctrls.ref_list0_count_try
                     : pcs_ptr->mrp_ctrls.ref_list1_count_try;
+#endif
 #else
                 num_of_ref_pic_to_search = (pcs_ptr->slice_type == P_SLICE)
                     ? pcs_ptr->ref_list0_count_try

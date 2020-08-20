@@ -3849,18 +3849,6 @@ EbErrorType svt_av1_init_temporal_filtering(
         // signal that temp filt is done
         eb_post_semaphore(picture_control_set_ptr_central->temp_filt_done_semaphore);
 
-#if INL_ME
-        // If doing TPL, post it again
-        if (picture_control_set_ptr_central->scs_ptr->in_loop_me &&
-            picture_control_set_ptr_central->scs_ptr->static_config.enable_tpl_la) {
-#if INL_TPL_ME_DBG
-                printf("[%ld]: Post semphore to TPL on MCTF frames\n",
-                        picture_control_set_ptr_central->picture_number);
-#endif
-                eb_post_semaphore(picture_control_set_ptr_central->temp_filt_done_semaphore);
-        }
-#endif
-
     }
 
     eb_release_mutex(picture_control_set_ptr_central->temp_filt_mutex);
