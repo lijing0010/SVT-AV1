@@ -8392,23 +8392,33 @@ void* picture_decision_kernel(void *input_ptr)
                         //Process previous delayed Intra if we have one
                         if (context_ptr->prev_delayed_intra) {
                             pcs_ptr = context_ptr->prev_delayed_intra;
+#if !ALL_TF_FIRST
                             context_ptr->prev_delayed_intra = NULL;
+#endif
                             //if (scs_ptr->static_config.enable_tpl_la)
                             store_tpl_pictures(pcs_ptr, context_ptr, mg_size);
 
                             mctf_frame(scs_ptr, pcs_ptr, context_ptr, out_stride_diff64);
 
+#if !ALL_TF_FIRST
                             send_picture_out(scs_ptr, pcs_ptr, context_ptr);
+#endif
                         }
 
                         //Do TF loop in display order
                         for (uint32_t pic_i = 0; pic_i < mg_size; ++pic_i) {
                             pcs_ptr = context_ptr->mg_pictures_array_disp_order[pic_i];
+
+#if ALL_TF_FIRST
+                            if (is_delayed_intra(pcs_ptr) == EB_FALSE) {
+#else
                             if (is_delayed_intra(pcs_ptr)) {
+
                                 context_ptr->prev_delayed_intra = pcs_ptr;
+
                             }
                             else {
-
+#endif
 #if TPL_GRP_FIX
                                 if ( pcs_ptr->temporal_layer_index == 0 )
 #else
@@ -8422,16 +8432,33 @@ void* picture_decision_kernel(void *input_ptr)
                         }
 #endif
 
+#if ALL_TF_FIRST
+                        if (context_ptr->prev_delayed_intra) {
+                            pcs_ptr = context_ptr->prev_delayed_intra;
+                            context_ptr->prev_delayed_intra = NULL;
+                            send_picture_out(scs_ptr, pcs_ptr, context_ptr);
+                        }
+#endif
 
                         for (uint32_t pic_i = 0; pic_i < mg_size; ++pic_i){
 
                             pcs_ptr = context_ptr->mg_pictures_array[pic_i];
 
 #if NEW_DELAY
+#if ALL_TF_FIRST
+                            if (is_delayed_intra(pcs_ptr)) {
+                                context_ptr->prev_delayed_intra = pcs_ptr;
+                            }else{
+                                send_picture_out(scs_ptr, pcs_ptr, context_ptr);
+                            }
+
+#else
+
                             //Delay some kind of I frames to next pre-ass event
                             if (is_delayed_intra(pcs_ptr) == EB_FALSE) {
                                 send_picture_out(scs_ptr, pcs_ptr, context_ptr);
                             }
+#endif
 #else
                             if (scs_ptr->static_config.look_ahead_distance == 0) {
 

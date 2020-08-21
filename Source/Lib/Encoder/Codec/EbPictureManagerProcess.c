@@ -259,7 +259,7 @@ static uint8_t tpl_setup_me_refs(
             0,
             REF_LIST_MAX_DEPTH * sizeof(EbObjectWrapper*));
     // Set tpl refs on L0
-    int ref_list_count = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list0.reference_list_count;
+    int ref_list_count = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list0.reference_list_count; //chkn  pcs_ptr->mrp_ctrls.ref_list0_count_try
     int list_index = REF_LIST_0;
     for (int i = 0; i < ref_list_count; i++) {
         int delta_poc = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list0.reference_list[i];
@@ -362,7 +362,7 @@ static EbErrorType tpl_get_open_loop_me(
                         eb_post_full_object(out_results_wrapper_ptr);
                     }
 
-                    eb_block_on_semaphore(pcs_tpl_group_frame_ptr->tpl_me_done_semaphore);
+                    eb_block_on_semaphore(pcs_tpl_group_frame_ptr->tpl_me_done_semaphore); //chkn we can do all in // ?
 
                     // When TPL16, flag tpl_me_done of 17/18/19 will be set done during TPL32
                     if (pcs_tpl_base_ptr->idr_flag ||

@@ -626,7 +626,9 @@ extern "C" {
 #define TPL_GRP_FIX           1 //fix generation of tpl group
 #define FIX_LAD_DEADLOCK      1 //fix deadlock when lad>0 + iperiod>0
 #define FIX_ALL_I             1 //fix all intra case
+#define ALL_TF_FIRST          1 //do TF for delayedI-nextMG then send all out after
 #define NEW_DELAY_DBG_MSG     0
+
 #endif
 
 
