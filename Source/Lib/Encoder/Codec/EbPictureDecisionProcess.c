@@ -6342,13 +6342,14 @@ void store_tpl_pictures(
 
 #if INL_ME
     for (uint32_t pic_i = 0; pic_i < pcs->tpl_group_size; ++pic_i) {
-        PictureParentControlSet* pcs_tpl_ptr = (PictureParentControlSet *)pcs->tpl_group[pic_i];
-        if (!pcs_tpl_ptr->me_data_wrapper_ptr && pcs_tpl_ptr->slice_type != I_SLICE) {
+        PictureParentControlSet* pcs_tpl_ptr = (PictureParentControlSet *)pcs->tpl_group[pic_i];     
+
+        if (pcs_tpl_ptr->me_data_wrapper_ptr==NULL) {     
             EbObjectWrapper               *me_wrapper;
             eb_get_empty_object(ctx->me_fifo_ptr, &me_wrapper);
             pcs_tpl_ptr->me_data_wrapper_ptr = me_wrapper;
             pcs_tpl_ptr->pa_me_data = (MotionEstimationData *)me_wrapper->object_ptr;
-            //printf("[%ld]: Got me data %p\n", pcs_tpl_ptr->picture_number, pcs_tpl_ptr->pa_me_data);
+            //printf("[%ld]: Got me data [TPL] %p\n", pcs_tpl_ptr->picture_number, pcs_tpl_ptr->pa_me_data);
         }
         //printf("====[%ld]: TPL group Base %ld, TPL group size %d\n",pcs->picture_number, pcs_tpl_ptr->picture_number, pcs->tpl_group_size);
     }
@@ -6378,10 +6379,11 @@ void send_picture_out(
     }
     //get a new ME data buffer
 #if INL_ME
-    if (!pcs->me_data_wrapper_ptr && pcs->slice_type != I_SLICE) {
+    if (pcs->me_data_wrapper_ptr == NULL) {  
         eb_get_empty_object(ctx->me_fifo_ptr, &me_wrapper);
         pcs->me_data_wrapper_ptr = me_wrapper;
         pcs->pa_me_data = (MotionEstimationData *)me_wrapper->object_ptr;
+        //printf("[%ld]: Got me data [NORMAL] %p\n", pcs->picture_number, pcs->pa_me_data);
     }
 #else
     eb_get_empty_object(ctx->me_fifo_ptr, &me_wrapper);
@@ -8391,8 +8393,10 @@ void* picture_decision_kernel(void *input_ptr)
 #if !ALL_TF_FIRST
                             context_ptr->prev_delayed_intra = NULL;
 #endif
-                            //if (scs_ptr->static_config.enable_tpl_la)
-                            store_tpl_pictures(pcs_ptr, context_ptr, mg_size);
+#if TPL_GRP_FIX
+                            if (scs_ptr->static_config.enable_tpl_la)
+#endif
+                                store_tpl_pictures(pcs_ptr, context_ptr, mg_size);
 
                             mctf_frame(scs_ptr, pcs_ptr, context_ptr, out_stride_diff64);
 
@@ -8416,7 +8420,7 @@ void* picture_decision_kernel(void *input_ptr)
                             else {
 #endif
 #if TPL_GRP_FIX
-                                if ( pcs_ptr->temporal_layer_index == 0 )
+                                if (scs_ptr->static_config.enable_tpl_la && pcs_ptr->temporal_layer_index == 0 )
 #else
                                 if (pcs_ptr->end_of_sequence_flag == EB_FALSE &&
                                     /*scs_ptr->static_config.enable_tpl_la &&*/ pcs_ptr->temporal_layer_index == 0 /*Add more TPL conditions*/)

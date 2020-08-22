@@ -610,8 +610,8 @@ typedef struct MeContext {
 #endif
     // -------
 #if INL_ME
-    uint64_t tpl_ref_list0_count;
-    uint64_t tpl_ref_list1_count;
+    uint8_t tpl_ref_list0_count;
+    uint8_t tpl_ref_list1_count;
 #endif
 } MeContext;
 

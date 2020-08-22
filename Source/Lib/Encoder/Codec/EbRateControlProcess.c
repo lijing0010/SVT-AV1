@@ -6160,6 +6160,15 @@ void *rate_control_kernel(void *input_ptr) {
             pcs_ptr->parent_pcs_ptr->blk_lambda_tuning = EB_FALSE;
 #endif
 
+
+#if INL_ME
+            // Release the down scaled input
+            if (scs_ptr->in_loop_me) {
+                eb_release_object(pcs_ptr->parent_pcs_ptr->down_scaled_picture_wrapper_ptr);
+                pcs_ptr->parent_pcs_ptr->down_scaled_picture_wrapper_ptr = NULL;
+            }
+#endif
+
             if (pcs_ptr->picture_number == 0) {
                 //init rate control parameters
                 init_rc(context_ptr, pcs_ptr, scs_ptr);
@@ -6701,11 +6710,6 @@ void *rate_control_kernel(void *input_ptr) {
 #endif
             total_number_of_fb_frames++;
 
-#if INL_ME
-            // Release the down scaled input for in_loop_me mode
-            if (scs_ptr->in_loop_me)
-                eb_release_object(parentpicture_control_set_ptr->down_scaled_picture_wrapper_ptr);
-#endif
 
             // Release the SequenceControlSet
             eb_release_object(parentpicture_control_set_ptr->scs_wrapper_ptr);

@@ -659,10 +659,16 @@ EbErrorType load_default_buffer_configuration_settings(
         min_ref = 17;
 
 #if DECOUPLE_ME_RES
+
+#if INL_ME       
+        if (scs_ptr->static_config.look_ahead_distance > 0)
+            min_me = min_parent;
+        else if (scs_ptr->static_config.enable_tpl_la)
+            min_me = mg_size + 1 + 3; //TODO add Constant for 3
+        else
+            min_me = 1;
+#else
         min_me = scs_ptr->static_config.look_ahead_distance==0 ? 1 : min_parent;
-#if INL_ME
-        //TODO: change it when needed
-        min_me = mg_size + 4;
 #endif
 #endif
         //Pa-References.Min to sustain flow (RA-5L-MRP-ON) -->TODO: derive numbers for other GOP Structures.

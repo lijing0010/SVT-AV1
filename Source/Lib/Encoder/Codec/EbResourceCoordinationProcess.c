@@ -547,6 +547,8 @@ void reset_pcs_av1(PictureParentControlSet *pcs_ptr) {
     //  int32_t all_one_sided_refs;
 #if INL_ME
     pcs_ptr->tpl_me_done = 0;
+    pcs_ptr->me_data_wrapper_ptr = NULL;
+    pcs_ptr->down_scaled_picture_wrapper_ptr = NULL;
 //    pcs_ptr->do_mctf = 0;
 #endif
 }
@@ -1278,9 +1280,10 @@ void *resource_coordination_kernel(void *input_ptr) {
                 eb_object_inc_live_count(pcs_ptr->pa_reference_picture_wrapper_ptr, 2);
 #if INL_ME
             if (scs_ptr->in_loop_me) {
+                EbObjectWrapper *ds_wrapper;
                 eb_get_empty_object(scs_ptr->encode_context_ptr->down_scaled_picture_pool_fifo_ptr,
-                        &reference_picture_wrapper_ptr);
-                pcs_ptr->down_scaled_picture_wrapper_ptr = reference_picture_wrapper_ptr;
+                        &ds_wrapper);
+                pcs_ptr->down_scaled_picture_wrapper_ptr = ds_wrapper;
             }
 #endif
             if (scs_ptr->static_config.unrestricted_motion_vector == 0) {
