@@ -2000,8 +2000,13 @@ void *motion_estimation_kernel(void *input_ptr) {
         input_picture_ptr = pcs_ptr->enhanced_unscaled_picture_ptr;
 #endif
 
+#if !INL_ME
         context_ptr->me_context_ptr->me_alt_ref =
             in_results_ptr->task_type == 1 ? EB_TRUE : EB_FALSE;
+#else
+        context_ptr->me_context_ptr->me_type =
+            in_results_ptr->task_type == 1 ? ME_MCTF: ME_OPEN_LOOP;
+#endif
 
         // Lambda Assignement
         if (scs_ptr->static_config.pred_structure == EB_PRED_RANDOM_ACCESS) {
@@ -2194,8 +2199,11 @@ void *motion_estimation_kernel(void *input_ptr) {
                                 }
                             }
                         }
+#if !INL_ME
                         context_ptr->me_context_ptr->me_alt_ref = EB_FALSE;
+#endif
 #if INL_ME
+                        context_ptr->me_context_ptr->me_type = ME_OPEN_LOOP;
                         context_ptr->me_context_ptr->num_of_list_to_search =
                             (pcs_ptr->slice_type == P_SLICE) ? (uint32_t)REF_LIST_0 : (uint32_t)REF_LIST_1;
                         context_ptr->me_context_ptr->num_of_ref_pic_to_search[0] = pcs_ptr->mrp_ctrls.ref_list0_count_try;
@@ -2502,7 +2510,11 @@ void *motion_estimation_kernel(void *input_ptr) {
             tf_signal_derivation_me_kernel_oq(scs_ptr, pcs_ptr, context_ptr);
 
             // temporal filtering start
+#if !INL_ME
             context_ptr->me_context_ptr->me_alt_ref = EB_TRUE;
+#else
+            context_ptr->me_context_ptr->me_type = ME_MCTF;
+#endif
             svt_av1_init_temporal_filtering(
                 pcs_ptr->temp_filt_pcs_list, pcs_ptr, context_ptr, in_results_ptr->segment_index);
 
@@ -2725,18 +2737,15 @@ void *inloop_me_kernel(void *input_ptr) {
         if (scs_ptr->in_loop_me) {
             input_picture_ptr = ppcs_ptr->enhanced_picture_ptr;
 
-            context_ptr->me_context_ptr->me_alt_ref = EB_FALSE;
-            context_ptr->me_context_ptr->me_in_loop = EB_TRUE;
             segment_col_count = ppcs_ptr->inloop_me_segments_column_count;
             segment_row_count = ppcs_ptr->inloop_me_segments_row_count;
-#if INL_ME
-            context_ptr->me_context_ptr->me_inl_tpl = EB_FALSE;
+
+            context_ptr->me_context_ptr->me_type = ME_CLOSE_LOOP;
             if (task_type != 0) {
                 // TPL ME
                 segment_col_count = ppcs_ptr->tpl_me_segments_column_count;
                 segment_row_count = ppcs_ptr->tpl_me_segments_row_count;
-                context_ptr->me_context_ptr->me_in_loop = EB_FALSE;
-                context_ptr->me_context_ptr->me_inl_tpl = EB_TRUE;
+                context_ptr->me_context_ptr->me_type = ME_TPL;
                 context_ptr->me_context_ptr->num_of_list_to_search =  (in_results_ptr->tpl_ref_list1_count > 0) ?
                     REF_LIST_1 : REF_LIST_0;
                 context_ptr->me_context_ptr->num_of_ref_pic_to_search[0] = in_results_ptr->tpl_ref_list0_count;
@@ -2752,7 +2761,6 @@ void *inloop_me_kernel(void *input_ptr) {
                 context_ptr->me_context_ptr->temporal_layer_index = ppcs_ptr->temporal_layer_index;
                 context_ptr->me_context_ptr->is_used_as_reference_flag = ppcs_ptr->is_used_as_reference_flag;
             }
-#endif
 
             // Lambda Assignement
             init_lambda(context_ptr, scs_ptr, ppcs_ptr);

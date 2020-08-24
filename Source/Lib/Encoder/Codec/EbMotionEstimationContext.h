@@ -51,6 +51,14 @@ typedef struct MePredictionUnit {
     uint32_t sub_pel_direction;
 } MePredictionUnit;
 
+#if INL_ME
+typedef enum EbMeType {
+    ME_CLOSE_LOOP  = 0,
+    ME_MCTF = 1,
+    ME_TPL = 2,
+    ME_OPEN_LOOP = 3
+} EbMeType;
+#endif
 typedef enum EbMeTierZeroPu {
     // 2Nx2N [85 partitions]
     ME_TIER_ZERO_PU_64x64    = 0,
@@ -576,13 +584,16 @@ typedef struct MeContext {
     // ------- Context for Alt-Ref ME ------
     uint16_t adj_search_area_width;
     uint16_t adj_search_area_height;
+#if !INL_ME
     EbBool   me_alt_ref;
+#endif
     void *   alt_ref_reference_ptr;
 
 #if INL_ME
     // Open Loop ME
-    EbBool me_in_loop;
-    EbBool me_inl_tpl;
+    EbMeType me_type;
+    //EbBool me_in_loop;
+    //EbBool me_inl_tpl;
     void * alt_ref_reference_ptr_inl;
 #endif
     // tf

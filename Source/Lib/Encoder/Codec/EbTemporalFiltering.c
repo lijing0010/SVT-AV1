@@ -369,7 +369,11 @@ static void create_me_context_and_picture_control(
     context_ptr->me_context_ptr->alt_ref_reference_ptr =
         (EbPaReferenceObject *)
             picture_control_set_ptr_frame->pa_reference_picture_wrapper_ptr->object_ptr;
+#if !INL_ME
     context_ptr->me_context_ptr->me_alt_ref = EB_TRUE;
+#else
+    context_ptr->me_context_ptr->me_type = ME_MCTF;
+#endif
 
     // set the buffers with the original, quarter and sixteenth pixels version of the source frame
     EbPaReferenceObject *src_object =
@@ -482,7 +486,7 @@ static void create_me_context_and_picture_control_inl(
     // set reference picture for alt-refs
     context_ptr->me_context_ptr->alt_ref_reference_ptr_inl =
         (EbDownScaledObject*)picture_control_set_ptr_frame->down_scaled_picture_wrapper_ptr->object_ptr;
-    context_ptr->me_context_ptr->me_alt_ref = EB_TRUE;
+    context_ptr->me_context_ptr->me_type = ME_MCTF;
 
     // set the buffers with the original, quarter and sixteenth pixels version of the source frame
     EbDownScaledObject *src_ds_object =
