@@ -3018,6 +3018,14 @@ static EbErrorType produce_temporally_filtered_pic(
                         ss_y);
 #endif
 
+#if INL_ME
+                        context_ptr->num_of_list_to_search = 0;
+                        context_ptr->num_of_ref_pic_to_search[0] = 1;
+                        context_ptr->num_of_ref_pic_to_search[1] = 0;
+                        context_ptr->temporal_layer_index = picture_control_set_ptr_central->temporal_layer_index;
+                        context_ptr->is_used_as_reference_flag = picture_control_set_ptr_central->is_used_as_reference_flag;
+#endif
+
                     // Perform ME - context_ptr will store the outputs (MVs, buffers, etc)
                     // Block-based MC using open-loop HME + refinement
                     motion_estimate_sb(

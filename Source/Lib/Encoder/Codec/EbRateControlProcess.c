@@ -6119,7 +6119,6 @@ void *rate_control_kernel(void *input_ptr) {
     RateControlTaskTypes task_type;
     RATE_CONTROL         rc;
 
-    uint32_t segment_index = 0;
     for (;;) {
         // Get RateControl Task
         eb_get_full_object(context_ptr->rate_control_input_tasks_fifo_ptr,
@@ -6137,16 +6136,15 @@ void *rate_control_kernel(void *input_ptr) {
         case RC_PICTURE_MANAGER_RESULT:
 #endif
 #if INL_ME
-            segment_index = rate_control_tasks_ptr->segment_index;
             pcs_ptr = (PictureControlSet *)rate_control_tasks_ptr->pcs_wrapper_ptr->object_ptr;
 
             // Set the segment mask
-            SEGMENT_COMPLETION_MASK_SET(pcs_ptr->parent_pcs_ptr->inloop_me_segments_completion_mask, segment_index);
+            SEGMENT_COMPLETION_MASK_SET(pcs_ptr->parent_pcs_ptr->inloop_me_segments_completion_mask,
+                    rate_control_tasks_ptr->segment_index);
 
             // If the picture is complete, proceed
             if (!(SEGMENT_COMPLETION_MASK_TEST(pcs_ptr->parent_pcs_ptr->inloop_me_segments_completion_mask,
                         pcs_ptr->parent_pcs_ptr->inloop_me_segments_total_count))) {
-                //printf("RC got input %ld, segment %d\n", pcs_ptr->picture_number, segment_index);
                 eb_release_object(rate_control_tasks_wrapper_ptr);
                 continue;
             }

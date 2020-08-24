@@ -610,8 +610,10 @@ typedef struct MeContext {
 #endif
     // -------
 #if INL_ME
-    uint8_t tpl_ref_list0_count;
-    uint8_t tpl_ref_list1_count;
+    uint8_t num_of_list_to_search;
+    uint8_t num_of_ref_pic_to_search[2];
+    uint8_t temporal_layer_index;
+    EbBool  is_used_as_reference_flag;
 #endif
 } MeContext;
 

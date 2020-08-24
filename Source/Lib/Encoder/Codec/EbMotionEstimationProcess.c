@@ -2195,6 +2195,15 @@ void *motion_estimation_kernel(void *input_ptr) {
                             }
                         }
                         context_ptr->me_context_ptr->me_alt_ref = EB_FALSE;
+#if INL_ME
+                        context_ptr->me_context_ptr->num_of_list_to_search =
+                            (pcs_ptr->slice_type == P_SLICE) ? (uint32_t)REF_LIST_0 : (uint32_t)REF_LIST_1;
+                        context_ptr->me_context_ptr->num_of_ref_pic_to_search[0] = pcs_ptr->mrp_ctrls.ref_list0_count_try;
+                        if (pcs_ptr->slice_type == B_SLICE)
+                            context_ptr->me_context_ptr->num_of_ref_pic_to_search[1] = pcs_ptr->mrp_ctrls.ref_list1_count_try;
+                        context_ptr->me_context_ptr->temporal_layer_index = pcs_ptr->temporal_layer_index;
+                        context_ptr->me_context_ptr->is_used_as_reference_flag = pcs_ptr->is_used_as_reference_flag;
+#endif
 
                         motion_estimate_sb(pcs_ptr,
                                            sb_index,
@@ -2728,8 +2737,20 @@ void *inloop_me_kernel(void *input_ptr) {
                 segment_row_count = ppcs_ptr->tpl_me_segments_row_count;
                 context_ptr->me_context_ptr->me_in_loop = EB_FALSE;
                 context_ptr->me_context_ptr->me_inl_tpl = EB_TRUE;
-                context_ptr->me_context_ptr->tpl_ref_list0_count = in_results_ptr->tpl_ref_list0_count;
-                context_ptr->me_context_ptr->tpl_ref_list1_count = in_results_ptr->tpl_ref_list1_count;
+                context_ptr->me_context_ptr->num_of_list_to_search =  (in_results_ptr->tpl_ref_list1_count > 0) ?
+                    REF_LIST_1 : REF_LIST_0;
+                context_ptr->me_context_ptr->num_of_ref_pic_to_search[0] = in_results_ptr->tpl_ref_list0_count;
+                context_ptr->me_context_ptr->num_of_ref_pic_to_search[1] = in_results_ptr->tpl_ref_list1_count;
+                context_ptr->me_context_ptr->temporal_layer_index = in_results_ptr->temporal_layer_index;
+                context_ptr->me_context_ptr->is_used_as_reference_flag = in_results_ptr->is_used_as_reference_flag;
+            } else {
+                context_ptr->me_context_ptr->num_of_list_to_search =
+                    (ppcs_ptr->slice_type == P_SLICE) ? (uint32_t)REF_LIST_0 : (uint32_t)REF_LIST_1;
+                context_ptr->me_context_ptr->num_of_ref_pic_to_search[0] = ppcs_ptr->mrp_ctrls.ref_list0_count_try;
+                if (ppcs_ptr->slice_type == B_SLICE)
+                    context_ptr->me_context_ptr->num_of_ref_pic_to_search[1] = ppcs_ptr->mrp_ctrls.ref_list1_count_try;
+                context_ptr->me_context_ptr->temporal_layer_index = ppcs_ptr->temporal_layer_index;
+                context_ptr->me_context_ptr->is_used_as_reference_flag = ppcs_ptr->is_used_as_reference_flag;
             }
 #endif
 

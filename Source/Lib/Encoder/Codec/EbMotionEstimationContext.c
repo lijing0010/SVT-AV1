@@ -197,5 +197,10 @@ EbErrorType me_context_ctor(MeContext *object_ptr, uint16_t max_input_luma_width
     // Initialize Alt-Ref parameters
     object_ptr->me_alt_ref = EB_FALSE;
 
+#if INL_ME
+    object_ptr->num_of_list_to_search = 0;
+    object_ptr->num_of_ref_pic_to_search[0] = 0;
+    object_ptr->num_of_ref_pic_to_search[1] = 0;
+#endif
     return EB_ErrorNone;
 }

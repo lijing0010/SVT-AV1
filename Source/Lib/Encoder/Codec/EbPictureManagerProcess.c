@@ -236,7 +236,8 @@ static uint8_t tpl_setup_me_refs(
     PictureParentControlSet         *pcs_tpl_group_frame_ptr,
     PictureParentControlSet         *pcs_tpl_base_ptr,
     uint8_t                         *ref0_count, //out
-    uint8_t                         *ref1_count) {
+    uint8_t                         *ref1_count,
+    EbBool                          *trailing_frames) {
     *ref0_count = 0;
     *ref1_count = 0;
     PredictionStructure* base_pred_struct_ptr = get_prediction_structure(
@@ -255,10 +256,10 @@ static uint8_t tpl_setup_me_refs(
     uint32_t pred_struct_idx = curr_minigop_entry_idx + init_idx;
 
     // 17/18/19, which is out side of the minigop
-    EbBool trailing_frames = (!pcs_tpl_base_ptr->idr_flag) && (curr_poc > base_poc);
+    *trailing_frames = (!pcs_tpl_base_ptr->idr_flag) && (curr_poc > base_poc);
 #if INL_TPL_ME_DBG
     printf("\tbase poc %ld, curr poc %ld, minigop idx %d, pred idx %d, is_trailing_frame %d\n",
-            base_poc, curr_poc, curr_minigop_entry_idx, pred_struct_idx, trailing_frames);
+            base_poc, curr_poc, curr_minigop_entry_idx, pred_struct_idx, *trailing_frames);
 #endif
 
     EB_MEMSET(pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_0],
@@ -359,6 +360,7 @@ static EbErrorType tpl_get_open_loop_me(
             if (!pcs_tpl_group_frame_ptr->tpl_me_done) {
                 uint8_t ref_list0_count = 0;
                 uint8_t ref_list1_count = 0;
+                EbBool  is_trailing_tpl_frame = EB_FALSE;
 
                 if (pcs_tpl_group_frame_ptr->slice_type != I_SLICE &&
                         pcs_tpl_group_frame_ptr != pcs_tpl_base_ptr) {
@@ -370,7 +372,8 @@ static EbErrorType tpl_get_open_loop_me(
 
                     tpl_setup_me_refs(scs_ptr,
                             pcs_tpl_group_frame_ptr, pcs_tpl_base_ptr,
-                            &ref_list0_count, &ref_list1_count);
+                            &ref_list0_count, &ref_list1_count,
+                            &is_trailing_tpl_frame);
 
                     // Initialize Segments
                     pcs_tpl_group_frame_ptr->tpl_me_segments_column_count = 1;//scs_ptr->tf_segment_column_count;
@@ -393,6 +396,8 @@ static EbErrorType tpl_get_open_loop_me(
                         out_results_ptr->task_type = 2;
                         out_results_ptr->tpl_ref_list0_count = ref_list0_count;
                         out_results_ptr->tpl_ref_list1_count = ref_list1_count;
+                        out_results_ptr->temporal_layer_index = is_trailing_tpl_frame ? 1 : pcs_tpl_group_frame_ptr->temporal_layer_index;
+                        out_results_ptr->is_used_as_reference_flag = is_trailing_tpl_frame ? 0 : pcs_tpl_group_frame_ptr->is_used_as_reference_flag;
                         eb_post_full_object(out_results_wrapper_ptr);
                     }
 
