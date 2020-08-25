@@ -288,6 +288,9 @@ EbErrorType eb_reference_object_ctor(EbReferenceObject *reference_object,
                 (EbPtr)&hme_desc_init_data);
 #endif
     }
+    reference_object->ds_pics.picture_ptr = reference_object->reference_picture;
+    reference_object->ds_pics.quarter_picture_ptr = reference_object->quarter_reference_picture;
+    reference_object->ds_pics.sixteenth_picture_ptr = reference_object->sixteenth_reference_picture;
 #endif
     memset(&reference_object->film_grain_params, 0, sizeof(reference_object->film_grain_params));
     EB_CREATE_MUTEX(reference_object->referenced_area_mutex);
@@ -387,7 +390,7 @@ static EbErrorType eb_down_scaled_object_ctor(EbDownScaledObject *ds_obj,
 
     ds_obj->dctor = eb_down_scaled_object_dctor;
 
-    ds_obj->picture_ptr = NULL;
+    //ds_obj->picture_ptr = NULL;
     if (ds_desc_init_data_ptr->enable_quarter_luma_input) {
         EB_NEW(ds_obj->quarter_picture_ptr,
                 eb_picture_buffer_desc_ctor,

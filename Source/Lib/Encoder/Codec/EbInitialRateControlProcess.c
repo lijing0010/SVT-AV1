@@ -2138,6 +2138,19 @@ void *initial_rate_control_kernel(void *input_ptr) {
                                          pcs_ptr->me_segments_total_count)) {
             scs_ptr            = (SequenceControlSet *)pcs_ptr->scs_wrapper_ptr->object_ptr;
             encode_context_ptr = (EncodeContext *)scs_ptr->encode_context_ptr;
+            //printf("[%ld]: IRC, L0 count %d, [%ld, %ld, %ld, %ld], L1 count %d: [%ld, %ld, %ld, %ld]\n",
+            //        pcs_ptr->picture_number,
+            //        pcs_ptr->mrp_ctrls.ref_list0_count_try,
+            //        pcs_ptr->ref_pic_poc_array[0][0],
+            //        pcs_ptr->ref_pic_poc_array[0][1],
+            //        pcs_ptr->ref_pic_poc_array[0][2],
+            //        pcs_ptr->ref_pic_poc_array[0][3],
+
+            //        pcs_ptr->mrp_ctrls.ref_list1_count_try,
+            //        pcs_ptr->ref_pic_poc_array[1][0],
+            //        pcs_ptr->ref_pic_poc_array[1][1],
+            //        pcs_ptr->ref_pic_poc_array[1][2],
+            //        pcs_ptr->ref_pic_poc_array[1][3]);
 #if !IMPROVE_GMV
             // Mark picture when global motion is detected using ME results
             //reset intra_coded_estimation_sb

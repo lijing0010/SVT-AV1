@@ -549,7 +549,9 @@ void reset_pcs_av1(PictureParentControlSet *pcs_ptr) {
     pcs_ptr->tpl_me_done = 0;
     pcs_ptr->me_data_wrapper_ptr = NULL;
     pcs_ptr->down_scaled_picture_wrapper_ptr = NULL;
-//    pcs_ptr->do_mctf = 0;
+    pcs_ptr->ds_pics.picture_ptr = NULL;
+    pcs_ptr->ds_pics.quarter_picture_ptr = NULL;
+    pcs_ptr->ds_pics.sixteenth_picture_ptr = NULL;
 #endif
 }
 /***********************************************

@@ -7843,6 +7843,14 @@ void* picture_decision_kernel(void *input_ptr)
 #if ON_OFF_FEATURE_MRP // one function or under signal derivation ?
                                 // set number of references to try based on mrp level
                                 set_mrp_controls(pcs_ptr);
+                                //printf("---[%ld]: mrp_level %d, count %d/%d, max %d/%d\n",
+                                //        pcs_ptr->picture_number,
+                                //        pcs_ptr->mrp_level,
+                                //        pcs_ptr->mrp_ctrls.ref_list0_count_try,
+                                //        pcs_ptr->mrp_ctrls.ref_list1_count_try,
+                                //        pcs_ptr->ref_list0_count,
+                                //        pcs_ptr->ref_list1_count
+                                //        );
 #else
 
 #if MRP_CTRL

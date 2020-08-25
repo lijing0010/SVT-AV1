@@ -60,12 +60,19 @@ typedef struct DepCntPicInfo {
 } DepCntPicInfo;
 #endif
 #if INL_ME
-typedef struct EbDownScaledObject {
-    EbDctor              dctor;
-    EbPictureBufferDesc *picture_ptr; // original picture, just a pointer, don't allocate resource here
+typedef struct EbDownScaledBufDescPtrArray {
+    EbPictureBufferDesc *picture_ptr;
     EbPictureBufferDesc *quarter_picture_ptr;
     EbPictureBufferDesc *sixteenth_picture_ptr;
-    uint64_t            picture_number;
+    uint64_t             picture_number;
+} EbDownScaledBufDescPtrArray;
+
+typedef struct EbDownScaledObject {
+    EbDctor              dctor;
+    //EbPictureBufferDesc *picture_ptr; // original picture, just a pointer, don't allocate resource here
+    EbPictureBufferDesc *quarter_picture_ptr;
+    EbPictureBufferDesc *sixteenth_picture_ptr;
+    //uint64_t            picture_number;
 } EbDownScaledObject;
 
 typedef struct EbDownScaledObjectDescInitData {
@@ -534,9 +541,6 @@ typedef struct PictureParentControlSet {
     EbObjectWrapper *    input_picture_wrapper_ptr;
     EbObjectWrapper *    reference_picture_wrapper_ptr;
     EbObjectWrapper *    pa_reference_picture_wrapper_ptr;
-#if INL_ME
-    EbObjectWrapper *    down_scaled_picture_wrapper_ptr;
-#endif
     EbPictureBufferDesc *enhanced_picture_ptr;
     EbPictureBufferDesc *enhanced_downscaled_picture_ptr;
     EbPictureBufferDesc *enhanced_unscaled_picture_ptr;
@@ -628,9 +632,12 @@ typedef struct PictureParentControlSet {
     uint32_t cb_sse;
 
 #if INL_ME
+    EbObjectWrapper *down_scaled_picture_wrapper_ptr;
     // iME TPL
-    EbDownScaledObject *downscaled_input_pic;
-    EbDownScaledObject *tpl_ref_ds_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
+    //EbDownScaledObject *downscaled_input_pic;
+    //EbDownScaledObject *tpl_ref_ds_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
+    EbDownScaledBufDescPtrArray tpl_ref_ds_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
+    EbDownScaledBufDescPtrArray ds_pics; // Pointer array for down scaled pictures
 #endif
 
     // Pre Analysis

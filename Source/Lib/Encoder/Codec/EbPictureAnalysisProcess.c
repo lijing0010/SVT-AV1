@@ -4338,9 +4338,14 @@ void *picture_analysis_kernel(void *input_ptr) {
                 ds_obj =
                     (EbDownScaledObject*)pcs_ptr->down_scaled_picture_wrapper_ptr->object_ptr;
 
-                ds_obj->picture_ptr = input_picture_ptr; // Save original picture pointer
-                ds_obj->picture_number = pcs_ptr->picture_number;
-                pcs_ptr->downscaled_input_pic = ds_obj;
+                //ds_obj->picture_ptr = input_picture_ptr; // Save original picture pointer
+                //ds_obj->picture_number = pcs_ptr->picture_number;
+                //pcs_ptr->downscaled_input_pic = ds_obj;
+
+                pcs_ptr->ds_pics.picture_ptr = input_picture_ptr;
+                pcs_ptr->ds_pics.quarter_picture_ptr = ds_obj->quarter_picture_ptr;
+                pcs_ptr->ds_pics.sixteenth_picture_ptr = ds_obj->sixteenth_picture_ptr;
+                pcs_ptr->ds_pics.picture_number = pcs_ptr->picture_number;
 
                 // Get the 1/2, 1/4 of input picture, only used for global motion
                 // TODO: Check for global motion whether we need these
@@ -4364,9 +4369,9 @@ void *picture_analysis_kernel(void *input_ptr) {
 #if INL_ME
                 // Save pointer of raw input to PA
                 // TODO: This is just to make it work for current TPL in iRC
-                // When moving the TPL logic from iRC to RC, should use input picture directly
+                // When moving the TPL logic from iRC to RC, should use input picture directly and remove the code here
                 pa_ref_obj_ = (EbPaReferenceObject *)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr;
-                pa_ref_obj_->input_padded_picture_ptr = ds_obj->picture_ptr;
+                pa_ref_obj_->input_padded_picture_ptr = input_picture_ptr;
                 pa_ref_obj_->quarter_decimated_picture_ptr = pa_ref_obj_->quarter_filtered_picture_ptr = ds_obj->quarter_picture_ptr;
                 pa_ref_obj_->sixteenth_decimated_picture_ptr = pa_ref_obj_->sixteenth_filtered_picture_ptr = ds_obj->sixteenth_picture_ptr;
 #endif

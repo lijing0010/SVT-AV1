@@ -484,8 +484,9 @@ static void create_me_context_and_picture_control_inl(
     EbPictureBufferDesc *input_picture_ptr_central, int blk_row, int blk_col, uint32_t ss_x,
     uint32_t ss_y) {
     // set reference picture for alt-refs
-    context_ptr->me_context_ptr->alt_ref_reference_ptr_inl =
-        (EbDownScaledObject*)picture_control_set_ptr_frame->down_scaled_picture_wrapper_ptr->object_ptr;
+    //context_ptr->me_context_ptr->alt_ref_reference_ptr_inl =
+    //    (EbDownScaledObject*)picture_control_set_ptr_frame->down_scaled_picture_wrapper_ptr->object_ptr;
+    context_ptr->me_context_ptr->mctf_ref_desc_ptr_array = picture_control_set_ptr_frame->ds_pics;
     context_ptr->me_context_ptr->me_type = ME_MCTF;
 
     // set the buffers with the original, quarter and sixteenth pixels version of the source frame
@@ -2845,6 +2846,9 @@ static EbErrorType produce_temporally_filtered_pic(
     int encoder_bit_depth =
         (int)picture_control_set_ptr_central->scs_ptr->static_config.encoder_bit_depth;
 
+    SequenceControlSet *scs_ptr =
+        (SequenceControlSet *)picture_control_set_ptr_central->scs_ptr;
+
     // chroma subsampling
     uint32_t ss_x          = picture_control_set_ptr_central->scs_ptr->subsampling_x;
     uint32_t ss_y          = picture_control_set_ptr_central->scs_ptr->subsampling_y;
@@ -2990,7 +2994,7 @@ static EbErrorType produce_temporally_filtered_pic(
                     // Initialize ME context
 #if INL_ME
                     // When in_loop_me is on, we should not use any PA related stuff
-                    if (picture_control_set_ptr_central->scs_ptr->in_loop_me)
+                    if (scs_ptr->in_loop_me)
                         create_me_context_and_picture_control_inl(
                                 me_context_ptr,
                                 list_picture_control_set_ptr[frame_index],
@@ -3023,11 +3027,29 @@ static EbErrorType produce_temporally_filtered_pic(
 #endif
 
 #if INL_ME
-                        context_ptr->num_of_list_to_search = 0;
-                        context_ptr->num_of_ref_pic_to_search[0] = 1;
-                        context_ptr->num_of_ref_pic_to_search[1] = 0;
-                        context_ptr->temporal_layer_index = picture_control_set_ptr_central->temporal_layer_index;
-                        context_ptr->is_used_as_reference_flag = picture_control_set_ptr_central->is_used_as_reference_flag;
+                    context_ptr->num_of_list_to_search = 0;
+                    context_ptr->num_of_ref_pic_to_search[0] = 1;
+                    context_ptr->num_of_ref_pic_to_search[1] = 0;
+                    context_ptr->temporal_layer_index = picture_control_set_ptr_central->temporal_layer_index;
+                    context_ptr->is_used_as_reference_flag = picture_control_set_ptr_central->is_used_as_reference_flag;
+
+                    if (scs_ptr->in_loop_me) {
+                        //EbDownScaledObject* inl_downscaled_object = (EbDownScaledObject*)context_ptr->alt_ref_reference_ptr_inl;
+                        //context_ptr->me_ds_ref_array[0][0].picture_ptr = inl_downscaled_object->picture_ptr;
+                        //context_ptr->me_ds_ref_array[0][0].quarter_picture_ptr = inl_downscaled_object->quarter_picture_ptr;
+                        //context_ptr->me_ds_ref_array[0][0].sixteenth_picture_ptr = inl_downscaled_object->sixteenth_picture_ptr;
+                        context_ptr->me_ds_ref_array[0][0] = context_ptr->mctf_ref_desc_ptr_array;
+                    } else {
+                        EbPaReferenceObject *reference_object = (EbPaReferenceObject *)context_ptr->alt_ref_reference_ptr;
+                        context_ptr->me_ds_ref_array[0][0].picture_ptr = reference_object->input_padded_picture_ptr;
+
+                        context_ptr->me_ds_ref_array[0][0].sixteenth_picture_ptr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
+                            reference_object->sixteenth_filtered_picture_ptr :
+                            reference_object->sixteenth_decimated_picture_ptr;
+                        context_ptr->me_ds_ref_array[0][0].quarter_picture_ptr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
+                            reference_object->quarter_filtered_picture_ptr :
+                            reference_object->quarter_decimated_picture_ptr;
+                    }
 #endif
 
                     // Perform ME - context_ptr will store the outputs (MVs, buffers, etc)

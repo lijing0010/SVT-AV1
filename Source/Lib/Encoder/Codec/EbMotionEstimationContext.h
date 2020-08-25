@@ -594,7 +594,8 @@ typedef struct MeContext {
     EbMeType me_type;
     //EbBool me_in_loop;
     //EbBool me_inl_tpl;
-    void * alt_ref_reference_ptr_inl;
+    //void * alt_ref_reference_ptr_inl;
+    EbDownScaledBufDescPtrArray mctf_ref_desc_ptr_array;
 #endif
     // tf
     int tf_frame_index;
@@ -625,6 +626,7 @@ typedef struct MeContext {
     uint8_t num_of_ref_pic_to_search[2];
     uint8_t temporal_layer_index;
     EbBool  is_used_as_reference_flag;
+    EbDownScaledBufDescPtrArray me_ds_ref_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
 #endif
 } MeContext;
 

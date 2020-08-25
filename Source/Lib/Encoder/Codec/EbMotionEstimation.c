@@ -9923,7 +9923,16 @@ static EbPictureBufferDesc* get_me_reference(
     uint8_t                   ref_pic_index,
     uint8_t                   level,
     uint16_t                  *dist) {
+
+    UNUSED(scs_ptr);
     EbPictureBufferDesc* ref_pic_ptr = NULL;
+    ref_pic_ptr = level == 0 ? context_ptr->me_ds_ref_array[list_index][ref_pic_index].sixteenth_picture_ptr :
+                  level == 1 ? context_ptr->me_ds_ref_array[list_index][ref_pic_index].quarter_picture_ptr :
+                               context_ptr->me_ds_ref_array[list_index][ref_pic_index].picture_ptr;
+
+    *dist = ABS((int16_t)(pcs_ptr->picture_number - context_ptr->me_ds_ref_array[list_index][ref_pic_index].picture_number));
+
+#if 0
     EbReferenceObject* inl_reference_object = NULL;
     EbPaReferenceObject *reference_object = NULL;
     EbDownScaledObject* inl_downscaled_object = NULL;
@@ -9995,6 +10004,7 @@ static EbPictureBufferDesc* get_me_reference(
             *dist = ABS((int16_t)(pcs_ptr->picture_number - pcs_ptr->ref_pic_poc_array[list_index][ref_pic_index]));
             break;
     }
+#endif
     return ref_pic_ptr;
 }
 #endif
@@ -10101,48 +10111,9 @@ void integer_search_sb(
 #else
 
             uint16_t dist = 0;
-#if 1
             ref_pic_ptr = get_me_reference(pcs_ptr, scs_ptr,
                                            context_ptr, list_index, ref_pic_index,
                                            2, &dist);
-#else
-            switch (context_ptr->me_type) {
-            case ME_MCTF:
-                if (scs_ptr->in_loop_me) {
-                    inl_downscaled_object = (EbDownScaledObject*)context_ptr->alt_ref_reference_ptr_inl;
-                    ref_pic_ptr = inl_downscaled_object->picture_ptr;
-                } else {
-                    reference_object = (EbPaReferenceObject *)context_ptr->alt_ref_reference_ptr;
-                    ref_pic_ptr = (EbPictureBufferDesc *)reference_object->input_padded_picture_ptr;
-                }
-                dist = ABS((int16_t)(context_ptr->tf_frame_index - context_ptr->tf_index_center)); 
-                break;
-            case ME_TPL:
-                ref_pic_ptr = pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->picture_ptr;
-                dist = ABS((int16_t)(pcs_ptr->picture_number -
-                            pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->picture_number));
-                break;
-            case ME_CLOSE_LOOP:
-                inl_reference_object =
-                    child_pcs_ptr->ref_pic_ptr_array[list_index][ref_pic_index]->object_ptr;
-                ref_pic_ptr = inl_reference_object->reference_picture;
-#if INL_ME_ON_INPUT_DBG
-                ref_pic_ptr = inl_reference_object->input_picture;
-#endif
-                dist = ABS((int16_t)(pcs_ptr->picture_number -
-                            pcs_ptr->ref_pic_poc_array[list_index][ref_pic_index]));
-                break;
-            case ME_OPEN_LOOP:
-            default:
-                reference_object =
-                    (EbPaReferenceObject *)pcs_ptr
-                    ->ref_pa_pic_ptr_array[list_index][ref_pic_index]
-                    ->object_ptr;
-                ref_pic_ptr = (EbPictureBufferDesc *)reference_object->input_padded_picture_ptr;
-                dist = ABS((int16_t)(pcs_ptr->picture_number - pcs_ptr->ref_pic_poc_array[list_index][ref_pic_index]));
-                break;
-            }
-#endif
 #endif
             // Get hme results
             if (context_ptr->hme_results[list_index][ref_pic_index].do_ref == 0)
@@ -10878,53 +10849,9 @@ void hme_level0_sb(
 #endif
 #else
             uint16_t dist = 0;
-#if 1
             sixteenthRefPicPtr = get_me_reference(pcs_ptr, scs_ptr,
                                            context_ptr, list_index, ref_pic_index,
                                            0, &dist);
-#else
-            switch (context_ptr->me_type) {
-            case ME_MCTF:
-                if (scs_ptr->in_loop_me) {
-                    inl_downscaled_object = (EbDownScaledObject*)context_ptr->alt_ref_reference_ptr_inl;
-                    sixteenthRefPicPtr = inl_downscaled_object->sixteenth_picture_ptr;
-                } else {
-                    referenceObject =(EbPaReferenceObject *)context_ptr->alt_ref_reference_ptr;
-                    sixteenthRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
-                        (EbPictureBufferDesc*)referenceObject->sixteenth_filtered_picture_ptr :
-                        (EbPictureBufferDesc*)referenceObject->sixteenth_decimated_picture_ptr;
-                }
-                dist = ABS((int16_t)(context_ptr->tf_frame_index - context_ptr->tf_index_center)); 
-                break;
-            case ME_TPL:
-                sixteenthRefPicPtr = pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->sixteenth_picture_ptr;
-                dist = ABS((int16_t)(pcs_ptr->picture_number -
-                            pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->picture_number));
-                break;
-            case ME_CLOSE_LOOP:
-                inl_reference_object =
-                    (EbReferenceObject *)child_pcs_ptr
-                    ->ref_pic_ptr_array[list_index][ref_pic_index]
-                    ->object_ptr;
-                sixteenthRefPicPtr = inl_reference_object->sixteenth_reference_picture;
-#if INL_ME_ON_INPUT_DBG
-                sixteenthRefPicPtr = inl_reference_object->sixteenth_input_picture;
-#endif
-                dist = ABS((int16_t)(pcs_ptr->picture_number - pcs_ptr->ref_pic_poc_array[list_index][ref_pic_index]));
-                break;
-            case ME_OPEN_LOOP:
-            default:
-                referenceObject =
-                    (EbPaReferenceObject *)pcs_ptr
-                    ->ref_pa_pic_ptr_array[list_index][ref_pic_index]
-                    ->object_ptr;
-                sixteenthRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
-                    (EbPictureBufferDesc*)referenceObject->sixteenth_filtered_picture_ptr :
-                    (EbPictureBufferDesc*)referenceObject->sixteenth_decimated_picture_ptr;
-                dist = ABS((int16_t)(pcs_ptr->picture_number - pcs_ptr->ref_pic_poc_array[list_index][ref_pic_index]));
-                break;
-            }
-#endif
 #endif
 
 #if !INL_ME
@@ -11172,53 +11099,9 @@ void hme_level1_sb(
                 (EbPictureBufferDesc*)referenceObject->quarter_decimated_picture_ptr;
 #else
             uint16_t dist = 0;
-#if 1
             quarterRefPicPtr = get_me_reference(pcs_ptr, scs_ptr,
                                            context_ptr, list_index, ref_pic_index,
                                            1, &dist);
-#else
-            switch (context_ptr->me_type) {
-            case ME_MCTF:
-                if (scs_ptr->in_loop_me) {
-                    inl_downscaled_object = (EbDownScaledObject*)context_ptr->alt_ref_reference_ptr_inl;
-                    quarterRefPicPtr = inl_downscaled_object->quarter_picture_ptr;
-                } else {
-                    referenceObject =(EbPaReferenceObject *)context_ptr->alt_ref_reference_ptr;
-                    quarterRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
-                        (EbPictureBufferDesc*)referenceObject->quarter_filtered_picture_ptr :
-                        (EbPictureBufferDesc*)referenceObject->quarter_decimated_picture_ptr;
-                }
-                dist = ABS((int16_t)(context_ptr->tf_frame_index - context_ptr->tf_index_center)); 
-                break;
-            case ME_TPL:
-                quarterRefPicPtr = pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->quarter_picture_ptr;
-                dist = ABS((int16_t)(pcs_ptr->picture_number -
-                            pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->picture_number));
-                break;
-            case ME_CLOSE_LOOP:
-                inl_reference_object =
-                    (EbReferenceObject *)child_pcs_ptr
-                    ->ref_pic_ptr_array[list_index][ref_pic_index]
-                    ->object_ptr;
-                quarterRefPicPtr = inl_reference_object->quarter_reference_picture;
-#if INL_ME_ON_INPUT_DBG
-                quarterRefPicPtr = inl_reference_object->quarter_input_picture;
-#endif
-                dist = ABS((int16_t)(pcs_ptr->picture_number - pcs_ptr->ref_pic_poc_array[list_index][ref_pic_index]));
-                break;
-            case ME_OPEN_LOOP:
-            default:
-                referenceObject =
-                    (EbPaReferenceObject *)pcs_ptr
-                    ->ref_pa_pic_ptr_array[list_index][ref_pic_index]
-                    ->object_ptr;
-                quarterRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
-                    (EbPictureBufferDesc*)referenceObject->quarter_filtered_picture_ptr :
-                    (EbPictureBufferDesc*)referenceObject->quarter_decimated_picture_ptr;
-                dist = ABS((int16_t)(pcs_ptr->picture_number - pcs_ptr->ref_pic_poc_array[list_index][ref_pic_index]));
-                break;
-            }
-#endif
 #endif
 
 #if !INL_ME
@@ -11439,49 +11322,9 @@ void hme_level2_sb(
             refPicPtr = (EbPictureBufferDesc*)referenceObject->input_padded_picture_ptr;
 #else
             uint16_t dist = 0;
-#if 1
             refPicPtr = get_me_reference(pcs_ptr, scs_ptr,
                                            context_ptr, list_index, ref_pic_index,
                                            2, &dist);
-#else
-            switch (context_ptr->me_type) {
-            case ME_MCTF:
-                if (scs_ptr->in_loop_me) {
-                    inl_downscaled_object = (EbDownScaledObject*)context_ptr->alt_ref_reference_ptr_inl;
-                    refPicPtr = inl_downscaled_object->picture_ptr;
-                } else {
-                    referenceObject =(EbPaReferenceObject *)context_ptr->alt_ref_reference_ptr;
-                    refPicPtr = (EbPictureBufferDesc*)referenceObject->input_padded_picture_ptr;
-                }
-                dist = ABS((int16_t)(context_ptr->tf_frame_index - context_ptr->tf_index_center)); 
-                break;
-            case ME_TPL:
-                refPicPtr = pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->picture_ptr;
-                dist = ABS((int16_t)(pcs_ptr->picture_number -
-                            pcs_ptr->tpl_ref_ds_ptr_array[list_index][ref_pic_index]->picture_number));
-                break;
-            case ME_CLOSE_LOOP:
-                inl_reference_object =
-                    (EbReferenceObject *)child_pcs_ptr
-                    ->ref_pic_ptr_array[list_index][ref_pic_index]
-                    ->object_ptr;
-                refPicPtr = inl_reference_object->reference_picture;
-#if INL_ME_ON_INPUT_DBG
-                refPicPtr = inl_reference_object->input_picture;
-#endif
-                dist = ABS((int16_t)(pcs_ptr->picture_number - pcs_ptr->ref_pic_poc_array[list_index][ref_pic_index]));
-                break;
-            case ME_OPEN_LOOP:
-            default:
-                referenceObject =
-                    (EbPaReferenceObject *)pcs_ptr
-                    ->ref_pa_pic_ptr_array[list_index][ref_pic_index]
-                    ->object_ptr;
-                refPicPtr = (EbPictureBufferDesc*)referenceObject->input_padded_picture_ptr;
-                dist = ABS((int16_t)(pcs_ptr->picture_number - pcs_ptr->ref_pic_poc_array[list_index][ref_pic_index]));
-                break;
-            }
-#endif
 #endif
 
 #if !INL_ME
@@ -11652,6 +11495,7 @@ void set_final_seach_centre_sb(
     uint8_t ref_pic_index;
     uint8_t num_of_ref_pic_to_search;
 
+#if !INL_ME
     int16_t tempXHmeSearchCenter = 0;
     int16_t tempYHmeSearchCenter = 0;
 
@@ -11660,11 +11504,15 @@ void set_final_seach_centre_sb(
     uint32_t quadIndex;
     uint32_t nextQuadIndex;
     uint64_t tempXHmeSad;
+#endif
 #if !FIX_WARNINGS
     EbPaReferenceObject *referenceObject;  // input parameter, reference Object Ptr
 #endif
+
+#if !INL_ME
     uint64_t ref0Poc = 0;
     uint64_t ref1Poc = 0;
+#endif
     // Configure HME level 0, level 1 and level 2 from static config parameters
     EbBool enable_hme_level0_flag =
         context_ptr->enable_hme_level0_flag;
@@ -11695,10 +11543,6 @@ void set_final_seach_centre_sb(
     if (context_ptr->me_alt_ref == EB_TRUE)
         num_of_list_to_search = 0;
 
-#if INL_ME
-    if (context_ptr->me_type = ME_TPL)
-        num_of_list_to_search = context_ptr->tpl_ref_list1_count ? 1 : 0;
-#endif
 #else
     num_of_list_to_search = context_ptr->num_of_list_to_search;
 #endif
@@ -11723,20 +11567,11 @@ void set_final_seach_centre_sb(
         }
 #else
         num_of_ref_pic_to_search = context_ptr->num_of_ref_pic_to_search[list_index];
-        if (context_ptr->me_type == ME_TPL) {
-            if (pcs_ptr->tpl_ref_ds_ptr_array[0][0])
-                ref0Poc = pcs_ptr->tpl_ref_ds_ptr_array[0][0]->picture_number;
-        } else {
-            ref0Poc = pcs_ptr->ref_pic_poc_array[0][0];
-        }
 #endif
         // Ref Picture Loop
         for (ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search; ++ref_pic_index){
-#if INL_ME
-            if (context_ptr->me_type == ME_MCTF) {
-#else
+#if !INL_ME
             if (context_ptr->me_alt_ref == EB_TRUE) {
-#endif
 #if !FIX_WARNINGS
                 referenceObject = (EbPaReferenceObject *)context_ptr->alt_ref_reference_ptr;
 #endif
@@ -11751,26 +11586,20 @@ void set_final_seach_centre_sb(
                         ->object_ptr;
 #endif
 #endif
-#if INL_ME
-                    if (context_ptr->me_type == ME_TPL) {
-                        if (pcs_ptr->tpl_ref_ds_ptr_array[1][0])
-                            ref1Poc = pcs_ptr->tpl_ref_ds_ptr_array[1][0]->picture_number;
-                    } else
-                        ref1Poc = pcs_ptr->ref_pic_poc_array[1][0];
-#else
                     ref1Poc = pcs_ptr->ref_pic_poc_array[1][0];
-#endif
                 }
 #if !FIX_WARNINGS
                 referenceObject = (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index]->object_ptr;
 #endif
             }
+#endif
 
 #if !INL_ME
             if (pcs_ptr->temporal_layer_index > 0 || list_index == 0) {
 #else
             if (context_ptr->temporal_layer_index > 0 || list_index == 0) {
 #endif
+
 #if ENABLE_HME_AT_INC_SB
                 if (context_ptr->enable_hme_flag) {
 #else
@@ -11858,6 +11687,7 @@ void set_final_seach_centre_sb(
                             search_region_number_in_height++;
                         }
 
+#if !INL_ME
                         numQuadInWidth = context_ptr->number_hme_search_region_in_width;
                         totalMeQuad = context_ptr->number_hme_search_region_in_height * context_ptr->number_hme_search_region_in_width;
 #if DISABLE_HME_OF_SAME_POC
@@ -11882,6 +11712,7 @@ void set_final_seach_centre_sb(
                             xHmeSearchCenter = context_ptr->x_hme_level2_search_center[list_index][ref_pic_index][0][1];
                             yHmeSearchCenter = context_ptr->y_hme_level2_search_center[list_index][ref_pic_index][0][1];
                         }
+#endif
 #endif
                     }
 

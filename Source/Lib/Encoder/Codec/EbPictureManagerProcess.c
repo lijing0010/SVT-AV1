@@ -270,40 +270,69 @@ static uint8_t tpl_setup_me_refs(
             REF_LIST_MAX_DEPTH * sizeof(EbObjectWrapper*));
     // Set tpl refs on L0
     int ref_list_count = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list0.reference_list_count; //chkn  pcs_ptr->mrp_ctrls.ref_list0_count_try
-    if (!trailing_frames)
-        ref_list_count = MIN(ref_list_count, pcs_tpl_group_frame_ptr->mrp_ctrls.ref_list0_count_try);
-    else
+    if (!trailing_frames) {
+        int list_index = REF_LIST_0;
+        for (int i = 0; i < pcs_tpl_group_frame_ptr->mrp_ctrls.ref_list0_count_try; i++) {
+            EbBool ref_in_slide_window = EB_FALSE;
+            uint64_t ref_poc = pcs_tpl_group_frame_ptr->ref_pic_poc_array[list_index][i];
+
+            for (uint32_t j = 0; j < pcs_tpl_base_ptr->tpl_group_size; j++) {
+                if (ref_poc == pcs_tpl_base_ptr->tpl_group[j]->picture_number) {
+                    pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][i] = pcs_tpl_base_ptr->tpl_group[j]->ds_pics;
+                    ref_in_slide_window = EB_TRUE;
+                    break;
+                }
+            }
+
+            if (!ref_in_slide_window) {
+                //TODO: need to wait for recon
+                ReferenceQueueEntry* ref_entry_ptr = search_ref_in_ref_queue(scs_ptr->encode_context_ptr, ref_poc);
+                assert(ref_entry_ptr->reference_available);
+                //pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][i] = ref_entry_ptr->reference_object_ptr->object_ptr 
+            }
+
+        }
+    } else {
         ref_list_count = MIN(ref_list_count, 2); //Jing: limit the ref count of trailing frames
+    }
         
     int list_index = REF_LIST_0;
     for (int i = 0; i < ref_list_count; i++) {
-        int delta_poc = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list0.reference_list[i];
-        assert((int)pcs_tpl_group_frame_ptr->picture_number >= delta_poc);
-        uint64_t ref_poc = pcs_tpl_group_frame_ptr->picture_number - delta_poc;
+        EbBool ref_in_slide_window = EB_FALSE;
+
+        uint64_t ref_poc = pcs_tpl_group_frame_ptr->ref_pic_poc_array[list_index][i];
         for (uint32_t j = 0; j < pcs_tpl_base_ptr->tpl_group_size; j++) {
             if (ref_poc == pcs_tpl_base_ptr->tpl_group[j]->picture_number) {
                 // Some refs in L0 are out of order (1, 9, 8, 17), which will make (valid, NULL, valid, NULL)
                 // So needs reorder to (valid, valid, NULL, NULL)
-                pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref0_count] = pcs_tpl_base_ptr->tpl_group[j]->downscaled_input_pic;
+                pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref0_count] = pcs_tpl_base_ptr->tpl_group[j]->ds_pics;
                 *ref0_count += 1;
+                ref_in_slide_window = EB_TRUE;
                 break;
             }
         }
+
+        if (!ref_in_slide_window) {
+            //TODO: need to wait for recon
+            ReferenceQueueEntry* ref_entry_ptr = search_ref_in_ref_queue(scs_ptr->encode_context_ptr, ref_poc);
+        }
+
     }
 
     // Set tpl refs on L1
     ref_list_count = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list1.reference_list_count;
     if (!trailing_frames)
-        ref_list_count = MIN(ref_list_count, pcs_tpl_group_frame_ptr->mrp_ctrls.ref_list1_count_try);
+        ref_list_count = pcs_tpl_group_frame_ptr->mrp_ctrls.ref_list1_count_try;
     else
         ref_list_count = MIN(ref_list_count, 2); //Jing: limit the ref count of trailing frames
+
     list_index = REF_LIST_1;
     for (int i = 0; i < ref_list_count; i++) {
         int delta_poc = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx]->ref_list1.reference_list[i];
         uint64_t ref_poc = pcs_tpl_group_frame_ptr->picture_number - delta_poc;
         EbBool same_ref_in_l0 = EB_FALSE;
         for (uint32_t j = 0; j < *ref0_count; j++) {
-            if (ref_poc == pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[0][j]->picture_number) {
+            if (ref_poc == pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[0][j].picture_number) {
                 same_ref_in_l0 = EB_TRUE;
                 break;
             }
@@ -312,7 +341,7 @@ static uint8_t tpl_setup_me_refs(
 
         for (uint32_t j = 0; j < pcs_tpl_base_ptr->tpl_group_size; j++) {
             if (ref_poc == pcs_tpl_base_ptr->tpl_group[j]->picture_number) {
-                pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref1_count] = pcs_tpl_base_ptr->tpl_group[j]->downscaled_input_pic;
+                pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref1_count] = pcs_tpl_base_ptr->tpl_group[j]->ds_pics;
                 *ref1_count += 1;
                 break;
             }
@@ -326,13 +355,13 @@ static uint8_t tpl_setup_me_refs(
         for (int i = 0; i < *ref1_count; i++) {
             pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_0][i] =
                 pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_1][i];
-            pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_1][i] = NULL;
+            //pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_1][i] = NULL;
         }
         *ref0_count = *ref1_count;
         *ref1_count = 0;
     }
 
-#if INL_TPL_ME_DBG
+#if 0//INL_TPL_ME_DBG
     for (int i = REF_LIST_0; i <= REF_LIST_1; i++) {
         int ref_count = (i == 0) ? *ref0_count: *ref1_count;
         for (int j = 0; j < ref_count; j++) {
@@ -916,6 +945,7 @@ void *picture_manager_kernel(void *input_ptr) {
 #if DECOUPLE_ME_RES
             clean_pictures_in_ref_queue(scs_ptr->encode_context_ptr);
 #endif
+            printf("-----[%ld]: Recon generated-----\n", input_picture_demux_ptr->picture_number);
             // Check if Reference Queue is full
             CHECK_REPORT_ERROR((encode_context_ptr->reference_picture_queue_head_index !=
                                 encode_context_ptr->reference_picture_queue_tail_index),

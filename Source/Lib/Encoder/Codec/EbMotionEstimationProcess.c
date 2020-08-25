@@ -1946,7 +1946,7 @@ void *motion_estimation_kernel(void *input_ptr) {
 
     EbPictureBufferDesc *input_picture_ptr;
 
-    EbPictureBufferDesc *input_padded_picture_ptr;
+    EbPictureBufferDesc *input_padded_picture_ptr = NULL;
 
     uint32_t buffer_index;
 
@@ -1962,8 +1962,8 @@ void *motion_estimation_kernel(void *input_ptr) {
     uint32_t sb_row;
 
     EbPaReferenceObject *pa_ref_obj_ = NULL;
-    EbPictureBufferDesc *quarter_picture_ptr;
-    EbPictureBufferDesc *sixteenth_picture_ptr;
+    EbPictureBufferDesc *quarter_picture_ptr = NULL;
+    EbPictureBufferDesc *sixteenth_picture_ptr = NULL;
     // Segments
     uint32_t segment_index;
     uint32_t x_segment_index;
@@ -2211,6 +2211,26 @@ void *motion_estimation_kernel(void *input_ptr) {
                             context_ptr->me_context_ptr->num_of_ref_pic_to_search[1] = pcs_ptr->mrp_ctrls.ref_list1_count_try;
                         context_ptr->me_context_ptr->temporal_layer_index = pcs_ptr->temporal_layer_index;
                         context_ptr->me_context_ptr->is_used_as_reference_flag = pcs_ptr->is_used_as_reference_flag;
+
+                        for (int i = 0; i<= context_ptr->me_context_ptr->num_of_list_to_search; i++) {
+                            for (int j=0; j< context_ptr->me_context_ptr->num_of_ref_pic_to_search[i];j++) {
+                                EbPaReferenceObject* reference_object =
+                                    (EbPaReferenceObject *)pcs_ptr->ref_pa_pic_ptr_array[i][j]->object_ptr;
+                                context_ptr->me_context_ptr->me_ds_ref_array[i][j].picture_ptr =
+                                    reference_object->input_padded_picture_ptr;
+                                if (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) {
+                                    context_ptr->me_context_ptr->me_ds_ref_array[i][j].quarter_picture_ptr =
+                                        reference_object->quarter_filtered_picture_ptr;
+                                    context_ptr->me_context_ptr->me_ds_ref_array[i][j].sixteenth_picture_ptr =
+                                        reference_object->sixteenth_filtered_picture_ptr;
+                                } else {
+                                    context_ptr->me_context_ptr->me_ds_ref_array[i][j].quarter_picture_ptr =
+                                        reference_object->quarter_decimated_picture_ptr;
+                                    context_ptr->me_context_ptr->me_ds_ref_array[i][j].sixteenth_picture_ptr =
+                                        reference_object->sixteenth_decimated_picture_ptr;
+                                }
+                            }
+                        }
 #endif
 
                         motion_estimate_sb(pcs_ptr,
@@ -2742,17 +2762,29 @@ void *inloop_me_kernel(void *input_ptr) {
 
             context_ptr->me_context_ptr->me_type = ME_CLOSE_LOOP;
             if (task_type != 0) {
+                // TODO: TPL ME Kernel Signal(s) derivation
+                signal_derivation_me_kernel_oq(scs_ptr, ppcs_ptr, (MotionEstimationContext_t*)context_ptr);
+
                 // TPL ME
                 segment_col_count = ppcs_ptr->tpl_me_segments_column_count;
                 segment_row_count = ppcs_ptr->tpl_me_segments_row_count;
                 context_ptr->me_context_ptr->me_type = ME_TPL;
-                context_ptr->me_context_ptr->num_of_list_to_search =  (in_results_ptr->tpl_ref_list1_count > 0) ?
+                context_ptr->me_context_ptr->num_of_list_to_search = (in_results_ptr->tpl_ref_list1_count > 0) ?
                     REF_LIST_1 : REF_LIST_0;
                 context_ptr->me_context_ptr->num_of_ref_pic_to_search[0] = in_results_ptr->tpl_ref_list0_count;
                 context_ptr->me_context_ptr->num_of_ref_pic_to_search[1] = in_results_ptr->tpl_ref_list1_count;
                 context_ptr->me_context_ptr->temporal_layer_index = in_results_ptr->temporal_layer_index;
                 context_ptr->me_context_ptr->is_used_as_reference_flag = in_results_ptr->is_used_as_reference_flag;
-            } else {
+                for (int i = 0; i<= context_ptr->me_context_ptr->num_of_list_to_search; i++) {
+                    for (int j=0; j< context_ptr->me_context_ptr->num_of_ref_pic_to_search[i];j++) {
+                        context_ptr->me_context_ptr->me_ds_ref_array[i][j] =
+                            ppcs_ptr->tpl_ref_ds_ptr_array[i][j];
+                    }
+                }
+            } else if (ppcs_ptr->slice_type != I_SLICE) {
+                // ME Kernel Signal(s) derivation
+                signal_derivation_me_kernel_oq(scs_ptr, ppcs_ptr, (MotionEstimationContext_t*)context_ptr);
+
                 context_ptr->me_context_ptr->num_of_list_to_search =
                     (ppcs_ptr->slice_type == P_SLICE) ? (uint32_t)REF_LIST_0 : (uint32_t)REF_LIST_1;
                 context_ptr->me_context_ptr->num_of_ref_pic_to_search[0] = ppcs_ptr->mrp_ctrls.ref_list0_count_try;
@@ -2760,13 +2792,35 @@ void *inloop_me_kernel(void *input_ptr) {
                     context_ptr->me_context_ptr->num_of_ref_pic_to_search[1] = ppcs_ptr->mrp_ctrls.ref_list1_count_try;
                 context_ptr->me_context_ptr->temporal_layer_index = ppcs_ptr->temporal_layer_index;
                 context_ptr->me_context_ptr->is_used_as_reference_flag = ppcs_ptr->is_used_as_reference_flag;
+
+                for (int i = 0; i<= context_ptr->me_context_ptr->num_of_list_to_search; i++) {
+                    for (int j=0; j< context_ptr->me_context_ptr->num_of_ref_pic_to_search[i];j++) {
+                        EbReferenceObject* inl_reference_object =
+                            ppcs_ptr->child_pcs->ref_pic_ptr_array[i][j]->object_ptr;
+
+                        context_ptr->me_context_ptr->me_ds_ref_array[i][j].picture_ptr =
+                            inl_reference_object->reference_picture;
+                        context_ptr->me_context_ptr->me_ds_ref_array[i][j].sixteenth_picture_ptr =
+                            inl_reference_object->sixteenth_reference_picture;
+                        context_ptr->me_context_ptr->me_ds_ref_array[i][j].quarter_picture_ptr =
+                            inl_reference_object->quarter_reference_picture;
+                        context_ptr->me_context_ptr->me_ds_ref_array[i][j].picture_number =
+                            ppcs_ptr->ref_pic_poc_array[i][j];
+
+#if INL_ME_ON_INPUT_DBG
+                        context_ptr->me_context_ptr->me_ds_ref_array[i][j].picture_ptr =
+                            inl_reference_object->input_picture;
+                        context_ptr->me_context_ptr->me_ds_ref_array[i][j].sixteenth_picture_ptr =
+                            inl_reference_object->sixteenth_input_picture;
+                        context_ptr->me_context_ptr->me_ds_ref_array[i][j].quarter_picture_ptr =
+                            inl_reference_object->quarter_input_picture :
+#endif
+                    }
+                }
             }
 
             // Lambda Assignement
             init_lambda(context_ptr, scs_ptr, ppcs_ptr);
-
-            // ME Kernel Signal(s) derivation
-            signal_derivation_me_kernel_oq(scs_ptr, ppcs_ptr, (MotionEstimationContext_t*)context_ptr);
 
             // Segments
             segment_index = in_results_ptr->segment_index;
@@ -2785,7 +2839,7 @@ void *inloop_me_kernel(void *input_ptr) {
             y_sb_end_index = SEGMENT_END_IDX(
                     y_segment_index, picture_height_in_sb, segment_row_count);
 
-            if (ppcs_ptr->slice_type != I_SLICE) {
+            if (ppcs_ptr->slice_type != I_SLICE || task_type != 0) {
                 // SB Loop
                 for (y_sb_index = y_sb_start_index; y_sb_index < y_sb_end_index; ++y_sb_index) {
                     for (x_sb_index = x_sb_start_index; x_sb_index < x_sb_end_index; ++x_sb_index) {
