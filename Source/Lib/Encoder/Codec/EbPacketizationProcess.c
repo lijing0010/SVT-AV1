@@ -455,9 +455,18 @@ void *packetization_kernel(void *input_ptr) {
         rate_control_tasks_ptr->pcs_wrapper_ptr = pcs_ptr->picture_parent_control_set_wrapper_ptr;
         rate_control_tasks_ptr->task_type       = RC_PACKETIZATION_FEEDBACK_RESULT;
 
+#if FORCE_DECODE_ORDER
+        if((scs_ptr->in_loop_me && scs_ptr->static_config.enable_tpl_la) ||
+            (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
+            pcs_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr)) {
+            if (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
+                pcs_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr &&
+                pcs_ptr->parent_pcs_ptr->frame_end_cdf_update_mode) {
+#else
         if (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
             pcs_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr) {
             if (pcs_ptr->parent_pcs_ptr->frame_end_cdf_update_mode) {
+#endif
                 for (uint16_t tile_idx = 0; tile_idx < tile_cnt; tile_idx++) {
                     eb_av1_reset_cdf_symbol_counters(
                         pcs_ptr->entropy_coding_info[tile_idx]->entropy_coder_ptr->fc);
@@ -475,6 +484,9 @@ void *packetization_kernel(void *input_ptr) {
                 (PictureDemuxResults *)picture_manager_results_wrapper_ptr->object_ptr;
             picture_manager_results_ptr->picture_number  = pcs_ptr->picture_number;
             picture_manager_results_ptr->picture_type    = EB_PIC_FEEDBACK;
+#if FORCE_DECODE_ORDER
+            picture_manager_results_ptr->decode_order = pcs_ptr->parent_pcs_ptr->decode_order;
+#endif
             picture_manager_results_ptr->scs_wrapper_ptr = pcs_ptr->scs_wrapper_ptr;
         } else {
             picture_manager_results_wrapper_ptr = EB_NULL;
@@ -562,8 +574,14 @@ void *packetization_kernel(void *input_ptr) {
 
         // Post Rate Control Taks
         eb_post_full_object(rate_control_tasks_wrapper_ptr);
+#if FORCE_DECODE_ORDER
+        if ((scs_ptr->in_loop_me && scs_ptr->static_config.enable_tpl_la) ||
+            (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
+             pcs_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr))
+#else
         if (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
             pcs_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr)
+#endif
             // Post the Full Results Object
             eb_post_full_object(picture_manager_results_wrapper_ptr);
         else
