@@ -266,10 +266,10 @@ static uint8_t tpl_setup_me_refs(
 
     EB_MEMSET(pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_0],
             0,
-            REF_LIST_MAX_DEPTH * sizeof(EbObjectWrapper*));
+            REF_LIST_MAX_DEPTH * sizeof(EbDownScaledBufDescPtrArray));
     EB_MEMSET(pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_1],
             0,
-            REF_LIST_MAX_DEPTH * sizeof(EbObjectWrapper*));
+            REF_LIST_MAX_DEPTH * sizeof(EbDownScaledBufDescPtrArray));
 
     uint8_t ref_list_count = 0;
     for (uint8_t list_index = REF_LIST_0; list_index <= REF_LIST_1; list_index++) {

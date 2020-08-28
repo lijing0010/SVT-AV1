@@ -634,8 +634,6 @@ typedef struct PictureParentControlSet {
 #if INL_ME
     EbObjectWrapper *down_scaled_picture_wrapper_ptr;
     // iME TPL
-    //EbDownScaledObject *downscaled_input_pic;
-    //EbDownScaledObject *tpl_ref_ds_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     EbDownScaledBufDescPtrArray tpl_ref_ds_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     EbDownScaledBufDescPtrArray ds_pics; // Pointer array for down scaled pictures
 #endif
