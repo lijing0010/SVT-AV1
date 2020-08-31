@@ -5984,13 +5984,13 @@ int32_t search_this_pic(PictureParentControlSet**buf, uint32_t buf_size, uint64_
 */
 EbBool is_delayed_intra(PictureParentControlSet *pcs) {
 
-#if FIX_ALL_I    
-    if (pcs->idr_flag || pcs->cra_flag) {    
+#if FIX_ALL_I
+    if (pcs->idr_flag || pcs->cra_flag) {
         if (pcs->scs_ptr->static_config.intra_period_length == 0 || pcs->end_of_sequence_flag)
             return 0;
         else if (pcs->idr_flag || (pcs->cra_flag && pcs->pre_assignment_buffer_count < pcs->pred_struct_ptr->pred_struct_period))
             return 1;
-        else 
+        else
             return 0;
     }
     else
@@ -6342,9 +6342,9 @@ void store_tpl_pictures(
 
 #if INL_ME
     for (uint32_t pic_i = 0; pic_i < pcs->tpl_group_size; ++pic_i) {
-        PictureParentControlSet* pcs_tpl_ptr = (PictureParentControlSet *)pcs->tpl_group[pic_i];     
+        PictureParentControlSet* pcs_tpl_ptr = (PictureParentControlSet *)pcs->tpl_group[pic_i];
 
-        if (pcs_tpl_ptr->me_data_wrapper_ptr==NULL) {     
+        if (pcs_tpl_ptr->me_data_wrapper_ptr==NULL) {
             EbObjectWrapper               *me_wrapper;
             eb_get_empty_object(ctx->me_fifo_ptr, &me_wrapper);
             pcs_tpl_ptr->me_data_wrapper_ptr = me_wrapper;
@@ -6379,7 +6379,7 @@ void send_picture_out(
     }
     //get a new ME data buffer
 #if INL_ME
-    if (pcs->me_data_wrapper_ptr == NULL) {  
+    if (pcs->me_data_wrapper_ptr == NULL) {
         eb_get_empty_object(ctx->me_fifo_ptr, &me_wrapper);
         pcs->me_data_wrapper_ptr = me_wrapper;
         pcs->pa_me_data = (MotionEstimationData *)me_wrapper->object_ptr;
@@ -7268,12 +7268,12 @@ void* picture_decision_kernel(void *input_ptr)
                         pcs_ptr->idr_flag;
                 }
 
-#if FIX_LAD_DEADLOCK 
+#if FIX_LAD_DEADLOCK
                 //TODO: scene change update
                 if (scs_ptr->intra_period_length == 0)
                     pcs_ptr->is_next_frame_intra = 1;
                 else if (scs_ptr->intra_period_length == -1)
-                    pcs_ptr->is_next_frame_intra = 0; 
+                    pcs_ptr->is_next_frame_intra = 0;
                 else
                     pcs_ptr->is_next_frame_intra = (int32_t)(encode_context_ptr->intra_period_position + 1) == scs_ptr->intra_period_length;
 #endif

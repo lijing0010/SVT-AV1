@@ -987,7 +987,7 @@ typedef struct PictureParentControlSet {
 
 #if FIX_LAD_DEADLOCK
     uint8_t is_next_frame_intra;
-#endif 
+#endif
 
 #if INL_ME
     uint8_t tpl_me_done;

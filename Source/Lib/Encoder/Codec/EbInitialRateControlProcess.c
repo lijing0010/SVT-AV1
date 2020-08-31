@@ -1065,12 +1065,12 @@ int32_t eb_av1_compute_qdelta(double qstart, double qtarget, AomBitDepth bit_dep
 #if FIX_TPL_ME_ACCESS
 //Given one reference frame identified by the pair (list_index,ref_index)
 //indicate if ME data is valid
-uint8_t is_me_data_valid(   
-    const MeSbResults           *me_results,   
+uint8_t is_me_data_valid(
+    const MeSbResults           *me_results,
     uint32_t                     me_mb_offset,
     uint8_t                      list_idx,
     uint8_t                      ref_idx) {
-            
+
     uint8_t total_me_cnt = me_results->total_me_candidate_index[me_mb_offset];
     const MeCandidate *me_block_results = &me_results->me_candidate_array[me_mb_offset*MAX_PA_ME_CAND];
 
@@ -1256,9 +1256,9 @@ void tpl_mc_flow_dispenser(
 #endif
 
 #if FIX_TPL_ME_ACCESS
-                        if( (list_index == 0 && (ref_pic_index+1) > pcs_ptr->mrp_ctrls.ref_list0_count_try) || 
+                        if( (list_index == 0 && (ref_pic_index+1) > pcs_ptr->mrp_ctrls.ref_list0_count_try) ||
                             (list_index == 1 && (ref_pic_index+1) > pcs_ptr->mrp_ctrls.ref_list1_count_try) )
-                            continue;                      
+                            continue;
                         if( !is_me_data_valid( pcs_ptr->pa_me_data->me_results[sb_index], me_mb_offset, list_index, ref_pic_index))
                             continue;
 #endif
@@ -2045,7 +2045,6 @@ EbErrorType tpl_mc_flow(
 
 void print_irc_queue(EncodeContext *            encode_context_ptr)
 {
-    
     uint32_t h = encode_context_ptr->initial_rate_control_reorder_queue_head_index;
 
     printf("iRC Queue:   ");
@@ -2058,9 +2057,6 @@ void print_irc_queue(EncodeContext *            encode_context_ptr)
         h++;
     }
     printf("\n");
-
-   
-
 }
 
 
@@ -2284,7 +2280,7 @@ void *initial_rate_control_kernel(void *input_ptr) {
                             ? queue_entry_index_temp - INITIAL_RATE_CONTROL_REORDER_QUEUE_MAX_DEPTH
                             : queue_entry_index_temp;
 
-#if FIX_LAD_DEADLOCK 
+#if FIX_LAD_DEADLOCK
                     if (encode_context_ptr->initial_rate_control_reorder_queue[queue_entry_index_temp2]->parent_pcs_wrapper_ptr != EB_NULL) {
                         PictureParentControlSet* pcs = (PictureParentControlSet*)(encode_context_ptr->initial_rate_control_reorder_queue[queue_entry_index_temp]->parent_pcs_wrapper_ptr)->object_ptr;
                         if (pcs->is_next_frame_intra)
@@ -2343,7 +2339,7 @@ void *initial_rate_control_kernel(void *input_ptr) {
                                           INITIAL_RATE_CONTROL_REORDER_QUEUE_MAX_DEPTH
                                     : queue_entry_index_temp;
 
-#if FIX_LAD_DEADLOCK 
+#if FIX_LAD_DEADLOCK
                             //exit if we hit a non valid entry
                             if (encode_context_ptr->initial_rate_control_reorder_queue[queue_entry_index_temp2]->parent_pcs_wrapper_ptr == NULL)
                                 break;

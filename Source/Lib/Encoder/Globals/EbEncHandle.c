@@ -660,7 +660,7 @@ EbErrorType load_default_buffer_configuration_settings(
 
 #if DECOUPLE_ME_RES
 
-#if INL_ME       
+#if INL_ME
         if (scs_ptr->static_config.look_ahead_distance > 0)
             min_me = min_parent;
         else if (scs_ptr->static_config.enable_tpl_la)

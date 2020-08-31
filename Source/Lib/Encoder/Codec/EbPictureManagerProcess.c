@@ -306,11 +306,21 @@ static uint8_t tpl_setup_me_refs(
                 }
             }
 
+            if (list_index == REF_LIST_1 && ref_in_slide_window) {
+                // Remove duplicate refs from list1 which is already in list0
+                for (uint8_t i=0; i<*ref0_count; i++) {
+                    if (pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[0][i].picture_number == ref_poc) {
+                        *ref_count_ptr -= 1;
+                        break;
+                    }
+                }
+            }
+
             if (!ref_in_slide_window) {
                 ReferenceQueueEntry* ref_entry_ptr = search_ref_in_ref_queue(scs_ptr->encode_context_ptr, ref_poc);
                 if (ref_entry_ptr && ref_entry_ptr->reference_available) {
                     pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref_count_ptr] =
-                        ((EbReferenceObject *)ref_entry_ptr->reference_object_ptr->object_ptr)->ds_pics; 
+                        ((EbReferenceObject *)ref_entry_ptr->reference_object_ptr->object_ptr)->ds_pics;
                     //printf("\t L%d: %ld=>%ld, use recon, ref_count %d\n", list_index, curr_poc, ref_poc, ref_list_count);
                     *ref_count_ptr += 1;
                 } else {
@@ -906,7 +916,7 @@ void *picture_manager_kernel(void *input_ptr) {
 #endif
             //printf("-----[%ld]: Recon generated-----\n", input_picture_demux_ptr->picture_number);
 #if INL_ME
-            ((EbReferenceObject *)input_picture_demux_ptr->reference_picture_wrapper_ptr->object_ptr)->ds_pics.picture_number = 
+            ((EbReferenceObject *)input_picture_demux_ptr->reference_picture_wrapper_ptr->object_ptr)->ds_pics.picture_number =
                 input_picture_demux_ptr->picture_number;
 #endif
             // Check if Reference Queue is full

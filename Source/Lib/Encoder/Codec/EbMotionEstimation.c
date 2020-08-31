@@ -9931,7 +9931,6 @@ static EbPictureBufferDesc* get_me_reference(
                                context_ptr->me_ds_ref_array[list_index][ref_pic_index].picture_ptr;
 
     *dist = ABS((int16_t)(pcs_ptr->picture_number - context_ptr->me_ds_ref_array[list_index][ref_pic_index].picture_number));
-
 #if 0
     EbReferenceObject* inl_reference_object = NULL;
     EbPaReferenceObject *reference_object = NULL;
@@ -9942,7 +9941,7 @@ static EbPictureBufferDesc* get_me_reference(
             if (scs_ptr->in_loop_me) {
                 inl_downscaled_object = (EbDownScaledObject*)context_ptr->alt_ref_reference_ptr_inl;
                 ref_pic_ptr = level == 0 ? inl_downscaled_object->sixteenth_picture_ptr :
-                              level == 1 ? inl_downscaled_object->quarter_picture_ptr : 
+                              level == 1 ? inl_downscaled_object->quarter_picture_ptr :
                                            inl_downscaled_object->picture_ptr;
             } else {
                 reference_object = (EbPaReferenceObject *)context_ptr->alt_ref_reference_ptr;
@@ -9957,7 +9956,7 @@ static EbPictureBufferDesc* get_me_reference(
                 else
                     ref_pic_ptr = reference_object->input_padded_picture_ptr;
             }
-            *dist = ABS((int16_t)(context_ptr->tf_frame_index - context_ptr->tf_index_center)); 
+            *dist = ABS((int16_t)(context_ptr->tf_frame_index - context_ptr->tf_index_center));
             break;
 
         case ME_TPL:
@@ -10841,12 +10840,10 @@ void hme_level0_sb(
             refPicPtr = (EbPictureBufferDesc*)referenceObject->input_padded_picture_ptr;
 #endif
 
-#if !INL_ME
             // 1/16 ME reference buffer(s); filtered or decimated
             sixteenthRefPicPtr = (scs_ptr->down_sampling_method_me_search == ME_FILTERED_DOWNSAMPLED) ?
                 (EbPictureBufferDesc*)referenceObject->sixteenth_filtered_picture_ptr :
                 (EbPictureBufferDesc*)referenceObject->sixteenth_decimated_picture_ptr;
-#endif
 #else
             uint16_t dist = 0;
             sixteenthRefPicPtr = get_me_reference(pcs_ptr, scs_ptr,
