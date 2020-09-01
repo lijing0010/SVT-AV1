@@ -4366,10 +4366,11 @@ void *picture_analysis_kernel(void *input_ptr) {
                 gathering_picture_statistics_ex(
                         scs_ptr, pcs_ptr,
                         pcs_ptr->chroma_downsampled_picture_ptr);
-#if INL_ME
+
+#if 1
                 // Save pointer of raw input to PA
                 // TODO: This is just to make it work for current TPL in iRC
-                // When moving the TPL logic from iRC to RC, should use input picture directly and remove the code here
+                // When moving the TPL logic from iRC to RC, should use input picture directly and remove the codes here
                 pa_ref_obj_ = (EbPaReferenceObject *)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr;
                 pa_ref_obj_->input_padded_picture_ptr = input_picture_ptr;
                 pa_ref_obj_->quarter_decimated_picture_ptr = pa_ref_obj_->quarter_filtered_picture_ptr = ds_obj->quarter_picture_ptr;
@@ -4380,6 +4381,7 @@ void *picture_analysis_kernel(void *input_ptr) {
                 // Get PA ref, copy 8bit luma to pa_ref->input_padded_picture_ptr
                 pa_ref_obj_ =
                     (EbPaReferenceObject *)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr;
+                pa_ref_obj_->picture_number = pcs_ptr->picture_number;
                 input_padded_picture_ptr = (EbPictureBufferDesc *)pa_ref_obj_->input_padded_picture_ptr;
                 uint8_t *pa =
                     input_padded_picture_ptr->buffer_y + input_padded_picture_ptr->origin_x +

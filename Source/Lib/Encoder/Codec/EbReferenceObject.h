@@ -105,7 +105,7 @@ typedef struct EbPaReferenceObject {
 #endif
 
 #if INL_ME
-    //uint64_t             picture_number;
+    uint64_t             picture_number;
     //uint64_t             decode_order;
     uint8_t              dummy_obj;
 #endif

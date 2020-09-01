@@ -2206,6 +2206,7 @@ void *motion_estimation_kernel(void *input_ptr) {
                         context_ptr->me_context_ptr->me_type = ME_OPEN_LOOP;
                         context_ptr->me_context_ptr->num_of_list_to_search =
                             (pcs_ptr->slice_type == P_SLICE) ? (uint32_t)REF_LIST_0 : (uint32_t)REF_LIST_1;
+
                         context_ptr->me_context_ptr->num_of_ref_pic_to_search[0] = pcs_ptr->mrp_ctrls.ref_list0_count_try;
                         if (pcs_ptr->slice_type == B_SLICE)
                             context_ptr->me_context_ptr->num_of_ref_pic_to_search[1] = pcs_ptr->mrp_ctrls.ref_list1_count_try;
@@ -2229,6 +2230,7 @@ void *motion_estimation_kernel(void *input_ptr) {
                                     context_ptr->me_context_ptr->me_ds_ref_array[i][j].sixteenth_picture_ptr =
                                         reference_object->sixteenth_decimated_picture_ptr;
                                 }
+                                context_ptr->me_context_ptr->me_ds_ref_array[i][j].picture_number = reference_object->picture_number;
                             }
                         }
 #endif
