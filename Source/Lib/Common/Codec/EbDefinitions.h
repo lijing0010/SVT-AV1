@@ -652,6 +652,7 @@ extern "C" {
 #define INL_ME 1 //In loop me
 #if INL_ME
 #define FORCE_DECODE_ORDER   1
+#define IME_REUSE_TPL_RESULT 0 // Reuse TPL results for iLoopME
 #define INL_TPL_ME_DBG 1
 #define INL_ME_DBG 0 //In loop me for debug
 #if INL_ME_DBG

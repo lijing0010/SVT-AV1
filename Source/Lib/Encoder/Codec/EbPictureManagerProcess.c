@@ -306,6 +306,7 @@ static uint8_t tpl_setup_me_refs(
                 }
             }
 
+#if !IME_REUSE_TPL_RESULT
             if (list_index == REF_LIST_1 && ref_in_slide_window) {
                 // Remove duplicate refs from list1 which is already in list0
                 for (uint8_t i=0; i<*ref0_count; i++) {
@@ -315,6 +316,7 @@ static uint8_t tpl_setup_me_refs(
                     }
                 }
             }
+#endif
 
             if (!ref_in_slide_window) {
                 ReferenceQueueEntry* ref_entry_ptr = search_ref_in_ref_queue(scs_ptr->encode_context_ptr, ref_poc);

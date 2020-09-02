@@ -12759,7 +12759,9 @@ EbErrorType motion_estimate_sb(
 #endif
 
 #if INL_ME
+#if !IME_REUSE_TPL_RESULT
     prune_ref = (context_ptr->me_type == ME_TPL) ? 0 : prune_ref;
+#endif
 #endif
     //init hme results buffer
     for (uint32_t li = 0; li < MAX_NUM_OF_REF_PIC_LIST; li++) {

@@ -2741,6 +2741,9 @@ void *inloop_me_kernel(void *input_ptr) {
     uint32_t segment_row_count = 0;
 
     uint8_t  task_type = 0;
+#if IME_REUSE_TPL_RESULT
+    EbBool skip_me = EB_FALSE;
+#endif
     for (;;) {
         // Get Input Full Object
         eb_get_full_object(context_ptr->input_fifo_ptr,
@@ -2784,6 +2787,9 @@ void *inloop_me_kernel(void *input_ptr) {
                             ppcs_ptr->tpl_ref_ds_ptr_array[i][j];
                     }
                 }
+#if IME_REUSE_TPL_RESULT
+                skip_me = EB_FALSE;
+#endif
             } else if (ppcs_ptr->slice_type != I_SLICE) {
                 // ME Kernel Signal(s) derivation
                 signal_derivation_me_kernel_oq(scs_ptr, ppcs_ptr, (MotionEstimationContext_t*)context_ptr);
@@ -2820,29 +2826,39 @@ void *inloop_me_kernel(void *input_ptr) {
 #endif
                     }
                 }
+#if IME_REUSE_TPL_RESULT
+                skip_me = ppcs_ptr->tpl_me_done;
+                if (skip_me)
+                    printf("[%ld]: skip iME\n", ppcs_ptr->picture_number);
+#endif
             }
-
-            // Lambda Assignement
-            init_lambda(context_ptr, scs_ptr, ppcs_ptr);
 
             // Segments
             segment_index = in_results_ptr->segment_index;
-            pic_width_in_sb =
-                (ppcs_ptr->aligned_width + scs_ptr->sb_sz - 1) / scs_ptr->sb_sz;
-            picture_height_in_sb =
-                (ppcs_ptr->aligned_height + scs_ptr->sb_sz - 1) / scs_ptr->sb_sz;
-            SEGMENT_CONVERT_IDX_TO_XY(
-                    segment_index, x_segment_index, y_segment_index, segment_col_count);
-            x_sb_start_index = SEGMENT_START_IDX(
-                    x_segment_index, pic_width_in_sb, segment_col_count);
-            x_sb_end_index = SEGMENT_END_IDX(
-                    x_segment_index, pic_width_in_sb, segment_col_count);
-            y_sb_start_index = SEGMENT_START_IDX(
-                    y_segment_index, picture_height_in_sb, segment_row_count);
-            y_sb_end_index = SEGMENT_END_IDX(
-                    y_segment_index, picture_height_in_sb, segment_row_count);
 
+#if IME_REUSE_TPL_RESULT
+            if (!skip_me && (ppcs_ptr->slice_type != I_SLICE || task_type != 0)) {
+#else
             if (ppcs_ptr->slice_type != I_SLICE || task_type != 0) {
+#endif
+                // Lambda Assignement
+                init_lambda(context_ptr, scs_ptr, ppcs_ptr);
+
+                pic_width_in_sb =
+                    (ppcs_ptr->aligned_width + scs_ptr->sb_sz - 1) / scs_ptr->sb_sz;
+                picture_height_in_sb =
+                    (ppcs_ptr->aligned_height + scs_ptr->sb_sz - 1) / scs_ptr->sb_sz;
+                SEGMENT_CONVERT_IDX_TO_XY(
+                        segment_index, x_segment_index, y_segment_index, segment_col_count);
+                x_sb_start_index = SEGMENT_START_IDX(
+                        x_segment_index, pic_width_in_sb, segment_col_count);
+                x_sb_end_index = SEGMENT_END_IDX(
+                        x_segment_index, pic_width_in_sb, segment_col_count);
+                y_sb_start_index = SEGMENT_START_IDX(
+                        y_segment_index, picture_height_in_sb, segment_row_count);
+                y_sb_end_index = SEGMENT_END_IDX(
+                        y_segment_index, picture_height_in_sb, segment_row_count);
+
                 // SB Loop
                 for (y_sb_index = y_sb_start_index; y_sb_index < y_sb_end_index; ++y_sb_index) {
                     for (x_sb_index = x_sb_start_index; x_sb_index < x_sb_end_index; ++x_sb_index) {
@@ -2858,7 +2874,11 @@ void *inloop_me_kernel(void *input_ptr) {
                                 context_ptr->me_context_ptr,
                                 input_picture_ptr);
 
+#if IME_REUSE_TPL_RESULT
+                        {
+#else
                         if (task_type == 0) {
+#endif
                             eb_block_on_mutex(ppcs_ptr->me_processed_sb_mutex);
                             ppcs_ptr->me_processed_sb_count++;
                             eb_release_mutex(ppcs_ptr->me_processed_sb_mutex);
@@ -2895,7 +2915,6 @@ void *inloop_me_kernel(void *input_ptr) {
                 eb_post_full_object(out_results_wrapper_ptr);
             } else {
                 // TPL ME
-#if INL_ME
                 eb_block_on_mutex(ppcs_ptr->tpl_me_mutex);
                 ppcs_ptr->tpl_me_seg_acc++;
 
@@ -2906,7 +2925,6 @@ void *inloop_me_kernel(void *input_ptr) {
                     eb_post_semaphore(ppcs_ptr->tpl_me_done_semaphore);
                 }
                 eb_release_mutex(ppcs_ptr->tpl_me_mutex);
-#endif
                 eb_release_object(in_results_wrapper_ptr);
             }
         } else {
