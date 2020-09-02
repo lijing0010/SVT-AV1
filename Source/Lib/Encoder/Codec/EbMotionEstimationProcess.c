@@ -2595,18 +2595,19 @@ EbErrorType ime_context_ctor(EbThreadContext *  thread_context_ptr,
 static void init_lambda(InLoopMeContext *context_ptr,
     SequenceControlSet *     scs_ptr,
     PictureParentControlSet *ppcs_ptr) {
+    uint8_t temporal_layer_index = context_ptr->me_context_ptr->temporal_layer_index;
     if (scs_ptr->static_config.pred_structure == EB_PRED_RANDOM_ACCESS) {
-        if (ppcs_ptr->temporal_layer_index == 0)
+        if (temporal_layer_index == 0)
             context_ptr->me_context_ptr->lambda =
                 lambda_mode_decision_ra_sad[ppcs_ptr->picture_qp];
-        else if (ppcs_ptr->temporal_layer_index < 3)
+        else if (temporal_layer_index < 3)
             context_ptr->me_context_ptr->lambda =
                 lambda_mode_decision_ra_sad_qp_scaling_l1[ppcs_ptr->picture_qp];
         else
             context_ptr->me_context_ptr->lambda =
                 lambda_mode_decision_ra_sad_qp_scaling_l3[ppcs_ptr->picture_qp];
     } else {
-        if (ppcs_ptr->temporal_layer_index == 0)
+        if (temporal_layer_index == 0)
             context_ptr->me_context_ptr->lambda =
                 lambda_mode_decision_ld_sad[ppcs_ptr->picture_qp];
         else
@@ -2870,6 +2871,7 @@ void *inloop_me_kernel(void *input_ptr) {
                 // Global motion estimation
                 // TODO: create an other kernel ?
                 if (context_ptr->me_context_ptr->compute_global_motion &&
+                        ppcs_ptr->slice_type != I_SLICE &&
                         // Compute only when ME of all 64x64 SBs is performed
                         ppcs_ptr->me_processed_sb_count == ppcs_ptr->sb_total_count) {
                     global_motion_estimation_inl(

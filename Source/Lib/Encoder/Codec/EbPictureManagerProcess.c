@@ -402,8 +402,7 @@ static EbErrorType tpl_get_open_loop_me(
                     eb_block_on_semaphore(pcs_tpl_group_frame_ptr->tpl_me_done_semaphore); //chkn we can do all in // ?
 
                     // When TPL16, flag tpl_me_done of 17/18/19 will be set done during TPL32
-                    if (pcs_tpl_base_ptr->idr_flag ||
-                            pcs_tpl_group_frame_ptr->picture_number < pcs_tpl_base_ptr->picture_number) {
+                    if (!is_trailing_tpl_frame) {
                         pcs_tpl_group_frame_ptr->tpl_me_done = 1;
 #if INL_TPL_ME_DBG
                         printf("\t Picture %ld TPL ME done\n", pcs_tpl_group_frame_ptr->picture_number);
