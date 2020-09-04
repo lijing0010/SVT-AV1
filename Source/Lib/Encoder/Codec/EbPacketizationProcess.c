@@ -105,6 +105,8 @@ static void write_td(EbBufferHeaderType *out_str_ptr, EbBool show_ex, EbBool has
     }
 }
 
+//Jing:TODO
+//if recode, whether put this to RC
 void update_rc_rate_tables(PictureControlSet *pcs_ptr, SequenceControlSet *scs_ptr) {
     EncodeContext *encode_context_ptr = (EncodeContext *)scs_ptr->encode_context_ptr;
 
@@ -331,6 +333,7 @@ void update_rc_rate_tables(PictureControlSet *pcs_ptr, SequenceControlSet *scs_p
         }
     }
 }
+
 /* Packetization */
 
 /*********************************************************************************
@@ -376,6 +379,9 @@ void *packetization_kernel(void *input_ptr) {
     // Output
     EbObjectWrapper *    output_stream_wrapper_ptr;
     EbBufferHeaderType * output_stream_ptr;
+#if RE_ENCODE_SUPPORT
+    EbBufferHeaderType tmp_output_stream;
+#endif
     EbObjectWrapper *    rate_control_tasks_wrapper_ptr;
     RateControlTasks *   rate_control_tasks_ptr;
     EbObjectWrapper *    picture_manager_results_wrapper_ptr;
@@ -402,6 +408,7 @@ void *packetization_kernel(void *input_ptr) {
         frm_hdr            = &pcs_ptr->parent_pcs_ptr->frm_hdr;
         Av1Common *const cm = pcs_ptr->parent_pcs_ptr->av1_cm;
         tile_cnt            = cm->tiles_info.tile_rows * cm->tiles_info.tile_cols;
+        printf("[%ld]: PAK get pic\n", pcs_ptr->picture_number);
         //****************************************************
         // Input Entropy Results into Reordering Queue
         //****************************************************
@@ -412,10 +419,15 @@ void *packetization_kernel(void *input_ptr) {
         queue_entry_ptr->start_time_seconds   = pcs_ptr->parent_pcs_ptr->start_time_seconds;
         queue_entry_ptr->start_time_u_seconds = pcs_ptr->parent_pcs_ptr->start_time_u_seconds;
         queue_entry_ptr->is_alt_ref           = pcs_ptr->parent_pcs_ptr->is_alt_ref;
+#if !RE_ENCODE_SUPPORT
         eb_get_empty_object(scs_ptr->encode_context_ptr->stream_output_fifo_ptr,
                             &pcs_ptr->parent_pcs_ptr->output_stream_wrapper_ptr);
         output_stream_wrapper_ptr   = pcs_ptr->parent_pcs_ptr->output_stream_wrapper_ptr;
         output_stream_ptr           = (EbBufferHeaderType *)output_stream_wrapper_ptr->object_ptr;
+#else
+        output_stream_ptr           = &tmp_output_stream;
+#endif
+        output_stream_ptr->n_alloc_len = 40000000;//PACKETIZATION_PROCESS_BUFFER_SIZE;
         output_stream_ptr->p_buffer = (uint8_t *)malloc(output_stream_ptr->n_alloc_len);
         assert(output_stream_ptr->p_buffer != NULL && "bit-stream memory allocation failure");
 
@@ -455,6 +467,103 @@ void *packetization_kernel(void *input_ptr) {
         rate_control_tasks_ptr->pcs_wrapper_ptr = pcs_ptr->picture_parent_control_set_wrapper_ptr;
         rate_control_tasks_ptr->task_type       = RC_PACKETIZATION_FEEDBACK_RESULT;
 
+#if RE_ENCODE_SUPPORT
+        // Reset the Bitstream before writing to it
+        reset_bitstream(pcs_ptr->bitstream_ptr->output_bitstream_ptr);
+
+        // Code the SPS
+        if (frm_hdr->frame_type == KEY_FRAME) { encode_sps_av1(pcs_ptr->bitstream_ptr, scs_ptr); }
+
+        write_frame_header_av1(pcs_ptr->bitstream_ptr, scs_ptr, pcs_ptr, 0);
+
+        // Copy Slice Header to the Output Bitstream
+        copy_payload(pcs_ptr->bitstream_ptr,
+                     output_stream_ptr->p_buffer,
+                     (uint32_t *)&(output_stream_ptr->n_filled_len),
+                     (uint32_t *)&(output_stream_ptr->n_alloc_len),
+                     encode_context_ptr);
+        if (pcs_ptr->parent_pcs_ptr->has_show_existing) {
+            // Reset the Bitstream before writing to it
+            reset_bitstream(pcs_ptr->bitstream_ptr->output_bitstream_ptr);
+            write_frame_header_av1(pcs_ptr->bitstream_ptr, scs_ptr, pcs_ptr, 1);
+
+            // Copy Slice Header to the Output Bitstream
+            copy_payload(pcs_ptr->bitstream_ptr,
+                         output_stream_ptr->p_buffer,
+                         (uint32_t *)&(output_stream_ptr->n_filled_len),
+                         (uint32_t *)&(output_stream_ptr->n_alloc_len),
+                         encode_context_ptr);
+
+            output_stream_ptr->flags |= EB_BUFFERFLAG_SHOW_EXT;
+        }
+
+        // Send the number of bytes per frame to RC
+        pcs_ptr->parent_pcs_ptr->total_num_bits = output_stream_ptr->n_filled_len << 3;
+        pcs_ptr->parent_pcs_ptr->recode = EB_FALSE;
+        printf("\t[%ld]: Check if need re-encode...\n", pcs_ptr->picture_number);
+        // Post Rate Control Taks
+        eb_post_full_object(rate_control_tasks_wrapper_ptr);
+        eb_block_on_semaphore(pcs_ptr->parent_pcs_ptr->recode_semaphore);
+        if (pcs_ptr->parent_pcs_ptr->recode) {
+            printf("\t[%ld]: Done, need recode...\n", pcs_ptr->picture_number);
+            // need to do recode, clean up
+            free(output_stream_ptr->p_buffer);
+            eb_release_object(entropy_coding_results_wrapper_ptr);
+            continue;
+        }
+
+        // Don't need to re-encode
+        printf("\t[%ld]: Don't need recode\n", pcs_ptr->picture_number);
+#if DECOUPLE_ME_RES
+        eb_release_object(pcs_ptr->parent_pcs_ptr->me_data_wrapper_ptr);
+        pcs_ptr->parent_pcs_ptr->me_data_wrapper_ptr = (EbObjectWrapper *)EB_NULL;
+#endif
+        // Release refs
+        //for (uint8_t ref_idx = 0; ref_idx < pcs_ptr->parent_pcs_ptr->mrp_ctrls.ref_list0_count_try;
+        for (uint8_t ref_idx = 0; ref_idx < pcs_ptr->parent_pcs_ptr->ref_list0_count;
+                ++ref_idx) {
+            if (pcs_ptr->ref_pic_ptr_array[0][ref_idx] != EB_NULL)
+                eb_release_object(pcs_ptr->ref_pic_ptr_array[0][ref_idx]);
+        }
+        //for (uint8_t ref_idx = 0; ref_idx < pcs_ptr->parent_pcs_ptr->mrp_ctrls.ref_list1_count_try;
+        for (uint8_t ref_idx = 0; ref_idx < pcs_ptr->parent_pcs_ptr->ref_list1_count;
+                ++ref_idx) {
+            if (pcs_ptr->ref_pic_ptr_array[0][ref_idx] != EB_NULL)
+                eb_release_object(pcs_ptr->ref_pic_ptr_array[1][ref_idx]);
+        }
+#if PAL_MEM_OPT
+        //free palette data
+        if (pcs_ptr->tile_tok[0][0])
+            EB_FREE_ARRAY(pcs_ptr->tile_tok[0][0]);
+#endif
+
+        if (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag) {
+            printf("\t[%ld]: Send REF_PIC to PM kernel\n", pcs_ptr->picture_number);
+            EbObjectWrapper *    picture_demux_results_wrapper_ptr;
+            PictureDemuxResults *picture_demux_results_rtr;
+            // Get Empty PicMgr Results
+            eb_get_empty_object(context_ptr->picture_manager_input_fifo_ptr,
+                    &picture_demux_results_wrapper_ptr);
+
+            picture_demux_results_rtr =
+                (PictureDemuxResults *)picture_demux_results_wrapper_ptr->object_ptr;
+            picture_demux_results_rtr->reference_picture_wrapper_ptr =
+                pcs_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr;
+            picture_demux_results_rtr->scs_wrapper_ptr = pcs_ptr->scs_wrapper_ptr;
+            picture_demux_results_rtr->picture_number  = pcs_ptr->picture_number;
+            picture_demux_results_rtr->picture_type    = EB_PIC_REFERENCE;
+
+            // Post Reference Picture
+            eb_post_full_object(picture_demux_results_wrapper_ptr);
+        }
+
+        eb_get_empty_object(scs_ptr->encode_context_ptr->stream_output_fifo_ptr,
+                            &pcs_ptr->parent_pcs_ptr->output_stream_wrapper_ptr);
+        output_stream_wrapper_ptr   = pcs_ptr->parent_pcs_ptr->output_stream_wrapper_ptr;
+        output_stream_ptr           = (EbBufferHeaderType *)output_stream_wrapper_ptr->object_ptr;
+        *output_stream_ptr = tmp_output_stream;
+#endif
+
 #if FORCE_DECODE_ORDER
         if((scs_ptr->in_loop_me && scs_ptr->static_config.enable_tpl_la) ||
             (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
@@ -493,6 +602,8 @@ void *packetization_kernel(void *input_ptr) {
             (void)picture_manager_results_ptr;
             (void)picture_manager_results_wrapper_ptr;
         }
+
+#if !RE_ENCODE_SUPPORT
         // Reset the Bitstream before writing to it
         reset_bitstream(pcs_ptr->bitstream_ptr->output_bitstream_ptr);
 
@@ -524,6 +635,8 @@ void *packetization_kernel(void *input_ptr) {
 
         // Send the number of bytes per frame to RC
         pcs_ptr->parent_pcs_ptr->total_num_bits = output_stream_ptr->n_filled_len << 3;
+#endif
+
         queue_entry_ptr->total_num_bits         = pcs_ptr->parent_pcs_ptr->total_num_bits;
         // update the rate tables used in RC based on the encoded bits of each sb
         update_rc_rate_tables(pcs_ptr, scs_ptr);
@@ -572,8 +685,17 @@ void *packetization_kernel(void *input_ptr) {
             eb_release_mutex(encode_context_ptr->sc_buffer_mutex);
         }
 
+#if !RE_ENCODE_SUPPORT
         // Post Rate Control Taks
         eb_post_full_object(rate_control_tasks_wrapper_ptr);
+#else
+        // Release the SequenceControlSet
+        eb_release_object(pcs_ptr->parent_pcs_ptr->scs_wrapper_ptr);
+        // Release the ParentPictureControlSet
+        eb_release_object(pcs_ptr->parent_pcs_ptr->input_picture_wrapper_ptr);
+        eb_release_object(pcs_ptr->picture_parent_control_set_wrapper_ptr);
+#endif
+
 #if FORCE_DECODE_ORDER
         if ((scs_ptr->in_loop_me && scs_ptr->static_config.enable_tpl_la) ||
             (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&

@@ -1365,6 +1365,9 @@ static void picture_parent_control_set_dctor(EbPtr p) {
 #if INL_ME
     EB_DESTROY_SEMAPHORE(obj->tpl_me_done_semaphore);
     EB_DESTROY_MUTEX(obj->tpl_me_mutex);
+#if RE_ENCODE_SUPPORT
+    EB_DESTROY_SEMAPHORE(obj->recode_semaphore);
+#endif
 #endif
     if(obj->frame_superres_enabled){
         eb_pcs_sb_structs_dctor(obj);
@@ -1544,6 +1547,9 @@ EbErrorType picture_parent_control_set_ctor(PictureParentControlSet *object_ptr,
 #if INL_ME
     EB_CREATE_SEMAPHORE(object_ptr->tpl_me_done_semaphore, 0, 1);
     EB_CREATE_MUTEX(object_ptr->tpl_me_mutex);
+#if RE_ENCODE_SUPPORT
+    EB_CREATE_SEMAPHORE(object_ptr->recode_semaphore, 0, 1);
+#endif
 #endif
 
     object_ptr->av1_cm->interp_filter = SWITCHABLE;

@@ -651,9 +651,13 @@ extern "C" {
 #define PAD_CHROMA_AFTER_MCTF 1 // Padding chroma after altref
 #define INL_ME 1 //In loop me
 #if INL_ME
+#define RE_ENCODE_SUPPORT     1 // re-encode support
+#if RE_ENCODE_SUPPORT
+#define RE_ENCODE_SUPPORT_DBG 0 // debug for recode
+#endif
 #define FORCE_DECODE_ORDER   1
 #define IME_REUSE_TPL_RESULT 0 // Reuse TPL results for iLoopME
-#define INL_TPL_ME_DBG 1
+#define INL_TPL_ME_DBG 0
 #define INL_ME_DBG 0 //In loop me for debug
 #if INL_ME_DBG
 #define INL_ME_ON_INPUT_DBG 1 //ME on original debug

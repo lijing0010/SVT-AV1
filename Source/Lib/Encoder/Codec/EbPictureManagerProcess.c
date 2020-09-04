@@ -915,7 +915,7 @@ void *picture_manager_kernel(void *input_ptr) {
 #if DECOUPLE_ME_RES
             clean_pictures_in_ref_queue(scs_ptr->encode_context_ptr);
 #endif
-            //printf("-----[%ld]: Recon generated-----\n", input_picture_demux_ptr->picture_number);
+            printf("-----[%ld]: Recon generated-----\n", input_picture_demux_ptr->picture_number);
 #if INL_ME
             ((EbReferenceObject *)input_picture_demux_ptr->reference_picture_wrapper_ptr->object_ptr)->ds_pics.picture_number =
                 input_picture_demux_ptr->picture_number;

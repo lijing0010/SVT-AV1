@@ -11,8 +11,13 @@
 /**************************************
  * Extern Function Declarations
  **************************************/
+#if !RE_ENCODE_SUPPORT
 extern EbErrorType rest_context_ctor(EbThreadContext *  thread_context_ptr,
                                      const EbEncHandle *enc_handle_ptr, int index, int demux_index);
+#else
+extern EbErrorType rest_context_ctor(EbThreadContext *  thread_context_ptr,
+                                     const EbEncHandle *enc_handle_ptr, int index);
+#endif
 
 extern void *rest_kernel(void *input_ptr);
 

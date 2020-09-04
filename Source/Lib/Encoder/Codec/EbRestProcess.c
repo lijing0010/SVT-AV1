@@ -34,7 +34,9 @@ typedef struct RestContext {
     EbDctor dctor;
     EbFifo *rest_input_fifo_ptr;
     EbFifo *rest_output_fifo_ptr;
+#if !RE_ENCODE_SUPPORT
     EbFifo *picture_demux_fifo_ptr;
+#endif
 
     EbPictureBufferDesc *trial_frame_rst;
 
@@ -95,8 +97,13 @@ static void rest_context_dctor(EbPtr p)
 /******************************************************
  * Rest Context Constructor
  ******************************************************/
+#if !RE_ENCODE_SUPPORT
 EbErrorType rest_context_ctor(EbThreadContext *  thread_context_ptr,
                               const EbEncHandle *enc_handle_ptr, int index, int demux_index) {
+#else
+EbErrorType rest_context_ctor(EbThreadContext *  thread_context_ptr,
+                              const EbEncHandle *enc_handle_ptr, int index) {
+#endif
     const SequenceControlSet *      scs_ptr      = enc_handle_ptr->scs_instance_array[0]->scs_ptr;
     const EbSvtAv1EncConfiguration *config       = &scs_ptr->static_config;
     EbBool                          is_16bit     = (EbBool)(config->encoder_bit_depth > EB_8BIT);
@@ -112,8 +119,10 @@ EbErrorType rest_context_ctor(EbThreadContext *  thread_context_ptr,
         eb_system_resource_get_consumer_fifo(enc_handle_ptr->cdef_results_resource_ptr, index);
     context_ptr->rest_output_fifo_ptr =
         eb_system_resource_get_producer_fifo(enc_handle_ptr->rest_results_resource_ptr, index);
+#if !RE_ENCODE_SUPPORT
     context_ptr->picture_demux_fifo_ptr = eb_system_resource_get_producer_fifo(
         enc_handle_ptr->picture_demux_results_resource_ptr, demux_index);
+#endif
 
     {
         EbPictureBufferDescInitData init_data;
@@ -490,8 +499,10 @@ void *rest_kernel(void *input_ptr) {
     //// Output
     EbObjectWrapper *    rest_results_wrapper_ptr;
     RestResults *        rest_results_ptr;
+#if !RE_ENCODE_SUPPORT
     EbObjectWrapper *    picture_demux_results_wrapper_ptr;
     PictureDemuxResults *picture_demux_results_rtr;
+#endif
     // SB Loop variables
 
     for (;;) {
@@ -595,6 +606,7 @@ void *rest_kernel(void *input_ptr) {
                 pad_ref_and_set_flags(pcs_ptr, scs_ptr);
             if (scs_ptr->static_config.recon_enabled) { recon_output(pcs_ptr, scs_ptr); }
 
+#if !RE_ENCODE_SUPPORT
             if (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag) {
                 // Get Empty PicMgr Results
                 eb_get_empty_object(context_ptr->picture_demux_fifo_ptr,
@@ -611,6 +623,7 @@ void *rest_kernel(void *input_ptr) {
                 // Post Reference Picture
                 eb_post_full_object(picture_demux_results_wrapper_ptr);
             }
+#endif
             //Jing: TODO
             //Consider to add parallelism here, sending line by line, not waiting for a full frame
             int sb_size_log2 = scs_ptr->seq_header.sb_size_log2;

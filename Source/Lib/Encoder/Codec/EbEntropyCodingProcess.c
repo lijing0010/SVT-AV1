@@ -281,7 +281,10 @@ static EbBool update_entropy_coding_rows(PictureControlSet *pcs_ptr, uint32_t *r
     // Update availability mask
     if (*initial_process_call == EB_TRUE) {
         unsigned i;
-
+#if RE_ENCODE_SUPPORT
+        ec_ptr->entropy_coding_current_row = 0;
+        ec_ptr->entropy_coding_current_available_row = 0;
+#endif
         for (i = *row_index; i < *row_index + row_count; ++i)
             ec_ptr->entropy_coding_row_array[i] = EB_TRUE;
 
@@ -537,9 +540,10 @@ void *entropy_coding_kernel(void *input_ptr) {
                                         ((EbReferenceObject *)pcs_ptr->ref_pic_ptr_array[0][ref_idx]
                                              ->object_ptr)
                                             ->ref_poc);
-                                if (pcs_ptr->ref_pic_ptr_array[0][ref_idx] != EB_NULL) {
+#if !RE_ENCODE_SUPPORT
+                                if (pcs_ptr->ref_pic_ptr_array[0][ref_idx] != EB_NULL)
                                     eb_release_object(pcs_ptr->ref_pic_ptr_array[0][ref_idx]);
-                                }
+#endif
                             }
 
                             // Release the List 1 Reference Pictures
@@ -560,14 +564,18 @@ void *entropy_coding_kernel(void *input_ptr) {
                                         ((EbReferenceObject *)pcs_ptr->ref_pic_ptr_array[1][ref_idx]
                                              ->object_ptr)
                                             ->ref_poc);
+#if !RE_ENCODE_SUPPORT
                                 if (pcs_ptr->ref_pic_ptr_array[1][ref_idx] != EB_NULL)
                                     eb_release_object(pcs_ptr->ref_pic_ptr_array[1][ref_idx]);
+#endif
                             }
 
+#if !RE_ENCODE_SUPPORT
 #if PAL_MEM_OPT
                             //free palette data
                             if (pcs_ptr->tile_tok[0][0])
                                 EB_FREE_ARRAY(pcs_ptr->tile_tok[0][0]);
+#endif
 #endif
 
 

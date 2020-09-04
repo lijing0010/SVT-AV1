@@ -991,6 +991,10 @@ typedef struct PictureParentControlSet {
 
 #if INL_ME
     uint8_t tpl_me_done;
+#if RE_ENCODE_SUPPORT
+    EbBool recode;
+    EbHandle recode_semaphore;
+#endif
 #endif
 } PictureParentControlSet;
 

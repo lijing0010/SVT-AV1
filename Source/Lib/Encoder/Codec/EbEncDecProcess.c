@@ -436,8 +436,16 @@ EbBool assign_enc_dec_segments(EncDecSegments *segmentPtr, uint16_t *segmentInOu
         // The entire picture is provided by the MDC process, so
         //   no logic is necessary to clear input dependencies.
 
+#if RE_ENCODE_SUPPORT
+        // Reset enc_dec segments
+        for (uint32_t row_index = 0; row_index < segmentPtr->segment_row_count; ++row_index) {
+            segmentPtr->row_array[row_index].current_seg_index =
+                segmentPtr->row_array[row_index].starting_seg_index;
+        }
+#endif
         // Start on Segment 0 immediately
         *segmentInOutIndex  = segmentPtr->row_array[0].current_seg_index;
+
         taskPtr->input_type = ENCDEC_TASKS_CONTINUE;
         ++segmentPtr->row_array[0].current_seg_index;
         continue_processing_flag = EB_TRUE;
@@ -11482,9 +11490,11 @@ void *enc_dec_kernel(void *input_ptr) {
 #else
             pcs_ptr->parent_pcs_ptr->av1x->rdmult = context_ptr->full_lambda;
 #endif
+#if !RE_ENCODE_SUPPORT
 #if DECOUPLE_ME_RES
             eb_release_object(pcs_ptr->parent_pcs_ptr->me_data_wrapper_ptr);
             pcs_ptr->parent_pcs_ptr->me_data_wrapper_ptr = (EbObjectWrapper *)EB_NULL;
+#endif
 #endif
         }
 
