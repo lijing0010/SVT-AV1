@@ -63,6 +63,12 @@ extern "C" {
 #endif
 #endif
 
+#define IN_LOOP_TPL 1
+#if IN_LOOP_TPL
+#define TPL_REC_BUFFER 1
+#define TPL_SETUP_REF 1
+#endif
+
 
 #define MAX_TX_WEIGHT 500
 #define MAX_TPL_LA_SW 60 // Max TPL look ahead sliding window size

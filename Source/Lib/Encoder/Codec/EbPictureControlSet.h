@@ -578,6 +578,11 @@ typedef struct PictureParentControlSet {
     // iME TPL
     EbDownScaledBufDescPtrArray tpl_ref_ds_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     EbDownScaledBufDescPtrArray ds_pics; // Pointer array for down scaled pictures
+#if IN_LOOP_TPL //anaghdin initialize the values
+    uint8_t                     tpl_ref0_count;
+    uint8_t                     tpl_ref1_count;
+    EbBool                      ref_in_slide_window[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
+#endif
 #endif
 
     // Pre Analysis
