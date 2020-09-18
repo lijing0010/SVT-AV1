@@ -54,12 +54,18 @@ extern "C" {
 
 #define INL_ME 1 //In loop me
 #if INL_ME
-#define IME_REUSE_TPL_RESULT 0 // Reuse TPL results for iLoopME
-#define INL_TPL_ME_DBG 0
-#define INL_ME_DBG 0 //In loop me for debug
+#define IME_REUSE_TPL_RESULT 1 // Reuse TPL results for iLoopME
+#define INL_TPL_ENHANCEMENT 1 // Refinement for TPL
+#define INL_TPL_ME_DBG_MSG  0 // Debug message
+#define INL_ME_DBG 1 //In loop me for debug
 #if INL_ME_DBG
 #define INL_ME_ON_INPUT_DBG 1 //ME on original debug
 #define INL_GM_ON_INPUT_DBG 1 //GM on original debug
+#define INL_TPL_ME_ON_INPUT_DBG 1 // use original in TPL
+#define INL_ME_DBG_MEM_OPT  1
+#endif
+#if !IME_REUSE_TPL_RESULT
+#define SIGNAL_TPL_ME_OQ 1 // A separate signal_xxx_oq for TPL ME
 #endif
 #endif
 

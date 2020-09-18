@@ -3225,6 +3225,9 @@ void pad_picture_to_multiple_of_min_blk_size_dimensions(SequenceControlSet * scs
         scs_ptr->pad_right,
         scs_ptr->pad_bottom);
 
+#if INL_TPL_ENHANCEMENT
+    if (input_picture_ptr->buffer_cb)
+#endif
     pad_input_picture(
         &input_picture_ptr->buffer_cb[(input_picture_ptr->origin_x >> subsampling_x) +
                                       ((input_picture_ptr->origin_y >> subsampling_y) *
@@ -3235,6 +3238,9 @@ void pad_picture_to_multiple_of_min_blk_size_dimensions(SequenceControlSet * scs
         scs_ptr->pad_right >> subsampling_x,
         scs_ptr->pad_bottom >> subsampling_y);
 
+#if INL_TPL_ENHANCEMENT
+    if (input_picture_ptr->buffer_cr)
+#endif
     pad_input_picture(
         &input_picture_ptr->buffer_cr[(input_picture_ptr->origin_x >> subsampling_x) +
                                       ((input_picture_ptr->origin_y >> subsampling_y) *
@@ -3256,6 +3262,9 @@ void pad_picture_to_multiple_of_min_blk_size_dimensions(SequenceControlSet * scs
             scs_ptr->pad_right,
             scs_ptr->pad_bottom);
 
+#if INL_TPL_ENHANCEMENT
+        if (input_picture_ptr->buffer_bit_inc_cb)
+#endif
         pad_input_picture(
             &input_picture_ptr->buffer_bit_inc_cb[(input_picture_ptr->origin_x >> subsampling_x) +
                                                   ((input_picture_ptr->origin_y >> subsampling_y) *
@@ -3266,6 +3275,9 @@ void pad_picture_to_multiple_of_min_blk_size_dimensions(SequenceControlSet * scs
             scs_ptr->pad_right >> subsampling_x,
             scs_ptr->pad_bottom >> subsampling_y);
 
+#if INL_TPL_ENHANCEMENT
+        if (input_picture_ptr->buffer_bit_inc_cr)
+#endif
         pad_input_picture(
             &input_picture_ptr->buffer_bit_inc_cr[(input_picture_ptr->origin_x >> subsampling_x) +
                                                   ((input_picture_ptr->origin_y >> subsampling_y) *
@@ -3862,6 +3874,9 @@ void pad_input_pictures(SequenceControlSet *scs_ptr,
                 input_picture_ptr->origin_y >> scs_ptr->subsampling_y);
     // PAD the bit inc buffer in 10bit
     if (scs_ptr->static_config.encoder_bit_depth > EB_8BIT) {
+#if INL_TPL_ENHANCEMENT
+        if (input_picture_ptr->buffer_bit_inc_cb)
+#endif
         generate_padding(input_picture_ptr->buffer_bit_inc_cb,
                 input_picture_ptr->stride_bit_inc_cb,
                 input_picture_ptr->width >> scs_ptr->subsampling_x,
@@ -3869,6 +3884,9 @@ void pad_input_pictures(SequenceControlSet *scs_ptr,
                 input_picture_ptr->origin_x >> scs_ptr->subsampling_x,
                 input_picture_ptr->origin_y >> scs_ptr->subsampling_y);
 
+#if INL_TPL_ENHANCEMENT
+        if (input_picture_ptr->buffer_bit_inc_cr)
+#endif
         generate_padding(input_picture_ptr->buffer_bit_inc_cr,
                 input_picture_ptr->stride_bit_inc_cr,
                 input_picture_ptr->width >> scs_ptr->subsampling_x,

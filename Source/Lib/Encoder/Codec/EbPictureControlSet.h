@@ -478,6 +478,19 @@ typedef struct {
   bool alt_ref_frame; /*!< Refresh flag for alt-ref frame */
 } RefreshFrameFlagsInfo;
 
+#if INL_TPL_ENHANCEMENT
+typedef struct {
+    uint8_t     tpl_temporal_layer_index;
+    EB_SLICE    tpl_slice_type;
+    uint8_t     tpl_ref0_count;
+    uint8_t     tpl_ref1_count;
+    uint64_t    tpl_decode_order;
+    EbBool      ref_in_slide_window[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
+    EbBool      is_used_as_reference_flag;
+    EbDownScaledBufDescPtrArray tpl_ref_ds_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
+} TPLData;
+#endif
+
 //CHKN
 // Add the concept of PictureParentControlSet which is a subset of the old PictureControlSet.
 // It actually holds only high level Picture based control data:(GOP management,when to start a picture, when to release the PCS, ....).
@@ -575,9 +588,19 @@ typedef struct PictureParentControlSet {
 
 #if INL_ME
     EbObjectWrapper *down_scaled_picture_wrapper_ptr;
+    EbDownScaledBufDescPtrArray ds_pics; // Pointer array for down scaled pictures
+
+#if !INL_TPL_ENHANCEMENT
     // iME TPL
     EbDownScaledBufDescPtrArray tpl_ref_ds_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
-    EbDownScaledBufDescPtrArray ds_pics; // Pointer array for down scaled pictures
+#if IN_LOOP_TPL //anaghdin initialize the values
+    uint8_t                     tpl_ref0_count;
+    uint8_t                     tpl_ref1_count;
+    EbBool                      ref_in_slide_window[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
+#endif
+#else
+    TPLData                     tpl_data;
+#endif
 #endif
 
     // Pre Analysis

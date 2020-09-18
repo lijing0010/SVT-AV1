@@ -475,6 +475,9 @@ void reset_pcs_av1(PictureParentControlSet *pcs_ptr) {
     pcs_ptr->ds_pics.picture_ptr = NULL;
     pcs_ptr->ds_pics.quarter_picture_ptr = NULL;
     pcs_ptr->ds_pics.sixteenth_picture_ptr = NULL;
+#if INL_TPL_ENHANCEMENT
+    pcs_ptr->max_number_of_pus_per_sb = SQUARE_PU_COUNT;
+#endif
 #endif
 }
 /***********************************************

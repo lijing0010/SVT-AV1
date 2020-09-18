@@ -817,7 +817,9 @@ EbErrorType signal_derivation_multi_processes_oq(
         pcs_ptr->disallow_nsq = EB_FALSE;
     else
         pcs_ptr->disallow_nsq = EB_TRUE;
+#if !INL_TPL_ENHANCEMENT
     pcs_ptr->max_number_of_pus_per_sb = SQUARE_PU_COUNT;
+#endif
     // Set disallow_all_nsq_blocks_below_8x8: 8x4, 4x8
     if (pcs_ptr->enc_mode <= ENC_M9)
         pcs_ptr->disallow_all_nsq_blocks_below_8x8 = EB_FALSE;
@@ -3914,8 +3916,9 @@ void store_tpl_pictures(
     else {
         memcpy(&pcs->tpl_group[0], ctx->mg_pictures_array, mg_size * sizeof(PictureParentControlSet*));
         pcs->tpl_group_size = mg_size;
-        //add 3 future pictures from PD future window
-        for (uint32_t pic_i = 0; pic_i < 3; ++pic_i) {
+#if 0//INL_TPL_ENHANCEMENT
+        //add 6 future pictures from PD future window
+        for (uint32_t pic_i = 0; pic_i < 6; ++pic_i) {
             if (pcs->pd_window[2 + pic_i]) {
                 pcs->tpl_group[mg_size + pic_i] = pcs->pd_window[2 + pic_i];
                 pcs->tpl_group_size++;
@@ -3923,6 +3926,7 @@ void store_tpl_pictures(
             else
                 break;
         }
+#endif
 
 #if NEW_DELAY_DBG_MSG
         for (uint32_t pic_i = 0; pic_i < pcs->tpl_group_size; ++pic_i)

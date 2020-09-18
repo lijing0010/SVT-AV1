@@ -547,7 +547,11 @@ EbErrorType load_default_buffer_configuration_settings(
         if (scs_ptr->static_config.look_ahead_distance > 0)
             min_me = min_parent;
         else if (scs_ptr->static_config.enable_tpl_la)
+#if INL_TPL_ENHANCEMENT
+            min_me = mg_size + 1 + 6; //TODO add Constant for 6
+#else
             min_me = mg_size + 1 + 3; //TODO add Constant for 3
+#endif
         else
             min_me = 1;
 #else

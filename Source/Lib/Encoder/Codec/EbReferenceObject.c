@@ -215,6 +215,10 @@ EbErrorType eb_reference_object_ctor(EbReferenceObject *reference_object,
         hme_desc_init_data.top_padding = 68;
         hme_desc_init_data.bot_padding = 68;
         hme_desc_init_data.split_mode = EB_FALSE;
+#if INL_ME_DBG_MEM_OPT
+        hme_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK; //Only save 8bit luma
+        hme_desc_init_data.bit_depth = EB_8BIT;
+#endif
         EB_NEW(reference_object->input_picture,
                 eb_picture_buffer_desc_ctor,
                 (EbPtr)&hme_desc_init_data);
