@@ -1600,6 +1600,17 @@ EB_API EbErrorType svt_av1_enc_init(EbComponentType *svt_enc_component)
     // Picture Demux Results
     {
         PictureResultInitData picture_result_init_data;
+#if RE_ENCODE_SUPPORT
+        EB_NEW(
+            enc_handle_ptr->picture_demux_results_resource_ptr,
+            eb_system_resource_ctor,
+            enc_handle_ptr->scs_instance_array[0]->scs_ptr->picture_demux_fifo_init_count,
+            enc_handle_ptr->scs_instance_array[0]->scs_ptr->source_based_operations_process_init_count + 1, // 1 for packetization
+            EB_PictureManagerProcessInitCount,
+            picture_results_creator,
+            &picture_result_init_data,
+            NULL);
+#else
         EB_NEW(
             enc_handle_ptr->picture_demux_results_resource_ptr,
             eb_system_resource_ctor,
@@ -1609,6 +1620,7 @@ EB_API EbErrorType svt_av1_enc_init(EbComponentType *svt_enc_component)
             picture_results_creator,
             &picture_result_init_data,
             NULL);
+#endif
 
     }
 
@@ -1919,12 +1931,21 @@ EB_API EbErrorType svt_av1_enc_init(EbComponentType *svt_enc_component)
     EB_ALLOC_PTR_ARRAY(enc_handle_ptr->rest_context_ptr_array, enc_handle_ptr->scs_instance_array[0]->scs_ptr->rest_process_init_count);
 
     for (process_index = 0; process_index < enc_handle_ptr->scs_instance_array[0]->scs_ptr->rest_process_init_count; ++process_index) {
+#if !RE_ENCODE_SUPPORT
         EB_NEW(
             enc_handle_ptr->rest_context_ptr_array[process_index],
             rest_context_ctor,
             enc_handle_ptr,
             process_index,
-            1 + process_index);
+            process_index + enc_handle_ptr->scs_instance_array[0]->scs_ptr->source_based_operations_process_init_count);
+#else
+        EB_NEW(
+            enc_handle_ptr->rest_context_ptr_array[process_index],
+            rest_context_ctor,
+            enc_handle_ptr,
+            process_index);
+#endif
+
     }
 
     // Entropy Coding Contexts
@@ -1940,13 +1961,22 @@ EB_API EbErrorType svt_av1_enc_init(EbComponentType *svt_enc_component)
     }
 
     // Packetization Context
+#if !RE_ENCODE_SUPPORT
     EB_NEW(
         enc_handle_ptr->packetization_context_ptr,
         packetization_context_ctor,
         enc_handle_ptr,
         rate_control_port_lookup(RATE_CONTROL_INPUT_PORT_PACKETIZATION, 0),
         enc_handle_ptr->scs_instance_array[0]->scs_ptr->source_based_operations_process_init_count +
-            enc_handle_ptr->scs_instance_array[0]->scs_ptr->enc_dec_process_init_count);
+	enc_handle_ptr->scs_instance_array[0]->scs_ptr->rest_process_init_count);
+#else
+    EB_NEW(
+        enc_handle_ptr->packetization_context_ptr,
+        packetization_context_ctor,
+        enc_handle_ptr,
+        rate_control_port_lookup(RATE_CONTROL_INPUT_PORT_PACKETIZATION, 0),
+        enc_handle_ptr->scs_instance_array[0]->scs_ptr->source_based_operations_process_init_count);
+#endif
 
     /************************************
     * Thread Handles

@@ -880,6 +880,10 @@ typedef struct PictureParentControlSet {
     uint8_t  tpl_me_segments_column_count;
     uint8_t  tpl_me_segments_row_count;
     uint8_t  tpl_me_done;
+#if RE_ENCODE_SUPPORT
+    EbBool recode;
+    EbHandle recode_semaphore;
+#endif
 #endif
 
     int16_t tf_segments_total_count;

@@ -777,6 +777,9 @@ void *picture_manager_kernel(void *input_ptr) {
             scs_ptr = (SequenceControlSet *)input_picture_demux_ptr->scs_wrapper_ptr->object_ptr;
             encode_context_ptr = scs_ptr->encode_context_ptr;
             clean_pictures_in_ref_queue(scs_ptr->encode_context_ptr);
+#if RE_ENCODE_SUPPORT_DBG_LOG
+	    printf("-----[%ld]: Recon generated-----\n", input_picture_demux_ptr->picture_number);
+#endif
 #if FEATURE_INL_ME
             ((EbReferenceObject *)input_picture_demux_ptr->reference_picture_wrapper_ptr->object_ptr)->ds_pics.picture_number =
                 input_picture_demux_ptr->picture_number;
