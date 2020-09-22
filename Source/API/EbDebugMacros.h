@@ -71,6 +71,11 @@ extern "C" {
 #if !TUNE_IME_REUSE_TPL_RESULT
 #define TUNE_SIGNAL_TPL_ME_OQ         1 // A separate signal_xxx_oq for TPL ME
 #endif
+#define RE_ENCODE_SUPPORT     1 // re-encode support
+#if RE_ENCODE_SUPPORT
+#define RE_ENCODE_SUPPORT_DBG_LOG 0 // debug log for recode
+#define RE_ENCODE_SUPPORT_DBG 0 // debug for recode
+#endif
 #endif
 //***************************************************************//
 

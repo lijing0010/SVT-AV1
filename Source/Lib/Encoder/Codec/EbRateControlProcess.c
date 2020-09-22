@@ -6996,6 +6996,9 @@ void *rate_control_kernel(void *input_ptr) {
 #else
         case RC_INPUT:
             pcs_ptr = (PictureControlSet *)rate_control_tasks_ptr->pcs_wrapper_ptr->object_ptr;
+#if RE_ENCODE_SUPPORT_DBG_LOG
+	    printf("[%ld]: RC get INPUT\n", pcs_ptr->picture_number);
+#endif
 
             // Set the segment mask
             SEGMENT_COMPLETION_MASK_SET(pcs_ptr->parent_pcs_ptr->inloop_me_segments_completion_mask,
@@ -7299,6 +7302,16 @@ void *rate_control_kernel(void *input_ptr) {
             }
             if (use_input_stat(scs_ptr))
                 update_rc_counts(pcs_ptr->parent_pcs_ptr);
+#if 0
+            // For debug purpose, alter qp of POC8
+            if (pcs_ptr->picture_number == 8) {
+                printf("[8]: picture_qp %d/%d\n",
+                        pcs_ptr->parent_pcs_ptr->picture_qp,
+                        pcs_ptr->parent_pcs_ptr->frm_hdr.quantization_params.base_q_idx);
+                pcs_ptr->parent_pcs_ptr->picture_qp = 46;
+                pcs_ptr->parent_pcs_ptr->frm_hdr.quantization_params.base_q_idx=183;
+            }
+#endif
             // Get Empty Rate Control Results Buffer
             eb_get_empty_object(context_ptr->rate_control_output_results_fifo_ptr,
                                 &rate_control_results_wrapper_ptr);
@@ -7592,6 +7605,7 @@ void *rate_control_kernel(void *input_ptr) {
 #endif
             total_number_of_fb_frames++;
 
+#if !RE_ENCODE_SUPPORT
             // Release the SequenceControlSet
             eb_release_object(parentpicture_control_set_ptr->scs_wrapper_ptr);
             // Release the ParentPictureControlSet
@@ -7600,6 +7614,51 @@ void *rate_control_kernel(void *input_ptr) {
 
             // Release Rate Control Tasks
             eb_release_object(rate_control_tasks_wrapper_ptr);
+#else
+            EbBool do_recode = EB_FALSE;
+            // TODO: Add the algorithm whether do the recode
+#if RE_ENCODE_SUPPORT_DBG
+            static int loop = 0;
+            if (parentpicture_control_set_ptr->picture_number == 8 && loop == 0) {
+                loop++;
+                FrameHeader *frm_hdr = &parentpicture_control_set_ptr->frm_hdr;
+                int32_t prev_pic_qp = parentpicture_control_set_ptr->picture_qp;
+                int32_t prev_qindex = frm_hdr->quantization_params.base_q_idx;
+
+                do_recode = EB_TRUE;
+                frm_hdr->quantization_params.base_q_idx = (uint8_t)CLIP3(
+                        (int32_t)quantizer_to_qindex[scs_ptr->static_config.min_qp_allowed],
+                        (int32_t)quantizer_to_qindex[scs_ptr->static_config.max_qp_allowed],
+                        (int32_t)(prev_qindex + 10));
+
+                parentpicture_control_set_ptr->picture_qp =
+                    (uint8_t)CLIP3((int32_t)scs_ptr->static_config.min_qp_allowed,
+                            (int32_t)scs_ptr->static_config.max_qp_allowed,
+                            (frm_hdr->quantization_params.base_q_idx + 2) >> 2);
+                printf("Changing QP from %d(%d) to %d(%d)\n",
+                        prev_pic_qp, prev_qindex,
+                        parentpicture_control_set_ptr->picture_qp,
+                        frm_hdr->quantization_params.base_q_idx);
+            }
+#endif
+            parentpicture_control_set_ptr->recode = do_recode;
+            eb_post_semaphore(parentpicture_control_set_ptr->recode_semaphore);
+            if (do_recode) {
+                parentpicture_control_set_ptr->child_pcs->enc_dec_coded_sb_count = 0;
+                parentpicture_control_set_ptr->child_pcs->entropy_coding_pic_reset_flag = EB_TRUE;
+                eb_get_empty_object(context_ptr->rate_control_output_results_fifo_ptr,
+                        &rate_control_results_wrapper_ptr);
+                rate_control_results_ptr =
+                    (RateControlResults *)rate_control_results_wrapper_ptr->object_ptr;
+                rate_control_results_ptr->pcs_wrapper_ptr = parentpicture_control_set_ptr->child_pcs->c_pcs_wrapper_ptr;
+
+                //init segment for recode frame
+                init_enc_dec_segement(parentpicture_control_set_ptr);
+                // Post Full Rate Control Results
+                eb_post_full_object(rate_control_results_wrapper_ptr);
+            }
+            eb_release_object(rate_control_tasks_wrapper_ptr);
+#endif
             break;
 
         case RC_ENTROPY_CODING_ROW_FEEDBACK_RESULT:

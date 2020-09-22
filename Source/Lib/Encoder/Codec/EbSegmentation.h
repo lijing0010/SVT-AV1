@@ -32,4 +32,6 @@ void temporally_update_qps(int32_t *segment_qp_ptr, int32_t *prev_segment_qp_ptr
 
 void calculate_segmentation_data(SegmentationParams *segmentation_params);
 
+void init_enc_dec_segement(PictureParentControlSet *parentpicture_control_set_ptr);
+
 #endif //SVT_AV1_EBSEGMENTATIONS_H

@@ -272,6 +272,10 @@ static EbBool update_entropy_coding_rows(PictureControlSet *pcs_ptr, uint32_t *r
     // Update availability mask
     if (*initial_process_call == EB_TRUE) {
         unsigned i;
+#if RE_ENCODE_SUPPORT
+        ec_ptr->entropy_coding_current_row = 0;
+        ec_ptr->entropy_coding_current_available_row = 0;
+#endif
 
         for (i = *row_index; i < *row_index + row_count; ++i)
             ec_ptr->entropy_coding_row_array[i] = EB_TRUE;
@@ -475,6 +479,7 @@ void *entropy_coding_kernel(void *input_ptr) {
                         }
                         eb_release_mutex(pcs_ptr->entropy_coding_pic_mutex);
                         if (pic_ready) {
+#if !RE_ENCODE_SUPPORT
                             // Release the List 0 Reference Pictures
                             for (uint32_t ref_idx = 0;
                                  ref_idx < pcs_ptr->parent_pcs_ptr->ref_list0_count;
@@ -495,6 +500,7 @@ void *entropy_coding_kernel(void *input_ptr) {
                             //free palette data
                             if (pcs_ptr->tile_tok[0][0])
                                 EB_FREE_ARRAY(pcs_ptr->tile_tok[0][0]);
+#endif
 
                             frame_entropy_done = EB_TRUE;
                         }

@@ -85,8 +85,8 @@ EbErrorType enc_dec_context_ctor(EbThreadContext *  thread_context_ptr,
         enc_handle_ptr->enc_dec_results_resource_ptr, index);
     context_ptr->enc_dec_feedback_fifo_ptr = eb_system_resource_get_producer_fifo(
         enc_handle_ptr->enc_dec_tasks_resource_ptr, tasks_index);
-    context_ptr->picture_demux_output_fifo_ptr = eb_system_resource_get_producer_fifo(
-        enc_handle_ptr->picture_demux_results_resource_ptr, demux_index);
+    //context_ptr->picture_demux_output_fifo_ptr = eb_system_resource_get_producer_fifo(
+      //  enc_handle_ptr->picture_demux_results_resource_ptr, demux_index);
 
     // MD rate Estimation tables
     EB_MALLOC(context_ptr->md_rate_estimation_ptr, sizeof(MdRateEstimationContext));
@@ -307,6 +307,14 @@ EbBool assign_enc_dec_segments(EncDecSegments *segmentPtr, uint16_t *segmentInOu
 
         // The entire picture is provided by the MDC process, so
         //   no logic is necessary to clear input dependencies.
+
+#if RE_ENCODE_SUPPORT
+        // Reset enc_dec segments
+        for (uint32_t row_index = 0; row_index < segmentPtr->segment_row_count; ++row_index) {
+            segmentPtr->row_array[row_index].current_seg_index =
+                segmentPtr->row_array[row_index].starting_seg_index;
+        }
+#endif
 
         // Start on Segment 0 immediately
         *segmentInOutIndex  = segmentPtr->row_array[0].current_seg_index;
@@ -4440,8 +4448,10 @@ void *mode_decision_kernel(void *input_ptr) {
                 if(pcs_ptr->parent_pcs_ptr->end_of_sequence_flag)
                     svt_av1_end_first_pass(pcs_ptr->parent_pcs_ptr);
             }
+#if !RE_ENCODE_SUPPORT
             eb_release_object(pcs_ptr->parent_pcs_ptr->me_data_wrapper_ptr);
             pcs_ptr->parent_pcs_ptr->me_data_wrapper_ptr = (EbObjectWrapper *)NULL;
+#endif
             // Get Empty EncDec Results
             eb_get_empty_object(context_ptr->enc_dec_output_fifo_ptr, &enc_dec_results_wrapper_ptr);
             enc_dec_results_ptr = (EncDecResults *)enc_dec_results_wrapper_ptr->object_ptr;
