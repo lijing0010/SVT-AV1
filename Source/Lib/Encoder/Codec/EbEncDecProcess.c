@@ -27,7 +27,9 @@
 #if FEATURE_INL_ME
 #include "EbPictureAnalysisProcess.h"
 #endif
-
+#if FEATURE_RE_ENCODE
+#include "EbSegmentation.h"
+#endif
 
 #define FC_SKIP_TX_SR_TH025 125 // Fast cost skip tx search threshold.
 #define FC_SKIP_TX_SR_TH010 110 // Fast cost skip tx search threshold.
@@ -307,6 +309,13 @@ EbBool assign_enc_dec_segments(EncDecSegments *segmentPtr, uint16_t *segmentInOu
 
         // The entire picture is provided by the MDC process, so
         //   no logic is necessary to clear input dependencies.
+#if FEATURE_RE_ENCODE
+        // Reset enc_dec segments
+        for (uint32_t row_index = 0; row_index < segmentPtr->segment_row_count; ++row_index) {
+            segmentPtr->row_array[row_index].current_seg_index =
+                segmentPtr->row_array[row_index].starting_seg_index;
+        }
+#endif
 
         // Start on Segment 0 immediately
         *segmentInOutIndex  = segmentPtr->row_array[0].current_seg_index;
@@ -4543,6 +4552,60 @@ void *mode_decision_kernel(void *input_ptr) {
         eb_release_mutex(pcs_ptr->intra_mutex);
 
         if (last_sb_flag) {
+#if FEATURE_RE_ENCODE
+            EbBool do_recode = EB_FALSE;
+            // TODO: Add the algorithm whether do the recode
+#if FEATURE_RE_ENCODE_DBG
+            printf("\t[%ld]: Check if need re-encode...\n", pcs_ptr->parent_pcs_ptr->picture_number);
+            static int loop = 0;
+            if (pcs_ptr->parent_pcs_ptr->picture_number == 8 && loop == 0) {
+                loop++;
+                FrameHeader *frm_hdr = &pcs_ptr->parent_pcs_ptr->frm_hdr;
+                int32_t prev_pic_qp = pcs_ptr->parent_pcs_ptr->picture_qp;
+                int32_t prev_qindex = frm_hdr->quantization_params.base_q_idx;
+
+                do_recode = EB_TRUE;
+                frm_hdr->quantization_params.base_q_idx = (uint8_t)CLIP3(
+                        (int32_t)quantizer_to_qindex[scs_ptr->static_config.min_qp_allowed],
+                        (int32_t)quantizer_to_qindex[scs_ptr->static_config.max_qp_allowed],
+                        (int32_t)(prev_qindex + 10));
+
+                pcs_ptr->parent_pcs_ptr->picture_qp =
+                    (uint8_t)CLIP3((int32_t)scs_ptr->static_config.min_qp_allowed,
+                            (int32_t)scs_ptr->static_config.max_qp_allowed,
+                            (frm_hdr->quantization_params.base_q_idx + 2) >> 2);
+                printf("Recode, changing QP from %d(%d) to %d(%d)\n",
+                        prev_pic_qp, prev_qindex,
+                        pcs_ptr->parent_pcs_ptr->picture_qp,
+                        frm_hdr->quantization_params.base_q_idx);
+            }
+#endif
+            if (do_recode) {
+                pcs_ptr->enc_dec_coded_sb_count = 0;
+                // it seems no one use pcs_ptr->intra_coded_area, consider removing it later
+                pcs_ptr->intra_coded_area = 0;
+                last_sb_flag = EB_FALSE;
+                //init segment for re-encode frame
+                init_enc_dec_segement(pcs_ptr->parent_pcs_ptr);
+                EbObjectWrapper *enc_dec_re_encode_tasks_wrapper_ptr;
+                uint16_t tg_count =
+                    pcs_ptr->parent_pcs_ptr->tile_group_cols * pcs_ptr->parent_pcs_ptr->tile_group_rows;
+                for (uint16_t tile_group_idx = 0; tile_group_idx < tg_count; tile_group_idx++) {
+                    eb_get_empty_object(context_ptr->enc_dec_feedback_fifo_ptr,
+                            &enc_dec_re_encode_tasks_wrapper_ptr);
+
+                    EncDecTasks *enc_dec_re_encode_tasks_ptr = (EncDecTasks *)enc_dec_re_encode_tasks_wrapper_ptr->object_ptr;
+                    enc_dec_re_encode_tasks_ptr->pcs_wrapper_ptr  = enc_dec_tasks_ptr->pcs_wrapper_ptr;
+                    enc_dec_re_encode_tasks_ptr->input_type       = ENCDEC_TASKS_MDC_INPUT;
+                    enc_dec_re_encode_tasks_ptr->tile_group_index = tile_group_idx;
+
+                    // Post the Full Results Object
+                    eb_post_full_object(enc_dec_re_encode_tasks_wrapper_ptr);
+                }
+
+            }
+            else {
+#endif
             // Copy film grain data from parent picture set to the reference object for further reference
             if (scs_ptr->seq_header.film_grain_params_present) {
                 if (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
@@ -4588,6 +4651,9 @@ void *mode_decision_kernel(void *input_ptr) {
                 ((pcs_ptr->parent_pcs_ptr->aligned_height + scs_ptr->sb_size_pix - 1) >> sb_size_log2);
             // Post EncDec Results
             eb_post_full_object(enc_dec_results_wrapper_ptr);
+#if FEATURE_RE_ENCODE
+            }
+#endif
         }
         // Release Mode Decision Results
         eb_release_object(enc_dec_tasks_wrapper_ptr);
