@@ -1404,6 +1404,15 @@ EbErrorType picture_parent_control_set_ctor(PictureParentControlSet *object_ptr,
     object_ptr->frame_height = init_data_ptr->picture_height;
 
     object_ptr->superres_denom = SCALE_NUMERATOR;
+#if RE_ENCODE_SUPPORT_RC
+    // Loop variables
+    object_ptr->loop_count = 0;
+    //object_ptr->loop_at_this_size = 0;
+    object_ptr->overshoot_seen = 0;
+    object_ptr->undershoot_seen = 0;
+    object_ptr->low_cr_seen = 0;
+    //object_ptr->last_loop_allow_hp = 0;
+#endif
 
     return return_error;
 }

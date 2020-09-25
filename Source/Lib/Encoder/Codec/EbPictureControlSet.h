@@ -888,6 +888,17 @@ typedef struct PictureParentControlSet {
     uint8_t is_next_frame_intra;
 #endif
 #endif
+#if RE_ENCODE_SUPPORT_RC
+    // Loop variables
+    int q_low;
+    int q_high;
+    int loop_count;
+    //int loop_at_this_size;
+    int overshoot_seen;
+    int undershoot_seen;
+    int low_cr_seen;
+    //int last_loop_allow_hp;
+#endif
 
 } PictureParentControlSet;
 
