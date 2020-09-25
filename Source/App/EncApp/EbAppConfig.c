@@ -1420,7 +1420,11 @@ void eb_config_ctor(EbConfig *config_ptr) {
     config_ptr->enable_tpl_la       = 1;
     config_ptr->target_bit_rate     = 7000000;
     config_ptr->max_qp_allowed      = 63;
+#if ZERO_MIN_QP_ALLOWED
+    config_ptr->min_qp_allowed      = 0;
+#else
     config_ptr->min_qp_allowed      = 10;
+#endif
 
     config_ptr->enable_adaptive_quantization              = 2;
     config_ptr->enc_mode                                  = MAX_ENC_PRESET;

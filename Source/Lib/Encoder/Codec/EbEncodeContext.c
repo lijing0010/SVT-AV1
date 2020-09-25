@@ -179,6 +179,21 @@ EbErrorType encode_context_ctor(EncodeContext* encode_context_ptr, EbPtr object_
     encode_context_ptr->enc_mode                      = SPEED_CONTROL_INIT_MOD;
     encode_context_ptr->previous_selected_ref_qp      = 32;
     encode_context_ptr->max_coded_poc_selected_ref_qp = 32;
+#if RE_ENCODE_SUPPORT_RC
+#if 0
+    if (scs_ptr->static_config.enc_mode < ENC_M3)
+        encode_context_ptr->recode_loop = ALLOW_RECODE;
+    else if (scs_ptr->static_config.enc_mode < ENC_M5)
+        encode_context_ptr->recode_loop = ALLOW_RECODE_KFARFGF;
+    else
+        encode_context_ptr->recode_loop = ALLOW_RECODE_KFMAXBW;
+#endif
+    //encode_context_ptr->recode_loop                   = DISALLOW_RECODE;
+    //encode_context_ptr->recode_loop                   = ALLOW_RECODE_KFMAXBW;
+    encode_context_ptr->recode_loop                   = ALLOW_RECODE_KFARFGF;
+    encode_context_ptr->recode_tolerance              = 25;
+    encode_context_ptr->rc_cfg.min_cr                 = 0;
+#endif
     EB_CREATE_MUTEX(encode_context_ptr->shared_reference_mutex);
     EB_CREATE_MUTEX(encode_context_ptr->stat_file_mutex);
     encode_context_ptr->num_lap_buffers = 0; //lap not supported for now

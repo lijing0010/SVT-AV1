@@ -73,9 +73,11 @@ extern "C" {
 #endif
 #define RE_ENCODE_SUPPORT     1 // re-encode support
 #if RE_ENCODE_SUPPORT
+#define RE_ENCODE_SUPPORT_RC 1 // re-encode decision maker in RC kernel
 #define RE_ENCODE_SUPPORT_DBG_LOG 0 // debug log for recode
 #define RE_ENCODE_SUPPORT_DBG 0 // debug for recode
 #endif
+#define ZERO_MIN_QP_ALLOWED 1 // set default min_qp_allowed as AOM
 #endif
 //***************************************************************//
 
