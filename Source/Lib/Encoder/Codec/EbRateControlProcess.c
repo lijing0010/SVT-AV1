@@ -6370,12 +6370,12 @@ static void set_rate_correction_factor(PictureParentControlSet *ppcs_ptr, double
 }
 
 // Calculate rate for the given 'q'.
-static int get_bits_per_mb(PictureControlSet *pcs_ptr, int use_cyclic_refresh,
+static int get_bits_per_mb(PictureParentControlSet *ppcs_ptr, int use_cyclic_refresh,
                            double correction_factor, int q) {
-  SequenceControlSet *scs_ptr = pcs_ptr->parent_pcs_ptr->scs_ptr;
+  SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
   return use_cyclic_refresh
              ? 0/*av1_cyclic_refresh_rc_bits_per_mb(cpi, q, correction_factor)*/
-             : svt_av1_rc_bits_per_mb(pcs_ptr->parent_pcs_ptr->frm_hdr.frame_type, q,
+             : svt_av1_rc_bits_per_mb(ppcs_ptr->frm_hdr.frame_type, q,
                                   correction_factor, scs_ptr->static_config.encoder_bit_depth);
 }
 
@@ -6384,7 +6384,7 @@ static int get_bits_per_mb(PictureControlSet *pcs_ptr, int use_cyclic_refresh,
 // the two rates is closer to the desired rate.
 // Also, respects the selected aq_mode when computing the rate.
 static int find_closest_qindex_by_rate(int desired_bits_per_mb,
-                                       PictureControlSet *pcs_ptr,
+                                       PictureParentControlSet *ppcs_ptr,
                                        double correction_factor,
                                        int best_qindex, int worst_qindex) {
   const int use_cyclic_refresh = 0/*cpi->oxcf.q_cfg.aq_mode == CYCLIC_REFRESH_AQ &&
@@ -6397,7 +6397,7 @@ static int find_closest_qindex_by_rate(int desired_bits_per_mb,
   while (low < high) {
     const int mid = (low + high) >> 1;
     const int mid_bits_per_mb =
-        get_bits_per_mb(pcs_ptr, use_cyclic_refresh, correction_factor, mid);
+        get_bits_per_mb(ppcs_ptr, use_cyclic_refresh, correction_factor, mid);
     if (mid_bits_per_mb > desired_bits_per_mb) {
       low = mid + 1;
     } else {
@@ -6409,7 +6409,7 @@ static int find_closest_qindex_by_rate(int desired_bits_per_mb,
   // Calculate rate difference of this q index from the desired rate.
   const int curr_q = low;
   const int curr_bits_per_mb =
-      get_bits_per_mb(pcs_ptr, use_cyclic_refresh, correction_factor, curr_q);
+      get_bits_per_mb(ppcs_ptr, use_cyclic_refresh, correction_factor, curr_q);
   const int curr_bit_diff = (curr_bits_per_mb <= desired_bits_per_mb)
                                 ? desired_bits_per_mb - curr_bits_per_mb
                                 : INT_MAX;
@@ -6423,7 +6423,7 @@ static int find_closest_qindex_by_rate(int desired_bits_per_mb,
     prev_bit_diff = INT_MAX;
   } else {
     const int prev_bits_per_mb =
-        get_bits_per_mb(pcs_ptr, use_cyclic_refresh, correction_factor, prev_q);
+        get_bits_per_mb(ppcs_ptr, use_cyclic_refresh, correction_factor, prev_q);
     assert(prev_bits_per_mb > desired_bits_per_mb);
     prev_bit_diff = prev_bits_per_mb - desired_bits_per_mb;
   }
@@ -6433,17 +6433,17 @@ static int find_closest_qindex_by_rate(int desired_bits_per_mb,
   return (curr_bit_diff <= prev_bit_diff) ? curr_q : prev_q;
 }
 
-static int av1_rc_regulate_q(PictureControlSet *pcs_ptr, int target_bits_per_frame,
+static int av1_rc_regulate_q(PictureParentControlSet *ppcs_ptr, int target_bits_per_frame,
                       int active_best_quality, int active_worst_quality,
                       int width, int height) {
   const int MBs = ((width + 15) / 16) * ((height + 15) / 16);//av1_get_MBs(width, height);
   const double correction_factor =
-      get_rate_correction_factor(pcs_ptr->parent_pcs_ptr/*, width, height*/);
+      get_rate_correction_factor(ppcs_ptr/*, width, height*/);
   const int target_bits_per_mb =
       (int)(((uint64_t)target_bits_per_frame << BPER_MB_NORMBITS) / MBs);
 
   int q =
-      find_closest_qindex_by_rate(target_bits_per_mb, pcs_ptr, correction_factor,
+      find_closest_qindex_by_rate(target_bits_per_mb, ppcs_ptr, correction_factor,
                                   active_best_quality, active_worst_quality);
 
   return q;
@@ -6477,7 +6477,7 @@ static int get_q(PictureControlSet *pcs_ptr,
     }
     q = clamp(q, active_best_quality, active_worst_quality);
   } else {
-    q = av1_rc_regulate_q(pcs_ptr, rc->this_frame_target, active_best_quality,
+    q = av1_rc_regulate_q(pcs_ptr->parent_pcs_ptr, rc->this_frame_target, active_best_quality,
                           active_worst_quality, width, height);
     if (q > active_worst_quality) {
       // Special case when we are targeting the max allowed rate.
