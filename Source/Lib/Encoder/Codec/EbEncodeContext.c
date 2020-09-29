@@ -189,8 +189,7 @@ EbErrorType encode_context_ctor(EncodeContext* encode_context_ptr, EbPtr object_
         encode_context_ptr->recode_loop = ALLOW_RECODE_KFMAXBW;
 #endif
     //encode_context_ptr->recode_loop                   = DISALLOW_RECODE;
-    //encode_context_ptr->recode_loop                   = ALLOW_RECODE_KFMAXBW;
-    encode_context_ptr->recode_loop                   = ALLOW_RECODE_KFARFGF;
+    //encode_context_ptr->recode_loop                   = ALLOW_RECODE_KFARFGF;
     encode_context_ptr->recode_tolerance              = 25;
     encode_context_ptr->rc_cfg.min_cr                 = 0;
 #endif

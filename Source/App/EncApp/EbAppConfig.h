@@ -413,6 +413,9 @@ typedef struct EbConfig {
     uint32_t vbr_max_section_pct;
     uint32_t under_shoot_pct;
     uint32_t over_shoot_pct;
+#if RE_ENCODE_SUPPORT_RC
+    uint32_t recode_loop;
+#endif
 
     EbBool enable_adaptive_quantization;
 
