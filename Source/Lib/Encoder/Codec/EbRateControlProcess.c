@@ -7825,7 +7825,8 @@ void *rate_control_kernel(void *input_ptr) {
                 pcs_ptr->picture_qp = (uint8_t)CLIP3(scs_ptr->static_config.min_qp_allowed,
                                                      scs_ptr->static_config.max_qp_allowed,
                                                      pcs_ptr->picture_qp);
-#if !TUNE_TPL
+//#if !TUNE_TPL
+#if NO_BACK_BASE_Q_IDX
                 if (scs_ptr->static_config.rate_control_mode == 1 &&
                     use_input_stat(scs_ptr) &&
                     scs_ptr->static_config.look_ahead_distance != 0) //anaghdin what is this?>
@@ -7933,6 +7934,9 @@ void *rate_control_kernel(void *input_ptr) {
                 (PictureParentControlSet *)rate_control_tasks_ptr->pcs_wrapper_ptr->object_ptr;
             scs_ptr =
                 (SequenceControlSet *)parentpicture_control_set_ptr->scs_wrapper_ptr->object_ptr;
+#if RE_ENCODE_SUPPORT_RC
+            scs_ptr->encode_context_ptr->recode_loop = scs_ptr->static_config.recode_loop;
+#endif
 
             // Frame level RC
             if (scs_ptr->intra_period_length == -1 ||
