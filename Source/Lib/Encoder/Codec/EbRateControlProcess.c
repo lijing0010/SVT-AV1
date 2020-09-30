@@ -561,7 +561,6 @@ void tpl_mc_flow_dispenser(
 
                         above_row = above_data + 16;
                         left_col = left_data + 16;
-                        TxSize tx_size = TX_16X16;
                         uint8_t *recon_buffer =
                             recon_picture_ptr->buffer_y + dst_basic_offset;
 
@@ -7083,7 +7082,6 @@ static void recode_loop_update_q(
     int *const q_high, const int top_index, const int bottom_index,
     int *const undershoot_seen, int *const overshoot_seen,
     int *const low_cr_seen, const int loop_count) {
-  AV1_COMMON *const cm = &ppcs_ptr->av1_cm;
   SequenceControlSet *const scs_ptr = ppcs_ptr->scs_ptr;
   EncodeContext *const encode_context_ptr = scs_ptr->encode_context_ptr;
   RATE_CONTROL *const rc = &(encode_context_ptr->rc);
@@ -7127,6 +7125,7 @@ static void recode_loop_update_q(
 #if 0
   if (ppcs_ptr->frm_hdr.frame_type == KEY_FRAME && rc->this_key_frame_forced &&
       rc->projected_frame_size < rc->max_frame_bandwidth) {
+    AV1_COMMON *const cm = &ppcs_ptr->av1_cm;
     int64_t kf_err;
     const int64_t high_err_target = cpi->ambient_err;
     const int64_t low_err_target = cpi->ambient_err >> 1;
@@ -8000,7 +7999,7 @@ void *rate_control_kernel(void *input_ptr) {
                         (uint8_t)CLIP3((int32_t)scs_ptr->static_config.min_qp_allowed,
                             (int32_t)scs_ptr->static_config.max_qp_allowed,
                             (frm_hdr->quantization_params.base_q_idx + 2) >> 2);
-                    printf("do_recode POC%d Changing QP from %d(%d) to %d(%d)\n",
+                    printf("do_recode POC%ld Changing QP from %d(%d) to %d(%d)\n",
                         parentpicture_control_set_ptr->picture_number,
                         prev_pic_qp, prev_qindex,
                         parentpicture_control_set_ptr->picture_qp,
