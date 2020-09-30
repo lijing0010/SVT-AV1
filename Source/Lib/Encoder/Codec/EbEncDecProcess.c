@@ -2570,7 +2570,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     EbErrorType return_error = EB_ErrorNone;
     EbEncMode enc_mode;
     if (mode_offset)
-#if BYPASS_SIGNAL_SET 
+#if BYPASS_SIGNAL_SET
         enc_mode = MIN(pcs_ptr->parent_pcs_ptr->fastest_preset, pcs_ptr->enc_mode + mode_offset);
 #else
         enc_mode = MIN(ENC_M8, pcs_ptr->enc_mode + mode_offset);
