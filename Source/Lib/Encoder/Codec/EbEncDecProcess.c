@@ -2520,6 +2520,36 @@ void set_nic_controls(ModeDecisionContext *mdctxt, uint8_t nic_scaling_level) {
     }
 }
 #endif
+#if FEATURE_INTER_INTRA_LEVELS
+void set_inter_intra_ctrls(ModeDecisionContext* mdctxt, uint8_t inter_intra_level) {
+
+    InterIntraCompCtrls* ii_ctrls = &mdctxt->inter_intra_comp_ctrls;
+
+    switch (inter_intra_level) {
+    case 0:
+        ii_ctrls->enabled = 0;
+        break;
+    case 1:
+        ii_ctrls->enabled = 1;
+        ii_ctrls->skip_pme_unipred = 0;
+        ii_ctrls->closest_ref_only = 0;
+        break;
+    case 2:
+        ii_ctrls->enabled = 1;
+        ii_ctrls->skip_pme_unipred = 1;
+        ii_ctrls->closest_ref_only = 0;
+        break;
+    case 3:
+        ii_ctrls->enabled = 1;
+        ii_ctrls->skip_pme_unipred = 1;
+        ii_ctrls->closest_ref_only = 1;
+        break;
+    default:
+        assert(0);
+        break;
+    }
+}
+#endif
 /******************************************************
 * Derive EncDec Settings for OQ
 Input   : encoder mode and pd pass
@@ -3208,6 +3238,9 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     }
     else
         context_ptr->md_inter_intra_level = 0;
+#if FEATURE_INTER_INTRA_LEVELS
+    set_inter_intra_ctrls(context_ptr, context_ptr->md_inter_intra_level);
+#endif
 
     // Set enable_paeth @ MD
     if (pd_pass == PD_PASS_0)

@@ -134,10 +134,20 @@ typedef enum InterCandGroup {
 } InterCandGroup;
 #if FEATURE_NEW_INTER_COMP_LEVELS
 typedef struct  InterCompCtrls {
-    uint8_t allowed_comp_types[MD_COMP_TYPES];       // Compound types to inject; AVG/DIST/DIFF/WEDGE
+    uint8_t allowed_comp_types[MD_COMP_TYPES];       // Compound types to inject; AVG/DIST/DIFF/WEDGE (if a comp type is disallowed here, it will
+                                                     // override distance-based settings)
     uint8_t allowed_dist1_comp_types[MD_COMP_TYPES]; // Compound types to inject for bipred cands with a ref > distance 1 from current frame; AVG/DIST/DIFF/WEDGE
+                                                     // The distance-based compound types should be a subset of the allowed_comp_types
     uint8_t allowed_dist2_comp_types[MD_COMP_TYPES]; // Compound types to inject for bipred cands with a ref > distance 2 from current frame; AVG/DIST/DIFF/WEDGE
+                                                     // The distance-based compound types should be a subset of the allowed_comp_types
 }InterCompCtrls;
+#endif
+#if FEATURE_INTER_INTRA_LEVELS
+typedef struct InterIntraCompCtrls {
+    uint8_t enabled;
+    uint8_t skip_pme_unipred; // Skip inter-intra compound injetion for PME and unipred3x3
+    uint8_t closest_ref_only; // Use inter-intra only for the closest ref frames
+} InterIntraCompCtrls;
 #endif
 typedef struct  ObmcControls {
     uint8_t enabled;
@@ -576,6 +586,9 @@ typedef struct ModeDecisionContext {
     InterCompCtrls inter_comp_ctrls;
 #else
     InterCompoundControls inter_comp_ctrls;
+#endif
+#if FEATURE_INTER_INTRA_LEVELS
+    InterIntraCompCtrls inter_intra_comp_ctrls;
 #endif
     RefResults ref_filtering_res[TOT_INTER_GROUP][MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     RefPruningControls ref_pruning_ctrls;

@@ -96,6 +96,7 @@ extern "C" {
 #define BYPASS_SIGNAL_SET						 1 // bypass block based signal derivation for fastest preset when superfluous 
 #define ME_IDX_LUPT								 1 // get index using lookuptable
 #define REFACTOR_MD_BLOCK_LOOP                   1 // Refactor the loop that iterates over all blocks at MD
+#define FEATURE_INTER_INTRA_LEVELS               1 // Cleanup and modify inter-intra levels
 
 // END  svt-03 /////////////////////////////////////////////////////////
 

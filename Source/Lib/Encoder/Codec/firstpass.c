@@ -1820,6 +1820,9 @@ void set_txs_cycle_reduction_controls(ModeDecisionContext *mdctxt, uint8_t txs_c
 #if FEATURE_NIC_SCALING_PER_STAGE
 void set_nic_controls(ModeDecisionContext *mdctxt, uint8_t nic_scaling_level);
 #endif
+#if FEATURE_INTER_INTRA_LEVELS
+void set_inter_intra_ctrls(ModeDecisionContext* mdctxt, uint8_t inter_intra_level);
+#endif
 
 void coeff_based_switch_md_controls(ModeDecisionContext *mdctxt, uint8_t switch_md_mode_based_on_sq_coeff_level);
 void md_subpel_me_controls(ModeDecisionContext *mdctxt, uint8_t md_subpel_me_level);
@@ -2023,6 +2026,9 @@ EbErrorType first_pass_signal_derivation_enc_dec_kernel(
 
     // Set enable_inter_intra @ MD
     context_ptr->md_inter_intra_level = 0;
+#if FEATURE_INTER_INTRA_LEVELS
+    set_inter_intra_ctrls(context_ptr, context_ptr->md_inter_intra_level);
+#endif
 
     // Set enable_paeth @ MD
     context_ptr->md_enable_paeth = 0;

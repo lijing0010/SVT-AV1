@@ -1107,7 +1107,11 @@ void fast_loop_core(ModeDecisionCandidateBuffer *candidate_buffer, PictureContro
         context_ptr->blk_geom,
         context_ptr->blk_origin_y >> MI_SIZE_LOG2,
         context_ptr->blk_origin_x >> MI_SIZE_LOG2,
+#if FEATURE_INTER_INTRA_LEVELS
+        context_ptr->inter_intra_comp_ctrls.enabled,
+#else
         context_ptr->md_inter_intra_level,
+#endif
         1,
         context_ptr->intra_luma_left_mode,
         context_ptr->intra_luma_top_mode);
@@ -7610,7 +7614,11 @@ static void search_best_independent_uv_mode(PictureControlSet *  pcs_ptr,
                     context_ptr->blk_geom,
                     context_ptr->blk_origin_y >> MI_SIZE_LOG2,
                     context_ptr->blk_origin_x >> MI_SIZE_LOG2,
+#if FEATURE_INTER_INTRA_LEVELS
+                    context_ptr->inter_intra_comp_ctrls.enabled,
+#else
                     context_ptr->md_inter_intra_level,
+#endif
                     1,
                     context_ptr->intra_luma_left_mode,
                     context_ptr->intra_luma_top_mode);
@@ -8231,8 +8239,12 @@ void md_encode_block(PictureControlSet *pcs_ptr, ModeDecisionContext *context_pt
     if (context_ptr->md_pme_ctrls.enabled)
         pme_search(
             pcs_ptr, context_ptr, input_picture_ptr);
+#if FEATURE_INTER_INTRA_LEVELS
+    if (context_ptr->inter_intra_comp_ctrls.enabled && is_interintra_allowed_bsize(context_ptr->blk_geom->bsize))
+#else
     int allow_ii = is_interintra_allowed_bsize(context_ptr->blk_geom->bsize);
     if (context_ptr->md_inter_intra_level && allow_ii)
+#endif
         precompute_intra_pred_for_inter_intra(pcs_ptr, context_ptr);
 
     generate_md_stage_0_cand(
@@ -8843,9 +8855,12 @@ uint8_t get_allowed_block(ModeDecisionContext *context_ptr) {
 
 #if FEATURE_REMOVE_CIRCULAR
 void md_pme_search_controls(ModeDecisionContext *mdctxt, uint8_t md_pme_level);
+#if FEATURE_INTER_INTRA_LEVELS
+void set_inter_intra_ctrls(ModeDecisionContext* mdctxt, uint8_t inter_intra_level);
+#endif
 
 // Set the levels used by features which apply aggressive settings for certain blocks (e.g. NSQ stats)
-void apply_new_md_settings(ModeDecisionContext *context_ptr, uint8_t level) {
+void udpate_md_settings(ModeDecisionContext *context_ptr, uint8_t level) {
 
     // Don't make NICs more conservative
     context_ptr->nic_ctrls.stage1_scaling_num = MIN(context_ptr->nic_ctrls.stage1_scaling_num, 5);
@@ -8861,6 +8876,9 @@ void apply_new_md_settings(ModeDecisionContext *context_ptr, uint8_t level) {
         context_ptr->compound_types_to_try = MD_COMP_AVG;
 #endif
         context_ptr->md_inter_intra_level = 0;
+#if FEATURE_INTER_INTRA_LEVELS
+        set_inter_intra_ctrls(context_ptr, context_ptr->md_inter_intra_level);
+#endif
         context_ptr->md_pme_level = 3;
         md_pme_search_controls(context_ptr, context_ptr->md_pme_level);
     }
@@ -8880,7 +8898,7 @@ void update_md_settings_based_on_stats(SequenceControlSet *scs_ptr, PictureContr
         pred_depth_refinement += 2;
 #if FEATURE_REMOVE_CIRCULAR
         if (context_ptr->ad_md_prob[pred_depth_refinement][context_ptr->blk_geom->shape] < adaptive_md_cycles_red_ctrls->switch_level_th) {
-            apply_new_md_settings(context_ptr, adaptive_md_cycles_red_ctrls->non_skip_level);
+            udpate_md_settings(context_ptr, adaptive_md_cycles_red_ctrls->non_skip_level);
 #else
         if (context_ptr->ad_md_prob[pred_depth_refinement][context_ptr->blk_geom->shape] < adaptive_md_cycles_red_ctrls->switch_mode_th) {
             signal_derivation_enc_dec_kernel_oq(scs_ptr, pcs_ptr, context_ptr, adaptive_md_cycles_red_ctrls->mode_offset);
@@ -8918,7 +8936,7 @@ uint8_t update_md_settings_based_on_sq_coeff(SequenceControlSet *scs_ptr, Pictur
 #endif
 #endif
 #if FEATURE_REMOVE_CIRCULAR
-                apply_new_md_settings(context_ptr, coeffb_sw_md_ctrls->non_skip_level);
+                udpate_md_settings(context_ptr, coeffb_sw_md_ctrls->non_skip_level);
                 // Turn off TXT search because if have zero coeffs tx_type must be DCT_DCT, and if SQ has zero coeffs,
                 // NSQ blocks are likely to also have zero coeffs
 #if TUNE_TX_TYPE_LEVELS

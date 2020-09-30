@@ -874,11 +874,21 @@ void unipred_3x3_candidates_injection(const SequenceControlSet *scs_ptr, Picture
                          context_ptr, to_inject_mv_x, to_inject_mv_y, to_inject_ref_type) ==
                          EB_FALSE)) {
                     uint8_t inter_type;
+#if FEATURE_INTER_INTRA_LEVELS
+                    uint8_t is_ii_allowed = context_ptr->inter_intra_comp_ctrls.enabled ?
+                        svt_is_interintra_allowed(!context_ptr->inter_intra_comp_ctrls.skip_pme_unipred, context_ptr->blk_geom->bsize, NEWMV, rf) :
+                        0;
+
+                    if (is_ii_allowed && context_ptr->inter_intra_comp_ctrls.closest_ref_only)
+                        if (list0_ref_index > 0)
+                            is_ii_allowed = 0;
+#else
                     uint8_t is_ii_allowed =
                         svt_is_interintra_allowed(context_ptr->md_inter_intra_level == 1 , context_ptr->blk_geom->bsize, NEWMV, rf);
                     if (context_ptr->md_inter_intra_level > 2)
                         if (pcs_ptr->parent_pcs_ptr->pa_me_data->me_results[me_sb_addr]->do_comp[0][list0_ref_index] == 0)
                             is_ii_allowed = 0;
+#endif
                     uint8_t tot_inter_types = is_ii_allowed ? II_COUNT : 1;
                     //uint8_t is_obmc_allowed =  obmc_motion_mode_allowed(pcs_ptr, context_ptr->blk_ptr, bsize, rf[0], rf[1], NEWMV) == OBMC_CAUSAL;
                     //tot_inter_types = is_obmc_allowed ? tot_inter_types+1 : tot_inter_types;
@@ -1024,12 +1034,22 @@ void unipred_3x3_candidates_injection(const SequenceControlSet *scs_ptr, Picture
                              context_ptr, to_inject_mv_x, to_inject_mv_y, to_inject_ref_type) ==
                              EB_FALSE)) {
                         uint8_t inter_type;
+#if FEATURE_INTER_INTRA_LEVELS
+                        uint8_t is_ii_allowed = context_ptr->inter_intra_comp_ctrls.enabled ?
+                            svt_is_interintra_allowed(!context_ptr->inter_intra_comp_ctrls.skip_pme_unipred, context_ptr->blk_geom->bsize, NEWMV, rf) :
+                            0;
+
+                        if (is_ii_allowed && context_ptr->inter_intra_comp_ctrls.closest_ref_only)
+                            if (list1_ref_index > 0)
+                                is_ii_allowed = 0;
+#else
                         uint8_t is_ii_allowed   = svt_is_interintra_allowed(context_ptr->md_inter_intra_level == 1,
                             context_ptr->blk_geom->bsize, NEWMV, rf);
                         if (context_ptr->md_inter_intra_level > 2) {
                         if (pcs_ptr->parent_pcs_ptr->pa_me_data->me_results[me_sb_addr]->do_comp[1][list1_ref_index] == 0)
                                 is_ii_allowed = 0;
                         }
+#endif
                         uint8_t tot_inter_types = is_ii_allowed ? II_COUNT : 1;
                         for (inter_type = 0; inter_type < tot_inter_types; inter_type++) {
                             cand_array[cand_total_cnt].type                    = INTER_MODE;
@@ -1131,6 +1151,37 @@ void set_compound_to_inject(ModeDecisionContext *context_ptr, EbBool * comp_inj_
     comp_inj_table[MD_COMP_DIST] = dist;
     comp_inj_table[MD_COMP_DIFF0] = diff;
     comp_inj_table[MD_COMP_WEDGE] = wdg;
+}
+
+/*
+ * Reduce the compound types to inject based on the distance of the reference frames from the current frame.
+ *
+ * INPUTS
+ * allowed_comp_types --> array containing the max allowed compound types; the distance-based settings should be a subset of this list.
+ * allowed_dist1_comp_types --> array containing compound types allowed if both ref frames are within distance = 1 of the current frame
+ * allowed_dist2_comp_types --> array containing compound types allowed if both ref frames are within distance = 2 of the current frame
+ * list0_ref_idx --> the ref index of the list0 reference frame
+ * list1_ref_idx --> the ref index of the list1 reference frame
+ *
+ * RETURNS
+ * Nothing, but modifies allowed_comp_types
+ */
+void set_comp_types_by_distance(uint8_t allowed_comp_types[MD_COMP_TYPES],
+                                uint8_t allowed_dist1_comp_types[MD_COMP_TYPES],
+                                uint8_t allowed_dist2_comp_types[MD_COMP_TYPES],
+                                uint8_t list0_ref_idx,
+                                uint8_t list1_ref_idx) {
+
+    if (list0_ref_idx > 1 || list1_ref_idx > 1) {
+        // distance 2 compound types should be a subset of the allowed compound types
+        for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
+            allowed_comp_types[cur_type] &= allowed_dist2_comp_types[cur_type];
+    }
+    else if (list0_ref_idx > 0 || list1_ref_idx > 0) {
+        // distance 1 compound types should be a subset of the allowed compound types
+        for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
+            allowed_comp_types[cur_type] &= allowed_dist1_comp_types[cur_type];
+    }
 }
 #endif
 void bipred_3x3_candidates_injection(const SequenceControlSet *scs_ptr, PictureControlSet *pcs_ptr,
@@ -1234,16 +1285,11 @@ void bipred_3x3_candidates_injection(const SequenceControlSet *scs_ptr, PictureC
                         memcpy(allowed_comp_types, context_ptr->inter_comp_ctrls.allowed_comp_types, sizeof(uint8_t) * MD_COMP_TYPES);
 
                         // Reduce the compound types to inject based on the distance of the reference frames from the current frame
-                        if (list0_ref_index > 1 || list1_ref_index > 1) {
-                            // distance 2 compound types should be a subset of the allowed compound types
-                            for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                                allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist2_comp_types[cur_type];
-                        }
-                        else if (list0_ref_index > 0 || list1_ref_index > 0) {
-                            // distance 1 compound types should be a subset of the allowed compound types
-                            for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                                allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist1_comp_types[cur_type];
-                        }
+                        set_comp_types_by_distance(allowed_comp_types,
+                                                   context_ptr->inter_comp_ctrls.allowed_dist1_comp_types,
+                                                   context_ptr->inter_comp_ctrls.allowed_dist2_comp_types,
+                                                   list0_ref_index,
+                                                   list1_ref_index);
 
                         EbBool mask_done = 0;
                         for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++) {
@@ -1412,16 +1458,11 @@ void bipred_3x3_candidates_injection(const SequenceControlSet *scs_ptr, PictureC
                         memcpy(allowed_comp_types, context_ptr->inter_comp_ctrls.allowed_comp_types, sizeof(uint8_t) * MD_COMP_TYPES);
 
                         // Reduce the compound types to inject based on the distance of the reference frames from the current frame
-                        if (list0_ref_index > 1 || list1_ref_index > 1) {
-                            // distance 2 compound types should be a subset of the allowed compound types
-                            for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                                allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist2_comp_types[cur_type];
-                        }
-                        else if (list0_ref_index > 0 || list1_ref_index > 0) {
-                            // distance 1 compound types should be a subset of the allowed compound types
-                            for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                                allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist1_comp_types[cur_type];
-                        }
+                        set_comp_types_by_distance(allowed_comp_types,
+                            context_ptr->inter_comp_ctrls.allowed_dist1_comp_types,
+                            context_ptr->inter_comp_ctrls.allowed_dist2_comp_types,
+                            list0_ref_index,
+                            list1_ref_index);
 
                         EbBool mask_done = 0;
                         for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++) {
@@ -1626,8 +1667,16 @@ void inject_mvp_candidates_ii(struct ModeDecisionContext *context_ptr, PictureCo
         inj_mv = inj_mv && inside_tile;
         if (inj_mv) {
             uint8_t inter_type;
+#if FEATURE_INTER_INTRA_LEVELS
+            uint8_t is_ii_allowed = svt_is_interintra_allowed(context_ptr->inter_intra_comp_ctrls.enabled, bsize, NEARESTMV, rf);
+
+            if (is_ii_allowed && context_ptr->inter_intra_comp_ctrls.closest_ref_only)
+                if (ref_idx > 0)
+                    is_ii_allowed = 0;
+#else
             uint8_t is_ii_allowed =
                 svt_is_interintra_allowed(context_ptr->md_inter_intra_level, bsize, NEARESTMV, rf);
+#endif
 #if !FEATURE_NEW_INTER_COMP_LEVELS
             uint8_t ref_idx_0 = get_ref_frame_idx(rf[0]);
             if (context_ptr->md_inter_intra_level > 2)
@@ -1736,8 +1785,16 @@ void inject_mvp_candidates_ii(struct ModeDecisionContext *context_ptr, PictureCo
             inj_mv = inj_mv && inside_tile;
             if (inj_mv) {
                 uint8_t inter_type;
+#if FEATURE_INTER_INTRA_LEVELS
+                uint8_t is_ii_allowed = svt_is_interintra_allowed(context_ptr->inter_intra_comp_ctrls.enabled, bsize, NEARMV, rf);
+
+                if (is_ii_allowed && context_ptr->inter_intra_comp_ctrls.closest_ref_only)
+                    if (ref_idx > 0)
+                        is_ii_allowed = 0;
+#else
                 uint8_t is_ii_allowed = svt_is_interintra_allowed(
                     context_ptr->md_inter_intra_level, bsize, NEARMV, rf);
+#endif
 #if !FEATURE_NEW_INTER_COMP_LEVELS
                 uint8_t ref_idx_0 = get_ref_frame_idx(rf[0]);
                 if (context_ptr->md_inter_intra_level > 2) {
@@ -1882,16 +1939,11 @@ void inject_mvp_candidates_ii(struct ModeDecisionContext *context_ptr, PictureCo
                 memcpy(allowed_comp_types, context_ptr->inter_comp_ctrls.allowed_comp_types, sizeof(uint8_t) * MD_COMP_TYPES);
 
                 // Reduce the compound types to inject based on the distance of the reference frames from the current frame
-                if (ref_idx_0 > 1 || ref_idx_1 > 1) {
-                    // distance 2 compound types should be a subset of the allowed compound types
-                    for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                        allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist2_comp_types[cur_type];
-                }
-                else if (ref_idx_0 > 0 || ref_idx_1 > 0) {
-                    // distance 1 compound types should be a subset of the allowed compound types
-                    for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                        allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist1_comp_types[cur_type];
-                }
+                set_comp_types_by_distance(allowed_comp_types,
+                    context_ptr->inter_comp_ctrls.allowed_dist1_comp_types,
+                    context_ptr->inter_comp_ctrls.allowed_dist2_comp_types,
+                    ref_idx_0,
+                    ref_idx_1);
 
                 EbBool is_skip_mode =
                     pcs_ptr->parent_pcs_ptr->is_skip_mode_allowed &&
@@ -2030,16 +2082,11 @@ void inject_mvp_candidates_ii(struct ModeDecisionContext *context_ptr, PictureCo
                     memcpy(allowed_comp_types, context_ptr->inter_comp_ctrls.allowed_comp_types, sizeof(uint8_t) * MD_COMP_TYPES);
 
                     // Reduce the compound types to inject based on the distance of the reference frames from the current frame
-                    if (ref_idx_0 > 1 || ref_idx_1 > 1) {
-                        // distance 2 compound types should be a subset of the allowed compound types
-                        for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                            allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist2_comp_types[cur_type];
-                    }
-                    else if (ref_idx_0 > 0 || ref_idx_1 > 0) {
-                        // distance 1 compound types should be a subset of the allowed compound types
-                        for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                            allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist1_comp_types[cur_type];
-                    }
+                    set_comp_types_by_distance(allowed_comp_types,
+                        context_ptr->inter_comp_ctrls.allowed_dist1_comp_types,
+                        context_ptr->inter_comp_ctrls.allowed_dist2_comp_types,
+                        ref_idx_0,
+                        ref_idx_1);
 
                     EbBool mask_done = 0;
                     for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++) {
@@ -2200,16 +2247,11 @@ void inject_new_nearest_new_comb_candidates(const SequenceControlSet *  scs_ptr,
                     memcpy(allowed_comp_types, context_ptr->inter_comp_ctrls.allowed_comp_types, sizeof(uint8_t) * MD_COMP_TYPES);
 
                     // Reduce the compound types to inject based on the distance of the reference frames from the current frame
-                    if (ref_idx_0 > 1 || ref_idx_1 > 1) {
-                        // distance 2 compound types should be a subset of the allowed compound types
-                        for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                            allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist2_comp_types[cur_type];
-                    }
-                    else if (ref_idx_0 > 0 || ref_idx_1 > 0) {
-                        // distance 1 compound types should be a subset of the allowed compound types
-                        for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                            allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist1_comp_types[cur_type];
-                    }
+                    set_comp_types_by_distance(allowed_comp_types,
+                        context_ptr->inter_comp_ctrls.allowed_dist1_comp_types,
+                        context_ptr->inter_comp_ctrls.allowed_dist2_comp_types,
+                        ref_idx_0,
+                        ref_idx_1);
 
                     EbBool mask_done = 0;
                     for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++) {
@@ -2341,16 +2383,11 @@ void inject_new_nearest_new_comb_candidates(const SequenceControlSet *  scs_ptr,
                     memcpy(allowed_comp_types, context_ptr->inter_comp_ctrls.allowed_comp_types, sizeof(uint8_t) * MD_COMP_TYPES);
 
                     // Reduce the compound types to inject based on the distance of the reference frames from the current frame
-                    if (ref_idx_0 > 1 || ref_idx_1 > 1) {
-                        // distance 2 compound types should be a subset of the allowed compound types
-                        for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                            allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist2_comp_types[cur_type];
-                    }
-                    else if (ref_idx_0 > 0 || ref_idx_1 > 0) {
-                        // distance 1 compound types should be a subset of the allowed compound types
-                        for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                            allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist1_comp_types[cur_type];
-                    }
+                    set_comp_types_by_distance(allowed_comp_types,
+                        context_ptr->inter_comp_ctrls.allowed_dist1_comp_types,
+                        context_ptr->inter_comp_ctrls.allowed_dist2_comp_types,
+                        ref_idx_0,
+                        ref_idx_1);
 
                     EbBool mask_done = 0;
                     for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++) {
@@ -2473,16 +2510,11 @@ void inject_new_nearest_new_comb_candidates(const SequenceControlSet *  scs_ptr,
                         memcpy(allowed_comp_types, context_ptr->inter_comp_ctrls.allowed_comp_types, sizeof(uint8_t) * MD_COMP_TYPES);
 
                         // Reduce the compound types to inject based on the distance of the reference frames from the current frame
-                        if (ref_idx_0 > 1 || ref_idx_1 > 1) {
-                            // distance 2 compound types should be a subset of the allowed compound types
-                            for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                                allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist2_comp_types[cur_type];
-                        }
-                        else if (ref_idx_0 > 0 || ref_idx_1 > 0) {
-                            // distance 1 compound types should be a subset of the allowed compound types
-                            for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                                allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist1_comp_types[cur_type];
-                        }
+                        set_comp_types_by_distance(allowed_comp_types,
+                            context_ptr->inter_comp_ctrls.allowed_dist1_comp_types,
+                            context_ptr->inter_comp_ctrls.allowed_dist2_comp_types,
+                            ref_idx_0,
+                            ref_idx_1);
 
                         EbBool mask_done = 0;
                         for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++) {
@@ -2605,16 +2637,11 @@ void inject_new_nearest_new_comb_candidates(const SequenceControlSet *  scs_ptr,
                         memcpy(allowed_comp_types, context_ptr->inter_comp_ctrls.allowed_comp_types, sizeof(uint8_t) * MD_COMP_TYPES);
 
                         // Reduce the compound types to inject based on the distance of the reference frames from the current frame
-                        if (ref_idx_0 > 1 || ref_idx_1 > 1) {
-                            // distance 2 compound types should be a subset of the allowed compound types
-                            for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                                allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist2_comp_types[cur_type];
-                        }
-                        else if (ref_idx_0 > 0 || ref_idx_1 > 0) {
-                            // distance 1 compound types should be a subset of the allowed compound types
-                            for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                                allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist1_comp_types[cur_type];
-                        }
+                        set_comp_types_by_distance(allowed_comp_types,
+                            context_ptr->inter_comp_ctrls.allowed_dist1_comp_types,
+                            context_ptr->inter_comp_ctrls.allowed_dist2_comp_types,
+                            ref_idx_0,
+                            ref_idx_1);
 
                         EbBool mask_done = 0;
                         for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++) {
@@ -3342,6 +3369,14 @@ void inject_new_candidates(const SequenceControlSet *  scs_ptr,
                      context_ptr, to_inject_mv_x, to_inject_mv_y, to_inject_ref_type) ==
                      EB_FALSE)) {
                 uint8_t inter_type;
+#if FEATURE_INTER_INTRA_LEVELS
+                uint8_t is_ii_allowed =
+                    svt_is_interintra_allowed(context_ptr->inter_intra_comp_ctrls.enabled, bsize, NEWMV, (const MvReferenceFrame[]) { to_inject_ref_type, -1 });
+
+                if (is_ii_allowed && context_ptr->inter_intra_comp_ctrls.closest_ref_only)
+                    if (list0_ref_index > 0)
+                        is_ii_allowed = 0;
+#else
                 uint8_t is_ii_allowed = svt_is_interintra_allowed(
                     context_ptr->md_inter_intra_level,
                     bsize,
@@ -3350,6 +3385,7 @@ void inject_new_candidates(const SequenceControlSet *  scs_ptr,
                 if (context_ptr->md_inter_intra_level > 2)
                     if (pcs_ptr->parent_pcs_ptr->pa_me_data->me_results[me_sb_addr]->do_comp[0][list0_ref_index] == 0)
                         is_ii_allowed = 0;
+#endif
                 uint8_t tot_inter_types = is_ii_allowed ? II_COUNT : 1;
                 uint8_t is_obmc_allowed =
                     obmc_motion_mode_allowed(
@@ -3474,6 +3510,14 @@ void inject_new_candidates(const SequenceControlSet *  scs_ptr,
                          EB_FALSE)) {
 
                     uint8_t inter_type;
+#if FEATURE_INTER_INTRA_LEVELS
+                    uint8_t is_ii_allowed =
+                        svt_is_interintra_allowed(context_ptr->inter_intra_comp_ctrls.enabled, bsize, NEWMV, (const MvReferenceFrame[]) { to_inject_ref_type, -1 });
+
+                    if (is_ii_allowed && context_ptr->inter_intra_comp_ctrls.closest_ref_only)
+                        if (list1_ref_index > 0)
+                            is_ii_allowed = 0;
+#else
                     uint8_t is_ii_allowed = svt_is_interintra_allowed(
                         context_ptr->md_inter_intra_level,
                         bsize,
@@ -3482,6 +3526,7 @@ void inject_new_candidates(const SequenceControlSet *  scs_ptr,
                     if (context_ptr->md_inter_intra_level > 2)
                         if (pcs_ptr->parent_pcs_ptr->pa_me_data->me_results[me_sb_addr]->do_comp[1][list1_ref_index] == 0)
                             is_ii_allowed = 0;
+#endif
                     uint8_t tot_inter_types = is_ii_allowed ? II_COUNT : 1;
                     uint8_t is_obmc_allowed =
                         obmc_motion_mode_allowed(
@@ -3626,16 +3671,11 @@ void inject_new_candidates(const SequenceControlSet *  scs_ptr,
                         memcpy(allowed_comp_types, context_ptr->inter_comp_ctrls.allowed_comp_types, sizeof(uint8_t) * MD_COMP_TYPES);
 
                         // Reduce the compound types to inject based on the distance of the reference frames from the current frame
-                        if (list0_ref_index > 1 || list1_ref_index > 1) {
-                            // distance 2 compound types should be a subset of the allowed compound types
-                            for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                                allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist2_comp_types[cur_type];
-                        }
-                        else if (list0_ref_index > 0 || list1_ref_index > 0) {
-                            // distance 1 compound types should be a subset of the allowed compound types
-                            for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                                allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist1_comp_types[cur_type];
-                        }
+                        set_comp_types_by_distance(allowed_comp_types,
+                            context_ptr->inter_comp_ctrls.allowed_dist1_comp_types,
+                            context_ptr->inter_comp_ctrls.allowed_dist2_comp_types,
+                            list0_ref_index,
+                            list1_ref_index);
 
                         EbBool mask_done = 0;
                         for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++) {
@@ -3809,8 +3849,17 @@ void inject_global_candidates(const SequenceControlSet *  scs_ptr,
             if (inj_mv && (((gm_params->wmtype > TRANSLATION && context_ptr->blk_geom->bwidth >= 8 && context_ptr->blk_geom->bheight >= 8) || gm_params->wmtype <= TRANSLATION))) {
 
                 uint8_t inter_type;
+#if FEATURE_INTER_INTRA_LEVELS
+                uint8_t is_ii_allowed =
+                    svt_is_interintra_allowed(context_ptr->inter_intra_comp_ctrls.enabled, bsize, GLOBALMV, rf);
+
+                if (is_ii_allowed && context_ptr->inter_intra_comp_ctrls.closest_ref_only)
+                    if (ref_idx > 0)
+                        is_ii_allowed = 0;
+#else
                 uint8_t is_ii_allowed = svt_is_interintra_allowed(
                     context_ptr->md_inter_intra_level, bsize, GLOBALMV, rf);
+#endif
 
                 uint8_t tot_inter_types = is_ii_allowed ? II_COUNT : 1;
 
@@ -3981,16 +4030,12 @@ void inject_global_candidates(const SequenceControlSet *  scs_ptr,
                 memcpy(allowed_comp_types, context_ptr->inter_comp_ctrls.allowed_comp_types, sizeof(uint8_t) * MD_COMP_TYPES);
 
                 // Reduce the compound types to inject based on the distance of the reference frames from the current frame
-                if (ref_idx_0 > 1 || ref_idx_1 > 1) {
-                    // distance 2 compound types should be a subset of the allowed compound types
-                    for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                        allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist2_comp_types[cur_type];
-                }
-                else if (ref_idx_0 > 0 || ref_idx_1 > 0) {
-                    // distance 1 compound types should be a subset of the allowed compound types
-                    for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                        allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist1_comp_types[cur_type];
-                }
+                set_comp_types_by_distance(allowed_comp_types,
+                    context_ptr->inter_comp_ctrls.allowed_dist1_comp_types,
+                    context_ptr->inter_comp_ctrls.allowed_dist2_comp_types,
+                    ref_idx_0,
+                    ref_idx_1);
+
                 // Warped prediction is only compatible with MD_COMP_AVG and MD_COMP_DIST
                 for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_DIFF0; cur_type++) {
 
@@ -4123,12 +4168,22 @@ void inject_pme_candidates(
 
                 if (inj_mv) {
                     uint8_t inter_type;
+#if FEATURE_INTER_INTRA_LEVELS
+                    uint8_t is_ii_allowed = context_ptr->inter_intra_comp_ctrls.enabled ?
+                        svt_is_interintra_allowed(!context_ptr->inter_intra_comp_ctrls.skip_pme_unipred, bsize, NEWMV, rf) :
+                        0;
+
+                    if (is_ii_allowed && context_ptr->inter_intra_comp_ctrls.closest_ref_only)
+                        if (is_reference_best_pme(context_ptr, list_idx, ref_idx, 1) == 0)
+                            is_ii_allowed = 0;
+#else
                     uint8_t is_ii_allowed = svt_is_interintra_allowed(
                         context_ptr->md_inter_intra_level == 1, bsize, NEWMV, rf);
 
                     if (context_ptr->md_inter_intra_level > 2)
                         if (is_reference_best_pme(context_ptr, list_idx, ref_idx, 1) == 0)
                             is_ii_allowed = 0;
+#endif
                     uint8_t tot_inter_types = is_ii_allowed ? II_COUNT : 1;
                     uint8_t is_obmc_allowed =
                         obmc_motion_mode_allowed(
@@ -4212,6 +4267,23 @@ void inject_pme_candidates(
                             cand_array[cand_total_cnt].motion_mode = SIMPLE_TRANSLATION;
                         }
                         else {
+#if FEATURE_INTER_INTRA_LEVELS
+                            if (is_ii_allowed) {
+                                if (inter_type == 1) {
+                                    inter_intra_search(
+                                        pcs_ptr, context_ptr, &cand_array[cand_total_cnt]);
+                                    cand_array[cand_total_cnt].is_interintra_used = 1;
+                                    cand_array[cand_total_cnt].use_wedge_interintra = 1;
+
+                                }
+                                else if (inter_type == 2) {
+                                    cand_array[cand_total_cnt].is_interintra_used = 1;
+                                    cand_array[cand_total_cnt].interintra_mode =
+                                        cand_array[cand_total_cnt - 1].interintra_mode;
+                                    cand_array[cand_total_cnt].use_wedge_interintra = 0;
+                                }
+                            }
+#endif
                             if (is_warp_allowed && inter_type == (tot_inter_types - (1 + is_obmc_allowed))) {
                                 cand_array[cand_total_cnt].is_interintra_used = 0;
                                 cand_array[cand_total_cnt].motion_mode = WARPED_CAUSAL;
@@ -4284,16 +4356,11 @@ void inject_pme_candidates(
                     memcpy(allowed_comp_types, context_ptr->inter_comp_ctrls.allowed_comp_types, sizeof(uint8_t) * MD_COMP_TYPES);
 
                     // Reduce the compound types to inject based on the distance of the reference frames from the current frame
-                    if (ref_idx_0 > 1 || ref_idx_1 > 1) {
-                        // distance 2 compound types should be a subset of the allowed compound types
-                        for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                            allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist2_comp_types[cur_type];
-                    }
-                    else if (ref_idx_0 > 0 || ref_idx_1 > 0) {
-                        // distance 1 compound types should be a subset of the allowed compound types
-                        for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++)
-                            allowed_comp_types[cur_type] &= context_ptr->inter_comp_ctrls.allowed_dist1_comp_types[cur_type];
-                    }
+                    set_comp_types_by_distance(allowed_comp_types,
+                        context_ptr->inter_comp_ctrls.allowed_dist1_comp_types,
+                        context_ptr->inter_comp_ctrls.allowed_dist2_comp_types,
+                        ref_idx_0,
+                        ref_idx_1);
 
                     EbBool mask_done = 0;
                     for (MD_COMP_TYPE cur_type = MD_COMP_AVG; cur_type < MD_COMP_TYPES; cur_type++) {
