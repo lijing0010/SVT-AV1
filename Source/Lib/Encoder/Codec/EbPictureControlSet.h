@@ -507,6 +507,9 @@ typedef struct {
     EbBool      ref_in_slide_window[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     EbBool      is_used_as_reference_flag;
     EbDownScaledBufDescPtrArray tpl_ref_ds_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
+#if FIX_TPL_TRAILING_FRAME_BUG
+    uint8_t       tpl_opt_flag;
+#endif
 } TPLData;
 #endif
 #if FEATURE_OPT_TF
@@ -701,7 +704,9 @@ typedef struct PictureParentControlSet {
     double       *tpl_rdmult_scaling_factors;
     double       *tpl_sb_rdmult_scaling_factors;
     EbBool       blk_lambda_tuning;
+#if !FIX_TPL_TRAILING_FRAME_BUG
     uint8_t       tpl_opt_flag;
+#endif
     // Dynamic GOP
     EbPred   pred_structure;
     uint8_t  hierarchical_levels;
@@ -970,6 +975,9 @@ typedef struct PictureControlSetInitData {
     uint16_t  non_m8_pad_w;
     uint16_t  non_m8_pad_h;
     uint8_t enable_tpl_la;
+#if TUNE_TPL_OIS
+    uint8_t in_loop_ois;
+#endif
 
 } PictureControlSetInitData;
 

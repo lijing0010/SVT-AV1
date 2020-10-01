@@ -1068,6 +1068,9 @@ void *motion_estimation_kernel(void *input_ptr) {
 #endif
             }
             if (
+#if TUNE_TPL_OIS
+                scs_ptr->in_loop_ois == 0 &&
+#endif
 #if !ENABLE_TPL_ZERO_LAD
                 scs_ptr->static_config.look_ahead_distance != 0 &&
 #endif
@@ -1703,6 +1706,9 @@ void *inloop_me_kernel(void *input_ptr) {
                 // TPL ME
 #if TUNE_INL_TPL_ENHANCEMENT
                 // Doing OIS search for TPL
+#if TUNE_TPL_OIS
+                if (scs_ptr->in_loop_ois == 0)
+#endif
                 if (scs_ptr->static_config.enable_tpl_la) {
                     //printf("[%ld]: Doing open loop intra search for TPL, (%d, %d) => (%d, %d)\n",
                     //        ppcs_ptr->picture_number,

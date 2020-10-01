@@ -1147,11 +1147,12 @@ EbErrorType signal_derivation_multi_processes_oq(
         context_ptr->tf_level = 0;
     set_tf_controls(context_ptr, context_ptr->tf_level);
 #endif
-
+#if !FIX_TPL_TRAILING_FRAME_BUG
     if (pcs_ptr->enc_mode <= ENC_M4)
         pcs_ptr->tpl_opt_flag = 0;
     else
         pcs_ptr->tpl_opt_flag = 1;
+#endif
 #if ENABLE_TPL_TRAILING
     // Suggested values are 6 and 0. To go beyond 6, SCD_LAD must be updated too (might cause stablity issues to go beyong 6)
     if (pcs_ptr->enc_mode <= ENC_M6)
@@ -5709,6 +5710,12 @@ void* picture_decision_kernel(void *input_ptr)
 
                             mctf_frame(scs_ptr, pcs_ptr, context_ptr, out_stride_diff64);
 
+#if FIX_TPL_TRAILING_FRAME_BUG
+                            if (pcs_ptr->enc_mode <= ENC_M4)
+                                pcs_ptr->tpl_data.tpl_opt_flag = 0;
+                            else
+                                pcs_ptr->tpl_data.tpl_opt_flag = 1;
+#endif
                         }
 
                         //Do TF loop in display order

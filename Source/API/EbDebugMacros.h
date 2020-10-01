@@ -93,7 +93,7 @@ extern "C" {
 #define TUNE_INIT_FAST_LOOP_OPT                  0 // Fast loop optimizations
 #define TUNE_REMOVE_UNUSED_NEIG_ARRAY            1 // Removes unused neighbor array
 #define INIT_BLOCK_OPT                           1 // optimize block initialization
-#define BYPASS_SIGNAL_SET                        1 // bypass block based signal derivation for fastest preset when superfluous 
+#define BYPASS_SIGNAL_SET                        1 // bypass block based signal derivation for fastest preset when superfluous
 #define ME_IDX_LUPT                              1 // get index using lookuptable
 #define REFACTOR_MD_BLOCK_LOOP                   1 // Refactor the loop that iterates over all blocks at MD
 #define FEATURE_INTER_INTRA_LEVELS               1 // Cleanup and modify inter-intra levels
@@ -106,9 +106,9 @@ extern "C" {
 #define FEATURE_OPT_IFS                              1 // Reverse IFS search order; regular to be performed last since the most probable then bypass the last evaluation if regular is the winner. 1 chroma compensation could be avoided if we add the ability to do chroma only when calling inter_comp.
 #define FIX_REMOVE_UNUSED_CODE                       1 // Remove unused code
 #define FIX_BYPASS_USELESS_OPERATIONS                1 // Bypass useless operations when fast rate is OFF
-#define FIX_USE_MDS_CNT_INIT                         1 // Use the actual number of candidates @ the init of cand_buff_indices 
+#define FIX_USE_MDS_CNT_INIT                         1 // Use the actual number of candidates @ the init of cand_buff_indices
 #define FIX_SKIP_MV_RATE_UPD_IF_NOT_I_NSC            1 // Skip av1_estimate_mv_rate() if I_SLICE and not SC
-#define FIX_MOVE_PME_RES_INIT_UNDER_PME              1 // Bypass useless pme_res init 
+#define FIX_MOVE_PME_RES_INIT_UNDER_PME              1 // Bypass useless pme_res init
 #define FIX_REMOVE_MD_SKIP_COEFF_CIRCUITERY          1 // Remove MD skip_coeff_context circuitery
 #define FIX_REMOVE_MVP_MEMSET                        1 // Remove MVP generation useless memset()
 #define FIX_OPT_FAST_COST_INIT                       1 // Use the actual number of md_stage_0 candidates @ fast_cost_array init
@@ -116,7 +116,7 @@ extern "C" {
 #define FIX_TUNIFY_SORTING_ARRAY                     1 // Unify MD sorting arrays into 1
 #define FIX_IFS                                      1 // Fix IFS to use the actual motion_mode and the actual is_inter_intra
 #define FEATURE_COST_BASED_PRED_REFINEMENT           1 // Add an offset to sub_to_current_th and parent_to_current_th on the cost range of the predicted block; use default ths for high cost(s) and more aggressive TH(s) for low cost(s)
-#define FEATURE_PD0_CUT_DEPTH                        1 // Shut 16x16 & lower depth(s) based on the 64x64 distortion if sb_64x64 
+#define FEATURE_PD0_CUT_DEPTH                        1 // Shut 16x16 & lower depth(s) based on the 64x64 distortion if sb_64x64
 #define FEATURE_PD0_SHUT_SKIP_DC_SIGN_UPDATE         1 // Skip dc_sign derivation/update, and bypass useless mi_info updates
 #define FEATURE_OPT_RDOQ                             1 // Use default_quant for chroma and rdoq_bypass = f(satd)
 #define FEATURE_OPT_TF                               1 // Add the ability to perform luma only @ tf, control tf_16x16 using tf_32x32 pred error, apply tf @ base only
@@ -129,6 +129,9 @@ extern "C" {
 #define RDOQ_OPT2                                1 // early exit rdo
 #define RDOQ_OPT5                                1 // disable last md search tools (rdoq, txtype seach, interpolation search)
 #define DC_ONLY_AT_NON_REF                       1 // use only intra dc at no reference frame
+#define FIX_TPL_TRAILING_FRAME_BUG               1 // fix bug related to ENABLE_TPL_TRAILING
+#define TUNE_TPL_OIS                             1 // move ois to inloop TPL, can be done in me kernel with scs_ptr->in_loop_ois = 0
+#define TUNE_TPL_RATE                            1 // remove  uncessary rate calculation
 // END  svt-03 /////////////////////////////////////////////////////////
 
 //FOR DEBUGGING - Do not remove

@@ -83,6 +83,11 @@ typedef struct SequenceControlSet {
          Default is 0. */
     uint8_t in_loop_me;
 #endif
+#if TUNE_TPL_OIS
+    /*!< Use in loop motion OIS
+         Default is 1. */
+    uint8_t in_loop_ois;
+#endif
     /*!< Allow the usage of motion field motion vector in the stream
         (The signal changes per preset; 0: Enabled, 1: Disabled) Default is 1. */
     uint8_t mfmv_enabled;
