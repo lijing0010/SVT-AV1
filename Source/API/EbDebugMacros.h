@@ -99,6 +99,7 @@ extern "C" {
 #define FEATURE_INTER_INTRA_LEVELS               1 // Cleanup and modify inter-intra levels
 #define TUNE_QPS_QPM       1 // Improve the QPS settings for Keyframe. Improve QPM for nonI base frames
 #define TUNE_CDEF_FILTER                         1 // Added new fast search for CDEF
+#define FIX_ME_IDX_LUPT                          1 // bug fix stops encoder from deadlocking on >=360p clips
 
 
 #define FIX_OPTIMIZE_BUILD_QUANTIZER                 1 // Optimize eb_av1_build_quantizer():  called for each single frame (while the generated data does not change per frame). Moved buffer to sps, and performed 1 @ 1st frame only.
