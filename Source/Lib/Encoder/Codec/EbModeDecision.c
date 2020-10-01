@@ -3811,6 +3811,11 @@ void inject_global_candidates(const SequenceControlSet *  scs_ptr,
 
         //single ref/list
         if (rf[1] == NONE_FRAME) {
+#if FEATURE_GM_OPT
+            // Level 2 skips unipred injection for GM cands
+            if (context_ptr->global_mv_injection >= 2)
+                continue;
+#endif
             MvReferenceFrame frame_type = rf[0];
             uint8_t          list_idx = get_list_idx(rf[0]);
             uint8_t          ref_idx = get_ref_frame_idx(rf[0]);
@@ -5498,6 +5503,10 @@ EbErrorType generate_md_stage_0_cand(
             &cand_total_cnt);
     }
     *candidate_total_count_ptr = cand_total_cnt;
+#if FIX_OPT_FAST_COST_INIT
+    for (uint32_t index = 0; index < MIN((*candidate_total_count_ptr + CAND_CLASS_TOTAL), MAX_NFL_BUFF_Y); ++index)
+        context_ptr->fast_cost_array[index] = MAX_CU_COST;
+#endif
     CandClass  cand_class_it;
     memset(context_ptr->md_stage_0_count, 0, CAND_CLASS_TOTAL * sizeof(uint32_t));
 
@@ -5562,6 +5571,14 @@ EbErrorType generate_md_stage_0_cand(
 /***************************************
 * Full Mode Decision
 ***************************************/
+#if FIX_REMOVE_UNUSED_CODE
+uint32_t product_full_mode_decision(
+    struct ModeDecisionContext *context_ptr,
+    BlkStruct *blk_ptr,
+    ModeDecisionCandidateBuffer **buffer_ptr_array,
+    uint32_t candidate_total_count,
+    uint32_t *best_candidate_index_array)
+#else
 uint32_t product_full_mode_decision(
     struct ModeDecisionContext   *context_ptr,
     BlkStruct                   *blk_ptr,
@@ -5569,9 +5586,12 @@ uint32_t product_full_mode_decision(
     uint32_t                      candidate_total_count,
     uint32_t                     *best_candidate_index_array,
     uint32_t                     *best_intra_mode)
+#endif
 {
     uint64_t                  lowest_cost = 0xFFFFFFFFFFFFFFFFull;
+#if !FIX_REMOVE_UNUSED_CODE
     uint64_t                  lowest_intra_cost = 0xFFFFFFFFFFFFFFFFull;
+#endif
     uint32_t                  lowest_cost_index = 0;
 
     ModeDecisionCandidate       *candidate_ptr;
@@ -5581,13 +5601,13 @@ uint32_t product_full_mode_decision(
     // Find the candidate with the lowest cost
     for (uint32_t i = 0; i < candidate_total_count; ++i) {
         uint32_t cand_index = best_candidate_index_array[i];
-
+#if !FIX_REMOVE_UNUSED_CODE
         // Compute fullCostBis
         if ((*(buffer_ptr_array[cand_index]->full_cost_ptr) < lowest_intra_cost) && buffer_ptr_array[cand_index]->candidate_ptr->type == INTRA_MODE) {
             *best_intra_mode = buffer_ptr_array[cand_index]->candidate_ptr->pred_mode;
             lowest_intra_cost = *(buffer_ptr_array[cand_index]->full_cost_ptr);
         }
-
+#endif
         if (*(buffer_ptr_array[cand_index]->full_cost_ptr) < lowest_cost) {
             lowest_cost_index = cand_index;
             lowest_cost = *(buffer_ptr_array[cand_index]->full_cost_ptr);
@@ -5609,17 +5629,24 @@ uint32_t product_full_mode_decision(
     else {
         context_ptr->md_local_blk_unit[blk_ptr->mds_idx].cost = *(buffer_ptr_array[lowest_cost_index]->full_cost_ptr);
         context_ptr->md_local_blk_unit[blk_ptr->mds_idx].default_cost = *(buffer_ptr_array[lowest_cost_index]->full_cost_ptr);
+#if !FIX_REMOVE_UNUSED_CODE
         context_ptr->md_local_blk_unit[blk_ptr->mds_idx].cost = (context_ptr->md_local_blk_unit[blk_ptr->mds_idx].cost - buffer_ptr_array[lowest_cost_index]->candidate_ptr->chroma_distortion) + buffer_ptr_array[lowest_cost_index]->candidate_ptr->chroma_distortion_inter_depth;
+#endif
     }
+#if FIX_BYPASS_USELESS_OPERATIONS
+    if (!context_ptr->shut_fast_rate) {
+#endif
     context_ptr->md_ep_pipe_sb[blk_ptr->mds_idx].merge_cost = *buffer_ptr_array[lowest_cost_index]->full_cost_merge_ptr;
     context_ptr->md_ep_pipe_sb[blk_ptr->mds_idx].skip_cost = *buffer_ptr_array[lowest_cost_index]->full_cost_skip_ptr;
-
+#if !FIX_REMOVE_UNUSED_CODE
     if (candidate_ptr->type == INTER_MODE && candidate_ptr->merge_flag == EB_TRUE)
         context_ptr->md_ep_pipe_sb[blk_ptr->mds_idx].chroma_distortion = buffer_ptr_array[lowest_cost_index]->candidate_ptr->chroma_distortion;
+#endif
     context_ptr->md_local_blk_unit[blk_ptr->mds_idx].full_distortion = (uint32_t)buffer_ptr_array[lowest_cost_index]->candidate_ptr->full_distortion;
+#if !FIX_REMOVE_UNUSED_CODE
     context_ptr->md_local_blk_unit[blk_ptr->mds_idx].chroma_distortion = (uint32_t)buffer_ptr_array[lowest_cost_index]->candidate_ptr->chroma_distortion;
     context_ptr->md_local_blk_unit[blk_ptr->mds_idx].chroma_distortion_inter_depth = (uint32_t)buffer_ptr_array[lowest_cost_index]->candidate_ptr->chroma_distortion_inter_depth;
-
+#endif
     blk_ptr->prediction_mode_flag = candidate_ptr->type;
     blk_ptr->tx_depth = candidate_ptr->tx_depth;
     blk_ptr->skip_flag = candidate_ptr->skip_flag; // note, the skip flag is re-checked in the ENCDEC process
@@ -5749,7 +5776,9 @@ uint32_t product_full_mode_decision(
             eb_memcpy(&context_ptr->md_local_blk_unit[context_ptr->blk_geom->blkidx_mds].wm_params_l1, &candidate_ptr->wm_params_l1, sizeof(EbWarpedMotionParams));
         }
     }
-
+#if FIX_BYPASS_USELESS_OPERATIONS
+    }
+#endif
     uint32_t txb_itr;
     uint32_t txb_index;
     uint32_t tu_total_count;

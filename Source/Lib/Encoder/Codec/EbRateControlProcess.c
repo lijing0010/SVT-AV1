@@ -362,7 +362,15 @@ void tpl_mc_flow_dispenser(
             8);
     qIndex =
         (qIndex + delta_qindex);
-
+#if FIX_OPTIMIZE_BUILD_QUANTIZER
+    mb_plane.quant_qtx = scs_ptr->quants_8bit.y_quant[qIndex];
+    mb_plane.quant_fp_qtx = scs_ptr->quants_8bit.y_quant_fp[qIndex];
+    mb_plane.round_fp_qtx = scs_ptr->quants_8bit.y_round_fp[qIndex];
+    mb_plane.quant_shift_qtx = scs_ptr->quants_8bit.y_quant_shift[qIndex];
+    mb_plane.zbin_qtx = scs_ptr->quants_8bit.y_zbin[qIndex];
+    mb_plane.round_qtx = scs_ptr->quants_8bit.y_round[qIndex];
+    mb_plane.dequant_qtx = scs_ptr->deq_8bit.y_dequant_qtx[qIndex];
+#else
     Quants *const quants_bd = &pcs_ptr->quants_bd;
     Dequants *const deq_bd = &pcs_ptr->deq_bd;
     eb_av1_set_quantizer(
@@ -384,6 +392,7 @@ void tpl_mc_flow_dispenser(
     mb_plane.zbin_qtx = pcs_ptr->quants_bd.y_zbin[qIndex];
     mb_plane.round_qtx = pcs_ptr->quants_bd.y_round[qIndex];
     mb_plane.dequant_qtx = pcs_ptr->deq_bd.y_dequant_qtx[qIndex];
+#endif
     pcs_ptr->base_rdmult = svt_av1_compute_rd_mult_based_on_qindex((AomBitDepth)8/*scs_ptr->static_config.encoder_bit_depth*/, qIndex) / 6;
 
     // Walk the first N entries in the sliding window

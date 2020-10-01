@@ -1156,7 +1156,7 @@ extern "C" {
     void av1_calc_indices_dim1_avx2(const int* data, const int* centroids, uint8_t* indices, int n, int k);
 
     void av1_calc_indices_dim2_avx2(const int* data, const int* centroids, uint8_t* indices, int n, int k);
-
+#if !FIX_REMOVE_UNUSED_CODE
     void svt_av1_apply_temporal_filter_sse4_1(
         const uint8_t *y_src, int y_src_stride, const uint8_t *y_pre, int y_pre_stride,
         const uint8_t *u_src, const uint8_t *v_src, int uv_src_stride, const uint8_t *u_pre,
@@ -1169,7 +1169,7 @@ extern "C" {
         const uint16_t *v_pre, int uv_pre_stride, unsigned int block_width, unsigned int block_height,
         int ss_x, int ss_y, int strength, const int *blk_fw, int use_whole_blk, uint32_t *y_accum,
         uint16_t *y_count, uint32_t *u_accum, uint16_t *u_count, uint32_t *v_accum, uint16_t *v_count);
-
+#endif
     void ext_sad_calculation_8x8_16x16_avx2_intrin(uint8_t *src, uint32_t src_stride, uint8_t *ref,
         uint32_t ref_stride, uint32_t *p_best_sad_8x8,
         uint32_t *p_best_sad_16x16, uint32_t *p_best_mv8x8,

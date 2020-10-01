@@ -426,7 +426,7 @@ EbErrorType mode_decision_configuration_context_ctor(EbThreadContext *  thread_c
     EB_MALLOC_ARRAY(context_ptr->mdc_blk_ptr->av1xd, 1);
     return EB_ErrorNone;
 }
-
+#if !FIX_REMOVE_UNUSED_CODE
 /******************************************************
 * Load the cost of the different partitioning method into a local array and derive sensitive picture flag
     Input   : the offline derived cost per search method, detection signals
@@ -721,7 +721,7 @@ void derive_sb_md_mode(SequenceControlSet *scs_ptr, PictureControlSet *pcs_ptr,
     // Set the search method using the SB cost (mapping)
     derive_search_method(pcs_ptr, context_ptr);
 }
-
+#endif
 #if TUNE_CDF
 /******************************************************
 * Sets cdf update controls
@@ -766,14 +766,19 @@ void set_cdf_controls(PictureControlSet *pcs, uint8_t update_cdf_level)
 Input   : encoder mode and tune
 Output  : EncDec Kernel signal(s)
 ******************************************************/
+#if FIX_REMOVE_UNUSED_CODE
+EbErrorType signal_derivation_mode_decision_config_kernel_oq(
+    SequenceControlSet *scs_ptr, PictureControlSet *pcs_ptr) {
+#else
 EbErrorType signal_derivation_mode_decision_config_kernel_oq(
     SequenceControlSet *scs_ptr, PictureControlSet *pcs_ptr,
     ModeDecisionConfigurationContext *context_ptr) {
+#endif
     UNUSED(scs_ptr);
     EbErrorType return_error = EB_ErrorNone;
-
+#if !FIX_REMOVE_UNUSED_CODE
     context_ptr->adp_level = pcs_ptr->parent_pcs_ptr->enc_mode;
-
+#endif
 #if TUNE_CDF
     uint8_t update_cdf_level = 0;
     if (pcs_ptr->enc_mode <= ENC_M4)
@@ -886,9 +891,14 @@ EbErrorType signal_derivation_mode_decision_config_kernel_oq(
 Input   : encoder mode and tune
 Output  : EncDec Kernel signal(s)
 ******************************************************/
+#if FIX_REMOVE_UNUSED_CODE
+EbErrorType first_pass_signal_derivation_mode_decision_config_kernel(
+    PictureControlSet *pcs_ptr);
+#else
 EbErrorType first_pass_signal_derivation_mode_decision_config_kernel(
     PictureControlSet *pcs_ptr,
     ModeDecisionConfigurationContext *context_ptr) ;
+#endif
 void av1_set_ref_frame(MvReferenceFrame *rf, int8_t ref_frame_type);
 
 static INLINE int get_relative_dist(const OrderHintInfo *oh, int a, int b) {
@@ -1158,11 +1168,17 @@ void *mode_decision_configuration_kernel(void *input_ptr) {
         FrameHeader *frm_hdr = &pcs_ptr->parent_pcs_ptr->frm_hdr;
 
         // Mode Decision Configuration Kernel Signal(s) derivation
+#if FIX_REMOVE_UNUSED_CODE
+        if (use_output_stat(scs_ptr))
+            first_pass_signal_derivation_mode_decision_config_kernel(pcs_ptr);
+        else
+            signal_derivation_mode_decision_config_kernel_oq(scs_ptr, pcs_ptr);
+#else
         if (use_output_stat(scs_ptr))
             first_pass_signal_derivation_mode_decision_config_kernel(pcs_ptr, context_ptr);
         else
             signal_derivation_mode_decision_config_kernel_oq(scs_ptr, pcs_ptr, context_ptr);
-
+#endif
         pcs_ptr->parent_pcs_ptr->average_qp = 0;
         pcs_ptr->intra_coded_area           = 0;
         // Init block selection
@@ -1181,6 +1197,7 @@ void *mode_decision_configuration_kernel(void *input_ptr) {
         set_global_motion_field(pcs_ptr);
 
         eb_av1_qm_init(pcs_ptr->parent_pcs_ptr);
+#if !FIX_OPTIMIZE_BUILD_QUANTIZER
         Quants *const quants_bd = &pcs_ptr->parent_pcs_ptr->quants_bd;
         Dequants *const deq_bd = &pcs_ptr->parent_pcs_ptr->deq_bd;
         eb_av1_set_quantizer(
@@ -1209,6 +1226,7 @@ void *mode_decision_configuration_kernel(void *input_ptr) {
             deq_8bit);
 
         // Hsan: collapse spare code
+#endif
         MdRateEstimationContext *md_rate_estimation_array;
 
         // QP

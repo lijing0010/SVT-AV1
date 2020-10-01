@@ -76,8 +76,10 @@ typedef struct MdBlkStruct {
     unsigned             top_neighbor_mode : 2;
     unsigned             left_neighbor_mode : 2;
     unsigned             full_distortion : 32;
+#if !FIX_REMOVE_UNUSED_CODE
     unsigned             chroma_distortion : 32;
     unsigned             chroma_distortion_inter_depth : 32;
+#endif
     PartitionContextType left_neighbor_partition;
     PartitionContextType above_neighbor_partition;
     uint64_t             cost;
@@ -212,9 +214,14 @@ typedef struct RefPruningControls {
 typedef struct DepthRefinementCtrls {
     uint8_t enabled;
 
-    int64_t sub_to_current_th; // decrease towards a more agressive level
+    int64_t sub_to_current_th;    // decrease towards a more agressive level
     int64_t parent_to_current_th; // decrease towards a more agressive level
-
+#if FEATURE_COST_BASED_PRED_REFINEMENT
+    uint8_t use_pred_block_cost;  // add an offset to sub_to_current_th and parent_to_current_th on the cost range of the predicted block; use default ths for high cost(s) and more aggressive TH(s) for low cost(s)
+#endif
+#if FEATURE_PD0_CUT_DEPTH
+    uint32_t sb_64x64_dist_th ;   // cut @ 16x16 & lower depth(s) based on the 64x64 distortion if sb_64x64 
+#endif
 }DepthRefinementCtrls;
 #if PARTIAL_FREQUENCY
 typedef struct PfCtrls {
@@ -279,6 +286,19 @@ typedef struct CoeffBSwMdCtrls {
 #endif
     uint8_t skip_block;             // Allow skipping NSQ blocks
 }CoeffBSwMdCtrls;
+#if FEATURE_OPT_RDOQ
+typedef struct RdoqCtrls {
+    uint8_t enabled;
+
+    uint8_t f_mode_l_inter; // 0: use default rdoq for luma inter; 1: fast mode on for luma inter
+    uint8_t f_mode_l_intra; // 0: use default rdoq for luma intra; 1: fast mode on for luma intra
+    uint8_t f_mode_c_inter; // 0: use default rdoq for chroma inter; 1: fast mode on for chroma inter
+    uint8_t f_mode_c_intra; // 0: use default rdoq for chroma intra; 1: fast mode on for chroma intra
+    uint8_t fp_q_l;         // 0: use default quant for luma; 1: use fp_quant for luma
+    uint8_t fp_q_c;         // 0: use default quant for chroma; 1: use fp_quant for chroma
+    uint8_t satd_factor;    // do not perform rdoq if the tx satd > satd_factor
+}RdoqCtrls;
+#endif
 #if FEATURE_NIC_SCALING_PER_STAGE
 typedef struct NicCtrls {
     uint8_t stage1_scaling_num; // Scaling numerator for post-stage 0 NICS: <x>/16
@@ -321,7 +341,9 @@ typedef struct ModeDecisionContext {
     NeighborArrayUnit *cb_recon_neighbor_array16bit;
     NeighborArrayUnit *cr_recon_neighbor_array16bit;
     NeighborArrayUnit *tx_search_luma_recon_neighbor_array16bit;
+#if !FIX_REMOVE_MD_SKIP_COEFF_CIRCUITERY
     NeighborArrayUnit *skip_coeff_neighbor_array;
+#endif
     NeighborArrayUnit *
         luma_dc_sign_level_coeff_neighbor_array; // Stored per 4x4. 8 bit: lower 6 bits (COEFF_CONTEXT_BITS), shows if there is at least one Coef. Top 2 bit store the sign of DC as follow: 0->0,1->-1,2-> 1
     NeighborArrayUnit *
@@ -365,7 +387,9 @@ typedef struct ModeDecisionContext {
     uint8_t          pu_itr;
     uint8_t          cu_size_log2;
     uint32_t         best_candidate_index_array[MAX_NFL_BUFF];
+#if !FIX_TUNIFY_SORTING_ARRAY
     uint32_t         sorted_candidate_index_array[MAX_NFL];
+#endif
     uint16_t         blk_origin_x;
     uint16_t         blk_origin_y;
     uint8_t          sb_sz;
@@ -428,7 +452,9 @@ typedef struct ModeDecisionContext {
     uint32_t me_block_offset;
     uint32_t me_cand_offset;
     EbPictureBufferDesc *cfl_temp_prediction_ptr;
+#if !FEATURE_OPT_IFS
     EbPictureBufferDesc *prediction_ptr_temp;
+#endif
     EbPictureBufferDesc
         *residual_quant_coeff_ptr; // One buffer for residual and quantized coefficient
     uint8_t  tx_depth;
@@ -547,6 +573,9 @@ typedef struct ModeDecisionContext {
 #endif
     uint8_t      dc_cand_only_flag;
     EbBool       disable_angle_z2_intra_flag;
+#if FEATURE_PD0_SHUT_SKIP_DC_SIGN_UPDATE
+    uint8_t      shut_skip_ctx_dc_sign_update;
+#endif
     uint8_t      shut_fast_rate; // use coeff rate and slipt flag rate only (no MVP derivation)
 #if !TUne_TX_TYPE_LEVELS
     uint8_t      tx_search_level;
@@ -603,6 +632,9 @@ typedef struct ModeDecisionContext {
 #endif
     TxsCycleRControls txs_cycles_red_ctrls;
     AMdCycleRControls admd_cycles_red_ctrls;
+#if FEATURE_OPT_RDOQ
+    RdoqCtrls rdoq_ctrls;
+#endif
     uint8_t disallow_4x4;
     uint8_t       md_disallow_nsq;
     uint64_t best_nsq_default_cost;
@@ -647,6 +679,9 @@ typedef struct ModeDecisionContext {
     uint8_t switch_md_mode_based_on_sq_coeff;
     CoeffBSwMdCtrls cb_sw_md_ctrls;
     MV ref_mv;
+#if FEATURE_OPT_IFS
+    uint8_t ifs_is_regular_last; // If regular is last performed interp_filters @ IFS
+#endif
 } ModeDecisionContext;
 
 typedef void (*EbAv1LambdaAssignFunc)(PictureControlSet* pcs_ptr, uint32_t *fast_lambda, uint32_t *full_lambda,

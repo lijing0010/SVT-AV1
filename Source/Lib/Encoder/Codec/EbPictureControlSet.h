@@ -335,7 +335,9 @@ typedef struct PictureControlSet {
     NeighborArrayUnit **md_tx_depth_2_luma_recon_neighbor_array16bit[NEIGHBOR_ARRAY_TOTAL_COUNT];
     NeighborArrayUnit **md_cb_recon_neighbor_array16bit[NEIGHBOR_ARRAY_TOTAL_COUNT];
     NeighborArrayUnit **md_cr_recon_neighbor_array16bit[NEIGHBOR_ARRAY_TOTAL_COUNT];
+#if !FIX_REMOVE_MD_SKIP_COEFF_CIRCUITERY
     NeighborArrayUnit **md_skip_coeff_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
+#endif
     NeighborArrayUnit **md_luma_dc_sign_level_coeff_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
     NeighborArrayUnit *
         *md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
@@ -507,7 +509,18 @@ typedef struct {
     EbDownScaledBufDescPtrArray tpl_ref_ds_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
 } TPLData;
 #endif
-
+#if FEATURE_OPT_TF
+typedef struct  TfControls {
+    uint8_t enabled;
+    uint8_t window_size;
+    uint8_t noise_based_window_adjust;
+    uint8_t hp;
+    uint8_t chroma;
+#if FEATURE_OPT_TF
+    uint64_t block_32x32_16x16_th;
+#endif
+}TfControls;
+#endif
 //CHKN
 // Add the concept of PictureParentControlSet which is a subset of the old PictureControlSet.
 // It actually holds only high level Picture based control data:(GOP management,when to start a picture, when to release the PCS, ....).
@@ -758,10 +771,12 @@ typedef struct PictureParentControlSet {
     // Global quant matrix tables
     const QmVal *giqmatrix[NUM_QM_LEVELS][3][TX_SIZES_ALL];
     const QmVal *gqmatrix[NUM_QM_LEVELS][3][TX_SIZES_ALL];
+#if !FIX_OPTIMIZE_BUILD_QUANTIZER
     Quants quants_bd; // follows input bit depth
     Dequants deq_bd;  // follows input bit depth
     Quants quants_8bit;  // 8bit
     Dequants deq_8bit; // 8bit
+#endif
     int32_t      min_qmlevel;
     int32_t      max_qmlevel;
     // Encoder
@@ -908,6 +923,9 @@ typedef struct PictureParentControlSet {
 #endif
 #if BYPASS_SIGNAL_SET
     uint8_t fastest_preset;
+#endif
+#if FEATURE_OPT_TF
+    TfControls tf_ctrls;
 #endif
 } PictureParentControlSet;
 

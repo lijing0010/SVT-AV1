@@ -88,7 +88,9 @@ static void mode_decision_context_dctor(EbPtr p) {
         EB_DELETE(obj->recon_coeff_ptr[txt_itr]);
         EB_DELETE(obj->recon_ptr[txt_itr]);
     }
+#if !FEATURE_OPT_IFS
     EB_DELETE(obj->prediction_ptr_temp);
+#endif
     EB_DELETE(obj->cfl_temp_prediction_ptr);
     EB_DELETE(obj->residual_quant_coeff_ptr);
 
@@ -295,11 +297,11 @@ EbErrorType mode_decision_context_ctor(ModeDecisionContext *context_ptr, EbColor
     EB_NEW(context_ptr->residual_quant_coeff_ptr,
         eb_picture_buffer_desc_ctor,
         (EbPtr)&thirty_two_width_picture_buffer_desc_init_data);
-
+#if !FEATURE_OPT_IFS
     EB_NEW(context_ptr->prediction_ptr_temp,
         eb_picture_buffer_desc_ctor,
         (EbPtr)&picture_buffer_desc_init_data);
-
+#endif
     EB_NEW(context_ptr->cfl_temp_prediction_ptr,
         eb_picture_buffer_desc_ctor,
         (EbPtr)&picture_buffer_desc_init_data);
@@ -390,8 +392,9 @@ void reset_mode_decision_neighbor_arrays(PictureControlSet *pcs_ptr, uint16_t ti
             neighbor_array_unit_reset(pcs_ptr->md_cb_recon_neighbor_array16bit[depth][tile_idx]);
             neighbor_array_unit_reset(pcs_ptr->md_cr_recon_neighbor_array16bit[depth][tile_idx]);
         }
-
+#if !FIX_REMOVE_MD_SKIP_COEFF_CIRCUITERY
         neighbor_array_unit_reset(pcs_ptr->md_skip_coeff_neighbor_array[depth][tile_idx]);
+#endif
         neighbor_array_unit_reset(
             pcs_ptr->md_luma_dc_sign_level_coeff_neighbor_array[depth][tile_idx]);
         neighbor_array_unit_reset(

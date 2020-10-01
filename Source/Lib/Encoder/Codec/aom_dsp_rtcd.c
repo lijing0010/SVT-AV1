@@ -351,10 +351,14 @@ void setup_rtcd_internal(CPU_FLAGS flags) {
 
     search_one_dual = search_one_dual_c;
     sad_loop_kernel = sad_loop_kernel_c;
+#if !FIX_REMOVE_UNUSED_CODE
     svt_av1_apply_filtering = svt_av1_apply_filtering_c;
+#endif
     svt_av1_apply_temporal_filter_planewise = svt_av1_apply_temporal_filter_planewise_c;
     svt_av1_apply_temporal_filter_planewise_hbd = svt_av1_apply_temporal_filter_planewise_hbd_c;
+#if !FIX_REMOVE_UNUSED_CODE
     svt_av1_apply_filtering_highbd = svt_av1_apply_filtering_highbd_c;
+#endif
     ext_sad_calculation_8x8_16x16 = ext_sad_calculation_8x8_16x16_c;
     ext_sad_calculation_32x32_64x64 = ext_sad_calculation_32x32_64x64_c;
     ext_all_sad_calculation_8x8_16x16 = ext_all_sad_calculation_8x8_16x16_c;
@@ -673,17 +677,21 @@ void setup_rtcd_internal(CPU_FLAGS flags) {
                         sad_loop_kernel_sse4_1_intrin,
                         sad_loop_kernel_avx2_intrin,
                         sad_loop_kernel_avx512_intrin);
+#if !FIX_REMOVE_UNUSED_CODE
                     SET_SSE41(
                         svt_av1_apply_filtering, svt_av1_apply_filtering_c, svt_av1_apply_temporal_filter_sse4_1);
+#endif
                     SET_AVX2(svt_av1_apply_temporal_filter_planewise,
                         svt_av1_apply_temporal_filter_planewise_c,
                         svt_av1_apply_temporal_filter_planewise_avx2);
                     SET_AVX2(svt_av1_apply_temporal_filter_planewise_hbd,
                         svt_av1_apply_temporal_filter_planewise_hbd_c,
                         svt_av1_apply_temporal_filter_planewise_hbd_avx2);
+#if !FIX_REMOVE_UNUSED_CODE
                     SET_SSE41(svt_av1_apply_filtering_highbd,
                         svt_av1_apply_filtering_highbd_c,
                         svt_av1_highbd_apply_temporal_filter_sse4_1);
+#endif
                     SET_AVX2(ext_sad_calculation_8x8_16x16,
                         ext_sad_calculation_8x8_16x16_c,
                         ext_sad_calculation_8x8_16x16_avx2_intrin);

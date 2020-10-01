@@ -544,17 +544,20 @@ uint64_t eb_av1_cost_coeffs_txb(uint8_t allow_update_cdf, FRAME_CONTEXT *ec_ctx,
 int av1_filter_intra_allowed_bsize(uint8_t enable_filter_intra, BlockSize bs);
 int av1_filter_intra_allowed(uint8_t enable_filter_intra, BlockSize bsize, uint8_t palette_size,
                              uint32_t mode);
-
+#if !FIX_REMOVE_UNUSED_CODE
 /*static*/ void model_rd_from_sse(BlockSize bsize, int16_t quantizer,
                                   //const Av1Comp *const cpi,
                                   //const MacroBlockD *const xd,
                                   //BlockSize bsize,
                                   //int32_t plane,
                                   uint64_t sse, uint32_t *rate, uint64_t *dist);
-
+#endif
 uint64_t av1_intra_fast_cost(BlkStruct *blk_ptr, ModeDecisionCandidate *candidate_ptr, uint32_t qp,
                              uint64_t luma_distortion, uint64_t chroma_distortion, uint64_t lambda,
-                             EbBool use_ssd, PictureControlSet *pcs_ptr, CandidateMv *ref_mv_stack,
+#if !FIX_REMOVE_UNUSED_CODE
+                             EbBool use_ssd,
+#endif 
+                             PictureControlSet *pcs_ptr, CandidateMv *ref_mv_stack,
                              const BlockGeom *blk_geom, uint32_t miRow, uint32_t miCol,
                              uint8_t enable_inter_intra,
                              uint8_t md_pass, uint32_t left_neighbor_mode,
@@ -569,7 +572,9 @@ uint64_t av1_intra_fast_cost(BlkStruct *blk_ptr, ModeDecisionCandidate *candidat
     UNUSED(top_neighbor_mode);
     UNUSED(md_pass);
     UNUSED(enable_inter_intra);
+#if !FIX_REMOVE_UNUSED_CODE
     FrameHeader *frm_hdr = &pcs_ptr->parent_pcs_ptr->frm_hdr;
+#endif
     if (av1_allow_intrabc(&pcs_ptr->parent_pcs_ptr->frm_hdr, pcs_ptr->parent_pcs_ptr->slice_type)
         && candidate_ptr->use_intrabc) {
         uint64_t rate = 0;
@@ -764,6 +769,7 @@ uint64_t av1_intra_fast_cost(BlkStruct *blk_ptr, ModeDecisionCandidate *candidat
         // Keep the Fast Luma and Chroma rate for future use
         candidate_ptr->fast_luma_rate = luma_rate;
         candidate_ptr->fast_chroma_rate = chroma_rate;
+#if !FIX_REMOVE_UNUSED_CODE
         if (use_ssd) {
             int32_t         current_q_index = frm_hdr->quantization_params.base_q_idx;
             Dequants *const dequants = &pcs_ptr->parent_pcs_ptr->deq_bd;
@@ -783,6 +789,7 @@ uint64_t av1_intra_fast_cost(BlkStruct *blk_ptr, ModeDecisionCandidate *candidat
 
             return (RDCOST(lambda, rate, total_distortion));
         } else {
+#endif
             luma_sad         = (LUMA_WEIGHT * luma_distortion) << AV1_COST_PRECISION;
             chromasad_       = chroma_distortion << AV1_COST_PRECISION;
             total_distortion = luma_sad + chromasad_;
@@ -791,7 +798,9 @@ uint64_t av1_intra_fast_cost(BlkStruct *blk_ptr, ModeDecisionCandidate *candidat
 
             // Assign fast cost
             return (RDCOST(lambda, rate, total_distortion));
+#if !FIX_REMOVE_UNUSED_CODE
         }
+#endif
     }
 }
 
@@ -1329,7 +1338,10 @@ void two_pass_cost_update_64bit(PictureControlSet *pcs_ptr, ModeDecisionCandidat
 
 uint64_t av1_inter_fast_cost(BlkStruct *blk_ptr, ModeDecisionCandidate *candidate_ptr, uint32_t qp,
                              uint64_t luma_distortion, uint64_t chroma_distortion, uint64_t lambda,
-                             EbBool use_ssd, PictureControlSet *pcs_ptr, CandidateMv *ref_mv_stack,
+#if !FIX_REMOVE_UNUSED_CODE
+                            EbBool use_ssd,
+#endif 
+                             PictureControlSet *pcs_ptr, CandidateMv *ref_mv_stack,
                              const BlockGeom *blk_geom, uint32_t miRow, uint32_t miCol,
                              uint8_t enable_inter_intra,
                              uint8_t md_pass, uint32_t left_neighbor_mode,
@@ -1609,6 +1621,7 @@ uint64_t av1_inter_fast_cost(BlkStruct *blk_ptr, ModeDecisionCandidate *candidat
     // Keep the Fast Luma and Chroma rate for future use
     candidate_ptr->fast_luma_rate = luma_rate;
     candidate_ptr->fast_chroma_rate = chroma_rate;
+#if !FIX_REMOVE_UNUSED_CODE
     if (use_ssd) {
         int32_t         current_q_index = frm_hdr->quantization_params.base_q_idx;
         Dequants *const dequants = &pcs_ptr->parent_pcs_ptr->deq_bd;
@@ -1636,6 +1649,7 @@ uint64_t av1_inter_fast_cost(BlkStruct *blk_ptr, ModeDecisionCandidate *candidat
         }
         return (RDCOST(lambda, rate, total_distortion));
     } else {
+#endif
         luma_sad         = (LUMA_WEIGHT * luma_distortion) << AV1_COST_PRECISION;
         chromasad_       = chroma_distortion << AV1_COST_PRECISION;
         total_distortion = luma_sad + chromasad_;
@@ -1651,7 +1665,9 @@ uint64_t av1_inter_fast_cost(BlkStruct *blk_ptr, ModeDecisionCandidate *candidat
             if (skip_mode_rate < rate) return (RDCOST(lambda, skip_mode_rate, total_distortion));
         }
         return (RDCOST(lambda, rate, total_distortion));
+#if !FIX_REMOVE_UNUSED_CODE
     }
+#endif
 }
 EbErrorType av1_txb_estimate_coeff_bits(
     struct ModeDecisionContext *md_context, uint8_t allow_update_cdf, FRAME_CONTEXT *ec_ctx,
@@ -1849,6 +1865,20 @@ EbErrorType av1_full_cost(PictureControlSet *pcs_ptr, ModeDecisionContext *conte
     // Coeff rate
 
     if (context_ptr->blk_skip_decision && candidate_buffer_ptr->candidate_ptr->type != INTRA_MODE) {
+#if FIX_REMOVE_MD_SKIP_COEFF_CIRCUITERY
+        // MD assumes skip_coeff_context=0:to evaluate updating skip_coeff_context
+        uint64_t non_skip_cost =
+            RDCOST(lambda,
+            (*y_coeff_bits + *cb_coeff_bits + *cr_coeff_bits + tx_size_bits +
+                (uint64_t)candidate_buffer_ptr->candidate_ptr->md_rate_estimation_ptr
+                ->skip_fac_bits[0][0]),
+                (y_distortion[0] + cb_distortion[0] + cr_distortion[0]));
+        uint64_t skip_cost =
+            RDCOST(lambda,
+            ((uint64_t)candidate_buffer_ptr->candidate_ptr->md_rate_estimation_ptr
+                ->skip_fac_bits[0][1]),
+                (y_distortion[1] + cb_distortion[1] + cr_distortion[1]));
+#else
         uint64_t non_skip_cost =
             RDCOST(lambda,
                    (*y_coeff_bits + *cb_coeff_bits + *cr_coeff_bits + tx_size_bits +
@@ -1860,6 +1890,7 @@ EbErrorType av1_full_cost(PictureControlSet *pcs_ptr, ModeDecisionContext *conte
                    ((uint64_t)candidate_buffer_ptr->candidate_ptr->md_rate_estimation_ptr
                         ->skip_fac_bits[blk_ptr->skip_coeff_context][1]),
                    (y_distortion[1] + cb_distortion[1] + cr_distortion[1]));
+#endif
         if ((candidate_buffer_ptr->candidate_ptr->block_has_coeff == 0) ||
             (skip_cost < non_skip_cost)) {
             y_distortion[0]                                      = y_distortion[1];
@@ -1867,6 +1898,24 @@ EbErrorType av1_full_cost(PictureControlSet *pcs_ptr, ModeDecisionContext *conte
             cr_distortion[0]                                     = cr_distortion[1];
             candidate_buffer_ptr->candidate_ptr->block_has_coeff = 0;
         }
+#if FIX_REMOVE_MD_SKIP_COEFF_CIRCUITERY
+        // MD assumes skip_coeff_context=0:to evaluate updating skip_coeff_context
+        if (candidate_buffer_ptr->candidate_ptr->block_has_coeff)
+            coeff_rate = (*y_coeff_bits + *cb_coeff_bits + *cr_coeff_bits +
+            (uint64_t)candidate_buffer_ptr->candidate_ptr->md_rate_estimation_ptr
+                ->skip_fac_bits[0][0]);
+        else
+            coeff_rate = MIN((uint64_t)candidate_buffer_ptr->candidate_ptr->md_rate_estimation_ptr
+                ->skip_fac_bits[0][1],
+                (*y_coeff_bits + *cb_coeff_bits + *cr_coeff_bits +
+                (uint64_t)candidate_buffer_ptr->candidate_ptr->md_rate_estimation_ptr
+                    ->skip_fac_bits[0][0]));
+    }
+    else
+        coeff_rate = (*y_coeff_bits + *cb_coeff_bits + *cr_coeff_bits +
+        (uint64_t)candidate_buffer_ptr->candidate_ptr->md_rate_estimation_ptr
+            ->skip_fac_bits[0][0]);
+#else
         if (candidate_buffer_ptr->candidate_ptr->block_has_coeff)
             coeff_rate = (*y_coeff_bits + *cb_coeff_bits + *cr_coeff_bits +
                           (uint64_t)candidate_buffer_ptr->candidate_ptr->md_rate_estimation_ptr
@@ -1881,7 +1930,7 @@ EbErrorType av1_full_cost(PictureControlSet *pcs_ptr, ModeDecisionContext *conte
         coeff_rate = (*y_coeff_bits + *cb_coeff_bits + *cr_coeff_bits +
                       (uint64_t)candidate_buffer_ptr->candidate_ptr->md_rate_estimation_ptr
                           ->skip_fac_bits[blk_ptr->skip_coeff_context][0]);
-
+#endif
     luma_sse         = y_distortion[0];
     chroma_sse       = cb_distortion[0] + cr_distortion[0];
     total_distortion = luma_sse + chroma_sse;
@@ -2169,7 +2218,9 @@ EbErrorType av1_inter_full_cost(PictureControlSet *pcs_ptr, ModeDecisionContext 
 ************************************************************/
 void coding_loop_context_generation(ModeDecisionContext *context_ptr, BlkStruct *blk_ptr,
                                     uint32_t blk_origin_x, uint32_t blk_origin_y, uint32_t sb_sz,
+#if !FIX_REMOVE_MD_SKIP_COEFF_CIRCUITERY
                                     NeighborArrayUnit *skip_coeff_neighbor_array,
+#endif
                                     NeighborArrayUnit *inter_pred_dir_neighbor_array,
                                     NeighborArrayUnit *ref_frame_type_neighbor_array,
                                     NeighborArrayUnit *intra_luma_mode_neighbor_array,
@@ -2291,6 +2342,7 @@ void coding_loop_context_generation(ModeDecisionContext *context_ptr, BlkStruct 
             : ((PartitionContext *)
                    leaf_partition_neighbor_array->left_array)[partition_left_neighbor_index]
                   .left;
+#if !FIX_REMOVE_MD_SKIP_COEFF_CIRCUITERY
     // Skip Coeff AV1 Context
     uint32_t skip_coeff_left_neighbor_index =
         get_neighbor_array_unit_left_index(skip_coeff_neighbor_array, blk_origin_y);
@@ -2308,6 +2360,7 @@ void coding_loop_context_generation(ModeDecisionContext *context_ptr, BlkStruct 
          (uint8_t)INVALID_NEIGHBOR_DATA)
             ? 0
             : (skip_coeff_neighbor_array->top_array[skip_coeff_top_neighbor_index]) ? 1 : 0;
+#endif
     // Generate reference mode context
 
     blk_ptr->reference_mode_context = (uint8_t)eb_av1_get_reference_mode_context(

@@ -122,8 +122,11 @@ void global_motion_estimation(PictureParentControlSet *pcs_ptr, MeContext *conte
             } else {
                 ref_picture_ptr = (EbPictureBufferDesc *)reference_object->input_padded_picture_ptr;
             }
-
+#if FEATURE_GM_OPT
+            compute_global_motion(context_ptr, input_picture_ptr,
+#else
             compute_global_motion(input_picture_ptr,
+#endif
                                   ref_picture_ptr,
                                   &pcs_ptr->global_motion_estimation[list_index][ref_pic_index],
                                   pcs_ptr->frm_hdr.allow_high_precision_mv);
@@ -242,8 +245,11 @@ void global_motion_estimation_inl(PictureParentControlSet *pcs_ptr, MeContext *c
                 ref_picture_ptr = reference_object->input_picture;
 #endif
             }
-
+#if FEATURE_GM_OPT
+            compute_global_motion(context_ptr, input_picture_ptr,
+#else
             compute_global_motion(input_picture_ptr,
+#endif
                                   ref_picture_ptr,
                                   &pcs_ptr->global_motion_estimation[list_index][ref_pic_index],
                                   pcs_ptr->frm_hdr.allow_high_precision_mv);
@@ -282,8 +288,11 @@ static INLINE int convert_to_trans_prec(int allow_hp, int coor) {
     else
         return ROUND_POWER_OF_TWO_SIGNED(coor, WARPEDMODEL_PREC_BITS - 2) * 2;
 }
-
+#if FEATURE_GM_OPT
+void compute_global_motion(MeContext *context_ptr, EbPictureBufferDesc *input_pic, EbPictureBufferDesc *ref_pic,
+#else
 void compute_global_motion(EbPictureBufferDesc *input_pic, EbPictureBufferDesc *ref_pic,
+#endif
                            EbWarpedMotionParams *bestWarpedMotion, int allow_high_precision_mv) {
     MotionModel params_by_motion[RANSAC_NUM_MOTIONS];
     for (int m = 0; m < RANSAC_NUM_MOTIONS; m++) {
@@ -323,7 +332,11 @@ void compute_global_motion(EbPictureBufferDesc *input_pic, EbPictureBufferDesc *
 #define GLOBAL_TRANS_TYPES_ENC 3
 
         const GlobalMotionEstimationType gm_estimation_type = GLOBAL_MOTION_FEATURE_BASED;
+#if FEATURE_GM_OPT
+        for (model = ROTZOOM; model <= (context_ptr->gm_rotzoom_model_only ? GLOBAL_TRANS_TYPES_ENC : ROTZOOM); ++model) {
+#else
         for (model = ROTZOOM; model <= GLOBAL_TRANS_TYPES_ENC; ++model) {
+#endif
             int64_t best_warp_error = INT64_MAX;
             // Initially set all params to identity.
             for (unsigned i = 0; i < RANSAC_NUM_MOTIONS; ++i) {

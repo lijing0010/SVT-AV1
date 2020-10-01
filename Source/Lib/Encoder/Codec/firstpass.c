@@ -510,9 +510,10 @@ extern void first_pass_loop_core(PictureControlSet *pcs_ptr,
     memset(candidate_ptr->eob[0], 0, sizeof(uint16_t));
     memset(candidate_ptr->eob[1], 0, sizeof(uint16_t));
     memset(candidate_ptr->eob[2], 0, sizeof(uint16_t));
-
+#if !FIX_REMOVE_UNUSED_CODE
     candidate_ptr->chroma_distortion             = 0;
     candidate_ptr->chroma_distortion_inter_depth = 0;
+#endif
     // Set Skip Flag
     candidate_ptr->skip_flag = EB_FALSE;
     if (is_inter)
@@ -557,9 +558,10 @@ extern void first_pass_loop_core(PictureControlSet *pcs_ptr,
         end_tx_depth,
         &y_coeff_bits,
         &y_full_distortion[0]);
+#if !FIX_REMOVE_UNUSED_CODE
     candidate_ptr->chroma_distortion_inter_depth = 0;
     candidate_ptr->chroma_distortion             = 0;
-
+#endif
     candidate_ptr->block_has_coeff =
         (candidate_ptr->y_has_coeff | candidate_ptr->u_has_coeff | candidate_ptr->v_has_coeff)
             ? EB_TRUE
@@ -922,7 +924,9 @@ extern EbErrorType first_pass_signal_derivation_block(
 }
 
 void product_coding_loop_init_fast_loop(ModeDecisionContext *context_ptr,
+#if !FIX_REMOVE_MD_SKIP_COEFF_CIRCUITERY
                                         NeighborArrayUnit *  skip_coeff_neighbor_array,
+#endif
                                         NeighborArrayUnit *  inter_pred_dir_neighbor_array,
                                         NeighborArrayUnit *  ref_frame_type_neighbor_array,
                                         NeighborArrayUnit *  intra_luma_mode_neighbor_array,
@@ -1244,6 +1248,10 @@ EbErrorType first_pass_generate_md_stage_0_cand(
 //    }
 //#endif
     *candidate_total_count_ptr = cand_total_cnt;
+#if FIX_OPT_FAST_COST_INIT
+    for (uint32_t index = 0; index < MIN((*candidate_total_count_ptr + CAND_CLASS_TOTAL), MAX_NFL_BUFF_Y); ++index)
+        context_ptr->fast_cost_array[index] = MAX_CU_COST;
+#endif
     CandClass  cand_class_it;
     memset(context_ptr->md_stage_0_count, 0, CAND_CLASS_TOTAL * sizeof(uint32_t));
 
@@ -1322,7 +1330,9 @@ extern void first_pass_md_encode_block(PictureControlSet *pcs_ptr, ModeDecisionC
     ModeDecisionCandidate *       fast_candidate_array = context_ptr->fast_candidate_array;
     uint32_t                      candidate_index;
     uint32_t                      fast_candidate_total_count;
+#if !FIX_REMOVE_UNUSED_CODE
     uint32_t                      best_intra_mode = EB_INTRA_MODE_INVALID;
+#endif
     const uint32_t                input_origin_index =
         (context_ptr->blk_origin_y + input_picture_ptr->origin_y) * input_picture_ptr->stride_y +
         (context_ptr->blk_origin_x + input_picture_ptr->origin_x);
@@ -1339,7 +1349,9 @@ extern void first_pass_md_encode_block(PictureControlSet *pcs_ptr, ModeDecisionC
     blk_ptr->av1xd->tile.mi_row_end   = context_ptr->sb_ptr->tile_info.mi_row_end;
 
     product_coding_loop_init_fast_loop(context_ptr,
+#if !FIX_REMOVE_MD_SKIP_COEFF_CIRCUITERY
                                        context_ptr->skip_coeff_neighbor_array,
+#endif
                                        context_ptr->inter_pred_dir_neighbor_array,
                                        context_ptr->ref_frame_type_neighbor_array,
                                        context_ptr->intra_luma_mode_neighbor_array,
@@ -1456,6 +1468,14 @@ extern void first_pass_md_encode_block(PictureControlSet *pcs_ptr, ModeDecisionC
     }
 
     // Full Mode Decision (choose the best mode)
+#if FIX_REMOVE_UNUSED_CODE
+    candidate_index = product_full_mode_decision(
+        context_ptr,
+        blk_ptr,
+        candidate_buffer_ptr_array,
+        1,
+        context_ptr->best_candidate_index_array);
+#else
     candidate_index = product_full_mode_decision(
         context_ptr,
         blk_ptr,
@@ -1463,6 +1483,7 @@ extern void first_pass_md_encode_block(PictureControlSet *pcs_ptr, ModeDecisionC
         1,
         context_ptr->best_candidate_index_array,
         &best_intra_mode);
+#endif
     candidate_buffer = candidate_buffer_ptr_array[candidate_index];
 #if !REFACTOR_MD_BLOCK_LOOP
     bestcandidate_buffers[0] = candidate_buffer;
@@ -1651,8 +1672,11 @@ extern void first_pass_md_encode_block(PictureControlSet *pcs_ptr, ModeDecisionC
     #endif
     context_ptr->md_local_blk_unit[blk_ptr->mds_idx].avail_blk_flag = EB_TRUE;
 }
-
+#if FEATURE_OPT_TF
+void set_tf_controls(PictureParentControlSet *pcs_ptr, uint8_t tf_level);
+#else
 void set_tf_controls(PictureDecisionContext *context_ptr, uint8_t tf_level);
+#endif
 /******************************************************
 * Derive Multi-Processes Settings for first pass
 Input   : encoder mode and tune
@@ -1786,7 +1810,11 @@ EbErrorType first_pass_signal_derivation_multi_processes(SequenceControlSet *   
 
 
     context_ptr->tf_level = 0;
+#if FEATURE_OPT_TF
+    set_tf_controls(pcs_ptr, context_ptr->tf_level);
+#else
     set_tf_controls(context_ptr, context_ptr->tf_level);
+#endif
     // MRP control
     // 0: OFF (1,1)  ; override features
     // 1: FULL (4,3) ; override features
@@ -2124,15 +2152,19 @@ EbErrorType first_pass_signal_derivation_enc_dec_kernel(
 Input   : encoder mode and tune
 Output  : EncDec Kernel signal(s)
 ******************************************************/
+#if FIX_REMOVE_UNUSED_CODE
+EbErrorType first_pass_signal_derivation_mode_decision_config_kernel(
+    PictureControlSet *pcs_ptr) {
+#else
 EbErrorType first_pass_signal_derivation_mode_decision_config_kernel(
     PictureControlSet *pcs_ptr,
     ModeDecisionConfigurationContext *context_ptr) {
-
+#endif
     EbErrorType return_error = EB_ErrorNone;
-
+#if !FIX_REMOVE_UNUSED_CODE
     // ADP
     context_ptr->adp_level = pcs_ptr->parent_pcs_ptr->enc_mode;
-
+#endif
     // CDF
 #if TUNE_CDF
     pcs_ptr->cdf_ctrl.enabled = pcs_ptr->cdf_ctrl.update_coef = 0;
