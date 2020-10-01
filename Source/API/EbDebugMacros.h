@@ -116,7 +116,7 @@ extern "C" {
 #define FIX_TUNIFY_SORTING_ARRAY                     1 // Unify MD sorting arrays into 1
 #define FIX_IFS                                      1 // Fix IFS to use the actual motion_mode and the actual is_inter_intra
 #define FEATURE_COST_BASED_PRED_REFINEMENT           1 // Add an offset to sub_to_current_th and parent_to_current_th on the cost range of the predicted block; use default ths for high cost(s) and more aggressive TH(s) for low cost(s)
-#define FEATURE_PD0_CUT_DEPTH                        0 // Cut @ 16x16 & lower depth(s) based on the 64x64 distortion if sb_64x64 
+#define FEATURE_PD0_CUT_DEPTH                        1 // Shut 16x16 & lower depth(s) based on the 64x64 distortion if sb_64x64 
 #define FEATURE_PD0_SHUT_SKIP_DC_SIGN_UPDATE         1 // Skip dc_sign derivation/update, and bypass useless mi_info updates
 #define FEATURE_OPT_RDOQ                             1 // Use default_quant for chroma and rdoq_bypass = f(satd)
 #define FEATURE_OPT_TF                               1 // Add the ability to perform luma only @ tf, control tf_16x16 using tf_32x32 pred error, apply tf @ base only

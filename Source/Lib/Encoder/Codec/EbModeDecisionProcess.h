@@ -214,13 +214,13 @@ typedef struct RefPruningControls {
 typedef struct DepthRefinementCtrls {
     uint8_t enabled;
 
-    int64_t sub_to_current_th;    // decrease towards a more agressive level
-    int64_t parent_to_current_th; // decrease towards a more agressive level
+    int64_t sub_to_current_th;     // decrease towards a more agressive level
+    int64_t parent_to_current_th;  // decrease towards a more agressive level
 #if FEATURE_COST_BASED_PRED_REFINEMENT
-    uint8_t use_pred_block_cost;  // add an offset to sub_to_current_th and parent_to_current_th on the cost range of the predicted block; use default ths for high cost(s) and more aggressive TH(s) for low cost(s)
+    uint8_t use_pred_block_cost;   // add an offset to sub_to_current_th and parent_to_current_th on the cost range of the predicted block; use default ths for high cost(s) and more aggressive TH(s) for low cost(s)
 #endif
 #if FEATURE_PD0_CUT_DEPTH
-    uint32_t sb_64x64_dist_th ;   // cut @ 16x16 & lower depth(s) based on the 64x64 distortion if sb_64x64 
+    uint8_t disallow_below_16x16;  // cut 16x16 & lower depth(s) based on the 64x64 distortion if sb_64x64 
 #endif
 }DepthRefinementCtrls;
 #if PARTIAL_FREQUENCY
@@ -687,6 +687,9 @@ typedef struct ModeDecisionContext {
 #endif
 #if RDOQ_OPT5
     uint8_t skip_search_tools_at_last_stage;
+#endif
+#if FEATURE_PD0_CUT_DEPTH
+    uint16_t sb_index;
 #endif
 } ModeDecisionContext;
 
