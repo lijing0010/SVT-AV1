@@ -90,7 +90,7 @@ extern "C" {
 #define FEATURE_NEW_OBMC_LEVELS                  1 // Add new levels and controls for OBMC
 #define TUNE_CDF                                 1 // Update CDF Levels
 #define TUNE_TX_TYPE_LEVELS                      1 // Add Tx Type Grouping Levels
-#define TUNE_INIT_FAST_LOOP_OPT                  1 // Fast loop optimizations
+#define TUNE_INIT_FAST_LOOP_OPT                  0 // Fast loop optimizations
 #define TUNE_REMOVE_UNUSED_NEIG_ARRAY            1 // Removes unused neighbor array
 #define INIT_BLOCK_OPT							 1 // optimize block initialization
 #define BYPASS_SIGNAL_SET						 1 // bypass block based signal derivation for fastest preset when superfluous
