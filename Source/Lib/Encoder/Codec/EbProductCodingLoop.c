@@ -5196,7 +5196,19 @@ void tx_type_search(PictureControlSet *pcs_ptr, ModeDecisionContext *context_ptr
             txb_full_distortion_txt[tx_type][DIST_CALC_RESIDUAL] += context_ptr->three_quad_energy;
             txb_full_distortion_txt[tx_type][DIST_CALC_PREDICTION] += context_ptr->three_quad_energy;
             //assert(context_ptr->three_quad_energy == 0 && context_ptr->cu_stats->size < 64);
-            const int32_t shift = (MAX_TX_SCALE - av1_get_tx_scale(context_ptr->blk_geom->txsize[context_ptr->tx_depth][context_ptr->txb_itr])) * 2;
+#if RDOQ_OPT
+            const int32_t shift =
+                (MAX_TX_SCALE -
+                 av1_get_tx_scale_tab[context_ptr->blk_geom
+                                          ->txsize[context_ptr->tx_depth][context_ptr->txb_itr]]) *
+                2;
+#else
+            const int32_t shift =
+                (MAX_TX_SCALE -
+                 av1_get_tx_scale(
+                     context_ptr->blk_geom->txsize[context_ptr->tx_depth][context_ptr->txb_itr])) *
+                2;
+#endif
             txb_full_distortion_txt[tx_type][DIST_CALC_RESIDUAL] =
                 RIGHT_SIGNED_SHIFT(txb_full_distortion_txt[tx_type][DIST_CALC_RESIDUAL], shift);
             txb_full_distortion_txt[tx_type][DIST_CALC_PREDICTION] =
@@ -7052,6 +7064,16 @@ static void md_stage_3(PictureControlSet *pcs_ptr, SuperBlock *sb_ptr, BlkStruct
         context_ptr->md_staging_perform_intra_chroma_pred = EB_TRUE;
         if (context_ptr->chroma_at_last_md_stage)
             update_intra_chroma_mode(context_ptr, candidate_ptr, pcs_ptr);
+#if RDOQ_OPT5
+        if (context_ptr->skip_search_tools_at_last_stage) {
+            if (!candidate_buffer->candidate_ptr->block_has_coeff &&
+                !pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag) {
+                context_ptr->md_staging_skip_rdoq                 = EB_TRUE;
+                context_ptr->md_staging_txt_level                 = 0;
+                context_ptr->md_staging_skip_interpolation_search = 0;
+            }
+        }
+#endif
         full_loop_core(pcs_ptr,
                        sb_ptr,
                        blk_ptr,

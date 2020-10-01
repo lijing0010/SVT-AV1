@@ -2225,6 +2225,9 @@ void set_rdoq_controls(ModeDecisionContext *mdctxt, uint8_t rdoq_level) {
         rdoq_ctrls->fp_q_l = 1;
         rdoq_ctrls->fp_q_c = 1;
         rdoq_ctrls->satd_factor = (uint8_t)~0;
+#if RDOQ_OPT2
+        rdoq_ctrls->early_exit = 0;
+#endif
         break;
     case 2:
         rdoq_ctrls->enabled = 1;
@@ -2235,6 +2238,9 @@ void set_rdoq_controls(ModeDecisionContext *mdctxt, uint8_t rdoq_level) {
         rdoq_ctrls->fp_q_l = 1;
         rdoq_ctrls->fp_q_c = 0;
         rdoq_ctrls->satd_factor = 128;
+#if RDOQ_OPT2
+        rdoq_ctrls->early_exit = 1;
+#endif
         break;
     case 3:
         rdoq_ctrls->enabled = 1;
@@ -2245,6 +2251,9 @@ void set_rdoq_controls(ModeDecisionContext *mdctxt, uint8_t rdoq_level) {
         rdoq_ctrls->fp_q_l = 1;
         rdoq_ctrls->fp_q_c = 0;
         rdoq_ctrls->satd_factor = 64;
+#if RDOQ_OPT2
+        rdoq_ctrls->early_exit = 1;
+#endif
         break;
     default: assert(0); break;
     }
@@ -3709,6 +3718,14 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     else
         context_ptr->mds3_intra_prune_th = 30;
 
+#if RDOQ_OPT5
+    if (pd_pass == PD_PASS_0)
+        context_ptr->skip_search_tools_at_last_stage = EB_FALSE;
+    else if (pd_pass == PD_PASS_1)
+        context_ptr->skip_search_tools_at_last_stage = EB_FALSE;
+    else
+        context_ptr->skip_search_tools_at_last_stage = (enc_mode <= ENC_M7) ? EB_FALSE : EB_TRUE;
+#endif
     return return_error;
 }
 /******************************************************

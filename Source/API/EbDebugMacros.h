@@ -125,6 +125,9 @@ extern "C" {
 #define FEATURE_GM_OPT                               1 // GM @ REF, bipred only, rotzoom model omly
 #define TUNE_HME_ME_TUNING                           1 // HME/ME:HME_L1=8x3 instead of 16x16, HME_L2=8x3 instead of 16x16, MAX_ME=64x32 instead 64x64
 
+#define RDOQ_OPT                                 1 // lossless
+#define RDOQ_OPT2                                1 // early exit rdo
+#define RDOQ_OPT5                                1 // disable last md search tools (rdoq, txtype seach, interpolation search)
 // END  svt-03 /////////////////////////////////////////////////////////
 
 //FOR DEBUGGING - Do not remove
