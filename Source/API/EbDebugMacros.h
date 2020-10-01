@@ -128,6 +128,7 @@ extern "C" {
 #define RDOQ_OPT                                 1 // lossless
 #define RDOQ_OPT2                                1 // early exit rdo
 #define RDOQ_OPT5                                1 // disable last md search tools (rdoq, txtype seach, interpolation search)
+#define DC_ONLY_AT_NON_REF                       1 // use only intra dc at no reference frame
 // END  svt-03 /////////////////////////////////////////////////////////
 
 //FOR DEBUGGING - Do not remove

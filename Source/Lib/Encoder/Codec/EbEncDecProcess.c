@@ -3662,7 +3662,16 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
         context_ptr->dc_cand_only_flag =
         (pcs_ptr->slice_type == I_SLICE) ? EB_FALSE : EB_TRUE;
     else
+#if DC_ONLY_AT_NON_REF
+        if (enc_mode < ENC_M8)
+            context_ptr->dc_cand_only_flag = EB_FALSE;
+        else
+            context_ptr->dc_cand_only_flag = !pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag
+                ? EB_TRUE
+                : EB_FALSE;
+#else
         context_ptr->dc_cand_only_flag = EB_FALSE;
+#endif
 
     // Set intra_angle_delta @ MD
     if (pd_pass == PD_PASS_0)
