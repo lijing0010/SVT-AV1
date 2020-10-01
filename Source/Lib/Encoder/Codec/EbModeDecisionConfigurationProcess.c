@@ -341,6 +341,7 @@ void set_reference_sg_ep(PictureControlSet *pcs_ptr) {
     }
 }
 
+#if !TUNE_CDEF_FILTER
 /******************************************************
 * Set the reference cdef strength for a given picture
 ******************************************************/
@@ -369,7 +370,7 @@ void set_reference_cdef_strength(PictureControlSet *pcs_ptr) {
     default: SVT_LOG("CDEF: Not supported picture type"); break;
     }
 }
-
+#endif
 /******************************************************
 * Compute Tc, and Beta offsets for a given picture
 ******************************************************/
@@ -1171,9 +1172,10 @@ void *mode_decision_configuration_kernel(void *input_ptr) {
         // Init tx_type selection
         memset(pcs_ptr->txt_cnt, 0, sizeof(uint32_t) * TXT_DEPTH_DELTA_NUM * TX_TYPES);
         // Compute Tc, and Beta offsets for a given picture
+#if !TUNE_CDEF_FILTER
         // Set reference cdef strength
         set_reference_cdef_strength(pcs_ptr);
-
+#endif
         // Set reference sg ep
         set_reference_sg_ep(pcs_ptr);
         set_global_motion_field(pcs_ptr);

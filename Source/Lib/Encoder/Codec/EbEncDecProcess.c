@@ -1694,9 +1694,10 @@ void copy_statistics_to_ref_obj_ect(PictureControlSet *pcs_ptr, SequenceControlS
     ((EbReferenceObject *)pcs_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)
         ->is_scene_change = pcs_ptr->parent_pcs_ptr->scene_change_flag;
 
+#if !TUNE_CDEF_FILTER
     ((EbReferenceObject *)pcs_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)
         ->cdef_frame_strength = pcs_ptr->parent_pcs_ptr->cdef_frame_strength;
-
+#endif
     Av1Common *cm = pcs_ptr->parent_pcs_ptr->av1_cm;
     ((EbReferenceObject *)pcs_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)
         ->sg_frame_ep = cm->sg_frame_ep;

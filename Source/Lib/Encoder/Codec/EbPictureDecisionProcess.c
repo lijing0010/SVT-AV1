@@ -924,17 +924,28 @@ EbErrorType signal_derivation_multi_processes_oq(
 
     // CDEF Level                                   Settings
     // 0                                            OFF
+#if TUNE_CDEF_FILTER
+    // 1                                            FULL_SEARCH
+    // 2                                            CDEF_FAST_SEARCH_LVL1
+    // 3                                            CDEF_FAST_SEARCH_LVL2
+    // 4                                            CDEF_FAST_SEARCH_LVL3
+#else
     // 1                                            16 step refinement
     // 2                                            16 step refinement
     // 3                                            8 step refinement
     // 4                                            4 step refinement
     // 5                                            1 step refinement
+#endif
     if (scs_ptr->seq_header.cdef_level && frm_hdr->allow_intrabc == 0) {
         if (scs_ptr->static_config.cdef_level == DEFAULT) {
             if (pcs_ptr->enc_mode <= ENC_M4)
                     pcs_ptr->cdef_level = 1;
                 else
+#if TUNE_CDEF_FILTER
+                    pcs_ptr->cdef_level = 4;
+#else
                     pcs_ptr->cdef_level = pcs_ptr->slice_type == I_SLICE ? 1 : 4;
+#endif
         }
         else
             pcs_ptr->cdef_level = (int8_t)(scs_ptr->static_config.cdef_level);

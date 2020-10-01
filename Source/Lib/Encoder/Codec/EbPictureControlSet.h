@@ -817,9 +817,11 @@ typedef struct PictureParentControlSet {
     AomDenoiseAndModel *denoise_and_model;
     RestUnitSearchInfo *rusi_picture[3]; //for 3 planes
     int8_t              cdef_level;
+#if !TUNE_CDEF_FILTER
     int32_t             cdef_frame_strength;
     int32_t             cdf_ref_frame_strength;
     int32_t             use_ref_frame_cdef_strength;
+#endif
     uint8_t             palette_level;
     uint8_t             sc_content_detected;
     uint8_t             ibc_mode;
