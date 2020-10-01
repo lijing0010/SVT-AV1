@@ -129,6 +129,7 @@ extern "C" {
 #define RDOQ_OPT2                                1 // early exit rdo
 #define RDOQ_OPT5                                1 // disable last md search tools (rdoq, txtype seach, interpolation search)
 #define DC_ONLY_AT_NON_REF                       1 // use only intra dc at no reference frame
+#define TUNE_PALETTE_LEVEL                       1 // palette level will only be 6 for temporal layer == 0, not encode preset <=M3
 #define FIX_TPL_TRAILING_FRAME_BUG               1 // fix bug related to ENABLE_TPL_TRAILING
 #define TUNE_TPL_OIS                             1 // move ois to inloop TPL, can be done in me kernel with scs_ptr->in_loop_ois = 0
 #define TUNE_TPL_RATE                            1 // remove  uncessary rate calculation

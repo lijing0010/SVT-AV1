@@ -949,8 +949,11 @@ EbErrorType signal_derivation_multi_processes_oq(
         if (scs_ptr->static_config.palette_level == -1)//auto mode; if not set by cfg
             pcs_ptr->palette_level =
             (frm_hdr->allow_screen_content_tools) &&
+#if TUNE_PALETTE_LEVEL
+            (pcs_ptr->temporal_layer_index == 0 && pcs_ptr->enc_mode <= ENC_M9)
+#else
             ((pcs_ptr->enc_mode <= ENC_M3) || (pcs_ptr->temporal_layer_index == 0 && pcs_ptr->enc_mode <= ENC_M9))
-
+#endif
                 ? 6 : 0;
         else
                 pcs_ptr->palette_level = scs_ptr->static_config.palette_level;
