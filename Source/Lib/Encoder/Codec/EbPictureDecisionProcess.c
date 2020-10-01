@@ -1163,7 +1163,7 @@ EbErrorType signal_derivation_multi_processes_oq(
     else
         pcs_ptr->tpl_trailing_frame_count = 0;
 
-    pcs_ptr->tpl_trailing_frame_count = MAX(pcs_ptr->tpl_trailing_frame_count, SCD_LAD);
+    pcs_ptr->tpl_trailing_frame_count = MIN(pcs_ptr->tpl_trailing_frame_count, SCD_LAD);
 #endif
 #if BYPASS_SIGNAL_SET
     // This flag to idenfy the fastest preset so the switch md preset
