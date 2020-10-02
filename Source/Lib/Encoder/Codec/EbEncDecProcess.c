@@ -2628,6 +2628,23 @@ void set_nic_controls(ModeDecisionContext *mdctxt, uint8_t nic_scaling_level) {
         nic_ctrls->stage2_scaling_num = 2;
         nic_ctrls->stage3_scaling_num = 2;
         break;
+#if FIX_NIC_1_CLEAN_UP
+    case 12:
+        nic_ctrls->stage1_scaling_num = 3;
+        nic_ctrls->stage2_scaling_num = 0;
+        nic_ctrls->stage3_scaling_num = 0;
+        break;
+    case 13:
+        nic_ctrls->stage1_scaling_num = 2;
+        nic_ctrls->stage2_scaling_num = 2;
+        nic_ctrls->stage3_scaling_num = 2;
+        break;
+    case 14:
+        nic_ctrls->stage1_scaling_num = 0;
+        nic_ctrls->stage2_scaling_num = 0;
+        nic_ctrls->stage3_scaling_num = 0;
+        break;
+#else
     case 12:
         nic_ctrls->stage1_scaling_num = 2;
         nic_ctrls->stage2_scaling_num = 2;
@@ -2638,6 +2655,7 @@ void set_nic_controls(ModeDecisionContext *mdctxt, uint8_t nic_scaling_level) {
         nic_ctrls->stage2_scaling_num = 1;
         nic_ctrls->stage3_scaling_num = 1;
         break;
+#endif
     default:
         assert(0);
         break;
@@ -3058,6 +3076,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 #else
         context_ptr->md_staging_mode = MD_STAGING_MODE_1;
 #endif
+#if !FIX_NIC_1_CLEAN_UP
     // Set md staging count level
     // Level 0              minimum count = 1
     // Level 1              set towards the best possible partitioning (to further optimize)
@@ -3071,7 +3090,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     else {
         context_ptr->md_staging_count_level = 2;
     }
-
+#endif
     // spatial_sse_full_loop_level | Default Encoder Settings            | Command Line Settings
     //             0               | OFF subject to possible constraints | OFF in PD_PASS_2
     //             1               | ON subject to possible constraints  | ON in PD_PASS_2
@@ -3451,6 +3470,13 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 #endif
         uint8_t nic_scaling_level = 1;
 
+#if FIX_NIC_1_CLEAN_UP
+        if (pd_pass == PD_PASS_0)
+            nic_scaling_level = 14;
+        else if (pd_pass == PD_PASS_1)
+            nic_scaling_level = 12;
+        else
+#endif
         if (enc_mode <= ENC_MR)
             nic_scaling_level = 0;
         else if (enc_mode <= ENC_M0)
@@ -3463,9 +3489,15 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
             nic_scaling_level = 7;
         else if (enc_mode <= ENC_M4)
             nic_scaling_level = 9;
+#if FIX_NIC_1_CLEAN_UP
+        else if (enc_mode <= ENC_M5)
+            nic_scaling_level = 11;
+        else
+            nic_scaling_level = 12;
+#else
         else
             nic_scaling_level = 11;
-
+#endif
         set_nic_controls(context_ptr, nic_scaling_level);
 #if !FEATURE_REMOVE_CIRCULAR
     }

@@ -1472,8 +1472,13 @@ void set_dist_based_ref_pruning_controls(
 #endif
 void scale_nics(PictureControlSet *pcs_ptr, ModeDecisionContext *context_ptr) {
     // minimum nics allowed
+#if FIX_NIC_1_CLEAN_UP
+    uint32_t min_nics_stage1 = (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag && context_ptr->nic_ctrls.stage1_scaling_num) ? 2 : 1;
+    uint32_t min_nics_stage2 = (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag && context_ptr->nic_ctrls.stage2_scaling_num) ? 2 : 1;
+    uint32_t min_nics_stage3 = (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag && context_ptr->nic_ctrls.stage3_scaling_num) ? 2 : 1;
+#else
     uint32_t min_nics = pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag ? 2 : 1;
-
+#endif
 #if FEATURE_NIC_SCALING_PER_STAGE
     // Set the scaling numerators
     uint32_t stage1_scale_num = context_ptr->nic_ctrls.stage1_scaling_num;
@@ -1485,12 +1490,21 @@ void scale_nics(PictureControlSet *pcs_ptr, ModeDecisionContext *context_ptr) {
 
     // no NIC setting should be done beyond this point
     for (uint8_t cidx = 0; cidx < CAND_CLASS_TOTAL; ++cidx) {
+#if FIX_NIC_1_CLEAN_UP
+        context_ptr->md_stage_1_count[cidx] = MAX(min_nics_stage1,
+            DIVIDE_AND_ROUND(context_ptr->md_stage_1_count[cidx] * stage1_scale_num, scale_denum));
+        context_ptr->md_stage_2_count[cidx] = MAX(min_nics_stage2,
+            DIVIDE_AND_ROUND(context_ptr->md_stage_2_count[cidx] * stage2_scale_num, scale_denum));
+        context_ptr->md_stage_3_count[cidx] = MAX(min_nics_stage3,
+            DIVIDE_AND_ROUND(context_ptr->md_stage_3_count[cidx] * stage3_scale_num, scale_denum));
+#else
         context_ptr->md_stage_1_count[cidx] = MAX(min_nics,
             DIVIDE_AND_ROUND(context_ptr->md_stage_1_count[cidx] * stage1_scale_num, scale_denum));
         context_ptr->md_stage_2_count[cidx] = MAX(min_nics,
             DIVIDE_AND_ROUND(context_ptr->md_stage_2_count[cidx] * stage2_scale_num, scale_denum));
         context_ptr->md_stage_3_count[cidx] = MAX(min_nics,
             DIVIDE_AND_ROUND(context_ptr->md_stage_3_count[cidx] * stage3_scale_num, scale_denum));
+#endif
     }
 #else
     uint8_t nics_scling_level = context_ptr->nic_scaling_level;
@@ -1510,9 +1524,12 @@ void scale_nics(PictureControlSet *pcs_ptr, ModeDecisionContext *context_ptr) {
     }
 #endif
 }
-
+#if FIX_NIC_1_CLEAN_UP
+void set_md_stage_counts(PictureControlSet *pcs_ptr, ModeDecisionContext *context_ptr) {
+#else
 void set_md_stage_counts(PictureControlSet *pcs_ptr, ModeDecisionContext *context_ptr,
                          uint32_t fastCandidateTotalCount) {
+#endif
     // Step 1: derive bypass_stage1 flags
     if (context_ptr->md_staging_mode == MD_STAGING_MODE_1 ||
         context_ptr->md_staging_mode == MD_STAGING_MODE_2)
@@ -1524,7 +1541,7 @@ void set_md_stage_counts(PictureControlSet *pcs_ptr, ModeDecisionContext *contex
         memset(context_ptr->bypass_md_stage_2, EB_FALSE, CAND_CLASS_TOTAL);
     else
         memset(context_ptr->bypass_md_stage_2, EB_TRUE, CAND_CLASS_TOTAL);
-
+#if !FIX_NIC_1_CLEAN_UP
     if (context_ptr->md_staging_count_level == 0) {
         // Stage 1 Cand Count
         context_ptr->md_stage_1_count[CAND_CLASS_0] = 1;
@@ -1564,6 +1581,7 @@ void set_md_stage_counts(PictureControlSet *pcs_ptr, ModeDecisionContext *contex
         context_ptr->md_stage_3_count[CAND_CLASS_2] = is_intra ? 0 : is_ref ? 6 : 3;
         context_ptr->md_stage_3_count[CAND_CLASS_3] = is_intra ? 0 : is_ref ? 6 : 3;
     } else {
+
         // nics_level
         //  0               old settings
         //  1               settings 8
@@ -1582,6 +1600,7 @@ void set_md_stage_counts(PictureControlSet *pcs_ptr, ModeDecisionContext *contex
 
         uint8_t nics_level = NIC_C4;
         if (nics_level == NIC_C4) { // C4
+#endif
             // Step 2: set md_stage count
                 context_ptr->md_stage_1_count[CAND_CLASS_0] =
                     (pcs_ptr->slice_type == I_SLICE) ? 64 :
@@ -1625,8 +1644,9 @@ void set_md_stage_counts(PictureControlSet *pcs_ptr, ModeDecisionContext *contex
                 // no NIC setting should be done beyond this point
                 // scale nics
             scale_nics (pcs_ptr,context_ptr);
-
+#if !FIX_NIC_1_CLEAN_UP
         }
+#endif
 #if !FEATURE_MDS2
         // Set md_stage_3 NICs
 
@@ -1639,6 +1659,7 @@ void set_md_stage_counts(PictureControlSet *pcs_ptr, ModeDecisionContext *contex
         context_ptr->md_stage_3_count[CAND_CLASS_3] =
             (context_ptr->md_stage_2_count[CAND_CLASS_3] + 1) >> 1;
 #endif
+#if !FIX_NIC_1_CLEAN_UP    
     }
 
     uint8_t use_nic_1_last_stage;
@@ -1665,6 +1686,7 @@ void set_md_stage_counts(PictureControlSet *pcs_ptr, ModeDecisionContext *contex
             }
         }
     }
+#endif
     // Step 3: update count for md_stage_1 and d_stage_2 if bypassed (no NIC
     // setting should be done beyond this point)
     context_ptr->md_stage_2_count[CAND_CLASS_0] = context_ptr->bypass_md_stage_1[CAND_CLASS_0]
@@ -8414,7 +8436,11 @@ void md_encode_block(PictureControlSet *pcs_ptr, ModeDecisionContext *context_pt
     context_ptr->md_stage_3_total_count = 0;
 #if FIX_USE_MDS_CNT_INIT
     // Derive NIC(s)
+#if FIX_NIC_1_CLEAN_UP
+    set_md_stage_counts(pcs_ptr, context_ptr);
+#else
     set_md_stage_counts(pcs_ptr, context_ptr, fast_candidate_total_count);
+#endif
 #endif
     uint64_t best_md_stage_cost         = (uint64_t)~0;
     context_ptr->md_stage               = MD_STAGE_0;

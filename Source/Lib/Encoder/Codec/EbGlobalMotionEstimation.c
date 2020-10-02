@@ -333,7 +333,7 @@ void compute_global_motion(EbPictureBufferDesc *input_pic, EbPictureBufferDesc *
 
         const GlobalMotionEstimationType gm_estimation_type = GLOBAL_MOTION_FEATURE_BASED;
 #if FEATURE_GM_OPT
-        for (model = ROTZOOM; model <= (context_ptr->gm_rotzoom_model_only ? GLOBAL_TRANS_TYPES_ENC : ROTZOOM); ++model) {
+        for (model = ROTZOOM; model <= (context_ptr->gm_rotzoom_model_only ? ROTZOOM : GLOBAL_TRANS_TYPES_ENC); ++model) {
 #else
         for (model = ROTZOOM; model <= GLOBAL_TRANS_TYPES_ENC; ++model) {
 #endif

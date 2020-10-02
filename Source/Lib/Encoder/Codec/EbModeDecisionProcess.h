@@ -214,13 +214,13 @@ typedef struct RefPruningControls {
 typedef struct DepthRefinementCtrls {
     uint8_t enabled;
 
-    int64_t sub_to_current_th;     // decrease towards a more agressive level
-    int64_t parent_to_current_th;  // decrease towards a more agressive level
+    int64_t sub_to_current_th;     // decrease towards a more aggressive level
+    int64_t parent_to_current_th;  // decrease towards a more aggressive level
 #if FEATURE_COST_BASED_PRED_REFINEMENT
     uint8_t use_pred_block_cost;   // add an offset to sub_to_current_th and parent_to_current_th on the cost range of the predicted block; use default ths for high cost(s) and more aggressive TH(s) for low cost(s)
 #endif
 #if FEATURE_PD0_CUT_DEPTH
-    uint8_t disallow_below_16x16;  // cut 16x16 & lower depth(s) based on the 64x64 distortion if sb_64x64 
+    uint8_t disallow_below_16x16;  // remove 16x16 & lower depth(s) based on the 64x64 distortion if sb_64x64 
 #endif
 }DepthRefinementCtrls;
 #if PARTIAL_FREQUENCY
@@ -511,7 +511,9 @@ typedef struct ModeDecisionContext {
     MdStage md_stage;
     uint32_t     cand_buff_indices[CAND_CLASS_TOTAL][MAX_NFL_BUFF];
     uint8_t      md_staging_mode;
+#if !FIX_NIC_1_CLEAN_UP
     uint8_t      md_staging_count_level;
+#endif
     uint8_t      bypass_md_stage_1[CAND_CLASS_TOTAL];
     uint8_t bypass_md_stage_2[CAND_CLASS_TOTAL];
     uint32_t md_stage_0_count[CAND_CLASS_TOTAL];

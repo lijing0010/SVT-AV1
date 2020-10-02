@@ -387,9 +387,9 @@ EbErrorType signal_derivation_me_kernel_oq(SequenceControlSet *       scs_ptr,
         context_ptr->me_context_ptr->gm_identiy_exit = EB_TRUE;
 #if FEATURE_GM_OPT
         if (enc_mode <= ENC_M7)
-            context_ptr->me_context_ptr->gm_rotzoom_model_only = EB_TRUE;
-        else
             context_ptr->me_context_ptr->gm_rotzoom_model_only = EB_FALSE;
+        else
+            context_ptr->me_context_ptr->gm_rotzoom_model_only = EB_TRUE;
 #endif
     } else
         context_ptr->me_context_ptr->compute_global_motion = EB_FALSE;

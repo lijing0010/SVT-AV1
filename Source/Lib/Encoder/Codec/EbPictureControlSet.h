@@ -515,12 +515,12 @@ typedef struct {
 #if FEATURE_OPT_TF
 typedef struct  TfControls {
     uint8_t enabled;
-    uint8_t window_size;
-    uint8_t noise_based_window_adjust;
-    uint8_t hp;
-    uint8_t chroma;
+    uint8_t window_size;                 // 3, 5, 7
+    uint8_t noise_based_window_adjust;   // add an offset to default window_size based on the noise level; higher the noise, smaller is the offset
+    uint8_t hp;                          // w/o 1/16 pel MV refinement 
+    uint8_t chroma;                      // use chroma
 #if FEATURE_OPT_TF
-    uint64_t block_32x32_16x16_th;
+    uint64_t block_32x32_16x16_th;       // control tf_16x16 using tf_32x32 pred error
 #endif
 }TfControls;
 #endif

@@ -1967,7 +1967,7 @@ EbErrorType first_pass_signal_derivation_enc_dec_kernel(
     else
         context_ptr->md_staging_mode = MD_STAGING_MODE_1;
 
-
+#if !FIX_NIC_1_CLEAN_UP
     // Set md staging count level
     // Level 0              minimum count = 1
     // Level 1              set towards the best possible partitioning (to further optimize)
@@ -1981,7 +1981,7 @@ EbErrorType first_pass_signal_derivation_enc_dec_kernel(
     else {
         context_ptr->md_staging_count_level = 2;
     }
-
+#endif
     // Derive Spatial SSE Flag
     context_ptr->spatial_sse_full_loop_level = EB_TRUE;
 
@@ -2079,7 +2079,11 @@ EbErrorType first_pass_signal_derivation_enc_dec_kernel(
 #endif
 
 #if FEATURE_NIC_SCALING_PER_STAGE
+#if FIX_NIC_1_CLEAN_UP
+    uint8_t nic_scaling_level = 13;
+#else
     uint8_t nic_scaling_level = 12;
+#endif
     set_nic_controls(context_ptr, nic_scaling_level);
 #else
     // Each NIC scaling level corresponds to a scaling factor, given by the below {x,y}

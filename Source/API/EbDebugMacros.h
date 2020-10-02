@@ -133,6 +133,8 @@ extern "C" {
 #define FIX_TPL_TRAILING_FRAME_BUG               1 // fix bug related to ENABLE_TPL_TRAILING
 #define TUNE_TPL_OIS                             1 // move ois to inloop TPL, can be done in me kernel with scs_ptr->in_loop_ois = 0
 #define TUNE_TPL_RATE                            1 // remove  uncessary rate calculation
+
+#define FIX_NIC_1_CLEAN_UP                           1 // Code clean-up/unification; Use scale to signal all PD NIC(s) and 1 NIC @ mds3
 // END  svt-03 /////////////////////////////////////////////////////////
 
 //FOR DEBUGGING - Do not remove
