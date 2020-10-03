@@ -3769,6 +3769,17 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     else
         context_ptr->skip_search_tools_at_last_stage = (enc_mode <= ENC_M7) ? EB_FALSE : EB_TRUE;
 #endif
+#if FEATURE_MDS0_ELIMINATE_CAND
+    if (pd_pass == PD_PASS_0)
+        context_ptr->early_cand_elimination = 0;
+    else if (pd_pass == PD_PASS_1)
+        context_ptr->early_cand_elimination = 0;
+    else
+        if (pcs_ptr->slice_type == I_SLICE)
+            context_ptr->early_cand_elimination = 0;
+        else
+            context_ptr->early_cand_elimination = (enc_mode <= ENC_M7) ? 0 : 1;
+#endif
     return return_error;
 }
 /******************************************************
@@ -3950,6 +3961,7 @@ static void build_cand_block_array(SequenceControlSet *scs_ptr, PictureControlSe
                 context_ptr->md_local_blk_unit[d1_blk_idx].avail_blk_flag  = EB_FALSE;
                 context_ptr->md_blk_arr_nsq[d1_blk_idx].split_flag         = EB_TRUE;
                 context_ptr->md_local_blk_unit[d1_blk_idx].tested_blk_flag = EB_FALSE;
+                context_ptr->md_blk_arr_nsq[d1_blk_idx].part = PARTITION_SPLIT;
                 if (results_ptr->leaf_data_array[d1_blk_idx].consider_block) {
                     context_ptr->md_local_blk_unit[d1_blk_idx].left_neighbor_partition =
                         INVALID_NEIGHBOR_DATA;
@@ -3959,8 +3971,6 @@ static void build_cand_block_array(SequenceControlSet *scs_ptr, PictureControlSe
                         for (uint8_t shape_idx = 0; shape_idx < NUMBER_OF_SHAPES; shape_idx++)
                             context_ptr->md_local_blk_unit[d1_blk_idx].sse_gradian_band[shape_idx] =
                                 1;
-                    if (d1_blk_idx == 0)
-                        context_ptr->md_blk_arr_nsq[d1_blk_idx].part = PARTITION_SPLIT;
                     context_ptr->md_blk_arr_nsq[d1_blk_idx].do_not_process_block = 0;
 
                     AMdCycleRControls *adaptive_md_cycles_red_ctrls =
@@ -4838,7 +4848,7 @@ static void build_starting_cand_block_array(SequenceControlSet *scs_ptr, Picture
 
                 if (pcs_ptr->parent_pcs_ptr->sb_geom[sb_index].block_is_inside_md_scan[blk_index]) {
 
-                    #if INIT_BLOCK_OPT
+#if INIT_BLOCK_OPT
                     context_ptr->md_local_blk_unit[blk_index].avail_blk_flag = EB_FALSE;
                     context_ptr->md_local_blk_unit[blk_index].left_neighbor_partition =
                         INVALID_NEIGHBOR_DATA;

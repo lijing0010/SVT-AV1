@@ -1100,6 +1100,15 @@ void fast_loop_core(ModeDecisionCandidateBuffer *candidate_buffer, PictureContro
         }
     } else
         chroma_fast_distortion = 0;
+#if FEATURE_MDS0_ELIMINATE_CAND
+    if(context_ptr->early_cand_elimination){
+        const uint64_t distortion_cost = RDCOST(use_ssd ? full_lambda : fast_lambda, 0, luma_fast_distortion + chroma_fast_distortion);
+        if ((distortion_cost > context_ptr->mds0_best_cost) && (context_ptr->mds0_best_class == CAND_CLASS_2)) {
+            *(candidate_buffer->fast_cost_ptr) = MAX_MODE_COST;
+            return;
+        }
+    }
+#endif
     // Fast Cost
     if (context_ptr->shut_fast_rate) {
         *(candidate_buffer->fast_cost_ptr) = luma_fast_distortion + chroma_fast_distortion;
@@ -2102,6 +2111,10 @@ void md_stage_0(
     // 2nd fast loop: src-to-recon
     highest_cost_index   = candidate_buffer_start_index;
     fast_loop_cand_index = fast_candidate_end_index;
+#if FEATURE_MDS0_ELIMINATE_CAND
+    context_ptr->mds0_best_cost = (uint64_t)~0;
+    context_ptr->mds0_best_class = 0;
+#endif
     while (fast_loop_cand_index >= fast_candidate_start_index) {
         if (fast_candidate_array[fast_loop_cand_index].cand_class == context_ptr->target_class) {
             ModeDecisionCandidateBuffer *candidate_buffer =
@@ -2124,7 +2137,14 @@ void md_stage_0(
                                blk_chroma_origin_index,
                                use_ssd);
             }
-
+#if FEATURE_MDS0_ELIMINATE_CAND
+            if (context_ptr->early_cand_elimination) {
+                if (*candidate_buffer->fast_cost_ptr < context_ptr->mds0_best_cost) {
+                    context_ptr->mds0_best_cost = *candidate_buffer->fast_cost_ptr;
+                    context_ptr->mds0_best_class = fast_candidate_array[fast_loop_cand_index].cand_class;
+                }
+            }
+#endif
             // Find the buffer with the highest cost
             if (fast_loop_cand_index || scratch_buffer_pesent_flag) {
                 // max_cost is volatile to prevent the compiler from loading 0xFFFFFFFFFFFFFF
@@ -7797,7 +7817,11 @@ static void search_best_independent_uv_mode(PictureControlSet *  pcs_ptr,
         context_ptr->md_staging_skip_rdoq = tem_md_staging_skip_rdoq;
 #endif
 }
+#if FEATURE_MDS0_ELIMINATE_CAND
+void interintra_class_pruning_1(ModeDecisionContext *context_ptr, uint64_t best_md_stage_cost,uint8_t best_md_stage_pred_mode) {
+#else
 void interintra_class_pruning_1(ModeDecisionContext *context_ptr, uint64_t best_md_stage_cost) {
+#endif
     for (CandClass cand_class_it = CAND_CLASS_0; cand_class_it < CAND_CLASS_TOTAL;
          cand_class_it++) {
         if (context_ptr->md_stage_1_cand_prune_th != (uint64_t)~0 ||
@@ -7807,7 +7831,11 @@ void interintra_class_pruning_1(ModeDecisionContext *context_ptr, uint64_t best_
                 uint32_t *cand_buff_indices = context_ptr->cand_buff_indices[cand_class_it];
                 uint64_t  class_best_cost   = *(
                     context_ptr->candidate_buffer_ptr_array[cand_buff_indices[0]]->fast_cost_ptr);
-
+#if FEATURE_MDS0_ELIMINATE_CAND
+                if(context_ptr->early_cand_elimination)
+                    if (((best_md_stage_pred_mode == NEAREST_NEARESTMV || best_md_stage_pred_mode == NEAR_NEARMV)) && ((cand_class_it == CAND_CLASS_0) || (cand_class_it == CAND_CLASS_3)))
+                        context_ptr->md_stage_1_count[cand_class_it] = 0;
+#endif
                 // inter class pruning
                 if (best_md_stage_cost && class_best_cost &&
                     ((((class_best_cost - best_md_stage_cost) * 100) / best_md_stage_cost) >
@@ -8444,7 +8472,9 @@ void md_encode_block(PictureControlSet *pcs_ptr, ModeDecisionContext *context_pt
 #endif
     uint64_t best_md_stage_cost         = (uint64_t)~0;
     context_ptr->md_stage               = MD_STAGE_0;
-
+#if FEATURE_MDS0_ELIMINATE_CAND
+    uint8_t best_md_stage_pred_mode = 0;
+#endif
     for (cand_class_it = CAND_CLASS_0; cand_class_it < CAND_CLASS_TOTAL; cand_class_it++) {
         //number of next level candidates could not exceed number of curr level candidates
         context_ptr->md_stage_1_count[cand_class_it] = MIN(
@@ -8498,14 +8528,25 @@ void md_encode_block(PictureControlSet *pcs_ptr, ModeDecisionContext *context_pt
                 buffer_count_for_curr_class, //how many cand buffers to sort. one of the buffers can have max cost.
                 context_ptr->cand_buff_indices[cand_class_it]);
             uint32_t *cand_buff_indices = context_ptr->cand_buff_indices[cand_class_it];
+#if FEATURE_MDS0_ELIMINATE_CAND
+            if (*(context_ptr->candidate_buffer_ptr_array[cand_buff_indices[0]]->fast_cost_ptr) < best_md_stage_cost) {
+                best_md_stage_pred_mode = (context_ptr->candidate_buffer_ptr_array[cand_buff_indices[0]]->candidate_ptr)->pred_mode;
+                best_md_stage_cost = *(context_ptr->candidate_buffer_ptr_array[cand_buff_indices[0]]->fast_cost_ptr);
+            }
+#else
             best_md_stage_cost          = MIN(
                 (*(context_ptr->candidate_buffer_ptr_array[cand_buff_indices[0]]->fast_cost_ptr)),
                 best_md_stage_cost);
+#endif
 
             buffer_start_idx += buffer_count_for_curr_class; //for next iteration.
         }
     }
+#if FEATURE_MDS0_ELIMINATE_CAND
+    interintra_class_pruning_1(context_ptr, best_md_stage_cost,best_md_stage_pred_mode);
+#else
     interintra_class_pruning_1(context_ptr, best_md_stage_cost);
+#endif
 #if !FIX_TUNIFY_SORTING_ARRAY 
     memset(context_ptr->best_candidate_index_array, 0xFF, MAX_NFL_BUFF * sizeof(uint32_t));
     memset(context_ptr->sorted_candidate_index_array, 0xFF, MAX_NFL * sizeof(uint32_t));

@@ -2149,7 +2149,9 @@ EbErrorType first_pass_signal_derivation_enc_dec_kernel(
 
     context_ptr->mds3_intra_prune_th = (uint16_t)~0;
     context_ptr->skip_cfl_cost_dev_th = (uint16_t)~0;
-
+#if FEATURE_MDS0_ELIMINATE_CAND
+    context_ptr->early_cand_elimination = 0;
+#endif
     return return_error;
 }
 /******************************************************

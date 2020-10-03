@@ -693,6 +693,11 @@ typedef struct ModeDecisionContext {
 #if FEATURE_PD0_CUT_DEPTH
     uint16_t sb_index;
 #endif
+#if FEATURE_MDS0_ELIMINATE_CAND
+    uint8_t early_cand_elimination;
+    uint64_t mds0_best_cost;
+    uint8_t mds0_best_class;
+#endif
 } ModeDecisionContext;
 
 typedef void (*EbAv1LambdaAssignFunc)(PictureControlSet* pcs_ptr, uint32_t *fast_lambda, uint32_t *full_lambda,
