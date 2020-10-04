@@ -524,6 +524,14 @@ typedef struct  TfControls {
 #endif
 }TfControls;
 #endif
+#if FEATURE_GM_OPT // GmControls
+typedef struct  GmControls {
+    uint8_t enabled;
+    uint8_t identiy_exit;       // 0: generate GM params for both list_0 and list_1, 1: do not generate GM params for list_1 if list_0/ref_idx_0 is id
+    uint8_t rotzoom_model_only; // 0: use both rotzoom and affine models, 1:use rotzoom model only
+    uint8_t bipred_only;        // 0: test both unipred and bipred, 1: test bipred only
+} GmControls;
+#endif
 //CHKN
 // Add the concept of PictureParentControlSet which is a subset of the old PictureControlSet.
 // It actually holds only high level Picture based control data:(GOP management,when to start a picture, when to release the PCS, ....).
@@ -938,6 +946,9 @@ typedef struct PictureParentControlSet {
 #endif
 #if FEATURE_OPT_TF
     TfControls tf_ctrls;
+#endif
+#if FEATURE_GM_OPT
+    GmControls gm_ctrls;
 #endif
 } PictureParentControlSet;
 

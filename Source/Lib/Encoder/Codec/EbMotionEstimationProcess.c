@@ -339,6 +339,48 @@ void set_me_sr_adjustment_ctrls(MeContext* context_ptr, uint8_t sr_adjustment_le
         break;
     }
 }
+#if FEATURE_GM_OPT // GmControls
+/******************************************************
+* GM controls
+******************************************************/
+void set_gm_controls(PictureParentControlSet *pcs_ptr, uint8_t gm_level)
+{
+    GmControls *gm_ctrls = &pcs_ptr->gm_ctrls;
+    switch (gm_level)
+    {
+    case 0:
+        gm_ctrls->enabled = 0;
+        break;
+    case 1:
+        gm_ctrls->enabled = 1;
+        gm_ctrls->identiy_exit = 0;
+        gm_ctrls->rotzoom_model_only = 0;
+        gm_ctrls->bipred_only = 0;
+        break;
+    case 2:
+        gm_ctrls->enabled = 1;
+        gm_ctrls->identiy_exit = 1;
+        gm_ctrls->rotzoom_model_only = 0;
+        gm_ctrls->bipred_only = 0;
+        break;
+    case 3:
+        gm_ctrls->enabled = 1;
+        gm_ctrls->identiy_exit = 1;
+        gm_ctrls->rotzoom_model_only = 0;
+        gm_ctrls->bipred_only = 1;
+        break;
+    case 4:
+        gm_ctrls->enabled = 1;
+        gm_ctrls->identiy_exit = 1;
+        gm_ctrls->rotzoom_model_only = 1;
+        gm_ctrls->bipred_only = 1;
+        break;
+    default:
+        assert(0);
+        break;
+    }
+}
+#endif
 /******************************************************
 * Derive ME Settings for OQ
   Input   : encoder mode and tune
@@ -373,6 +415,20 @@ EbErrorType signal_derivation_me_kernel_oq(SequenceControlSet *       scs_ptr,
         context_ptr->me_context_ptr->me_search_method = FULL_SAD_SEARCH;
     else
         context_ptr->me_context_ptr->me_search_method = SUB_SAD_SEARCH;
+
+#if FEATURE_GM_OPT // GmControls
+    uint8_t gm_level = 0;
+    if (scs_ptr->static_config.enable_global_motion == EB_TRUE &&
+        pcs_ptr->frame_superres_enabled == EB_FALSE) {
+        if (enc_mode <= ENC_M6)
+            gm_level = 2;
+        else if (enc_mode <= ENC_M7)
+            gm_level = pcs_ptr->is_used_as_reference_flag ? 3 : 0;
+        else
+            gm_level = pcs_ptr->is_used_as_reference_flag ? 4 : 0;
+    }
+    set_gm_controls(pcs_ptr, gm_level);
+#else
     if (scs_ptr->static_config.enable_global_motion == EB_TRUE &&
         pcs_ptr->frame_superres_enabled == EB_FALSE) {
         if (enc_mode <= ENC_M6)
@@ -393,7 +449,7 @@ EbErrorType signal_derivation_me_kernel_oq(SequenceControlSet *       scs_ptr,
 #endif
     } else
         context_ptr->me_context_ptr->compute_global_motion = EB_FALSE;
-
+#endif
     // Set hme/me based reference pruning level (0-4)
     if (enc_mode <= ENC_MR)
             set_me_hme_ref_prune_ctrls(context_ptr->me_context_ptr, 0);
@@ -1055,13 +1111,22 @@ void *motion_estimation_kernel(void *input_ptr) {
             }
             // Global motion estimation
             // TODO: create an other kernel ?
+#if FEATURE_GM_OPT
+            if (pcs_ptr->gm_ctrls.enabled &&
+#else
             if (context_ptr->me_context_ptr->compute_global_motion &&
+#endif
                 // Compute only when ME of all 64x64 SBs is performed
                 pcs_ptr->me_processed_sb_count == pcs_ptr->sb_total_count) {
 #if FEATURE_INL_ME
                 if (!scs_ptr->in_loop_me)
+#if FEATURE_GM_OPT
+                    global_motion_estimation(
+                        pcs_ptr, input_picture_ptr);
+#else
                     global_motion_estimation(
                         pcs_ptr, context_ptr->me_context_ptr, input_picture_ptr);
+#endif
 #else
                 global_motion_estimation(
                     pcs_ptr, context_ptr->me_context_ptr, input_picture_ptr);
@@ -1679,12 +1744,21 @@ void *inloop_me_kernel(void *input_ptr) {
             if (task_type == 0) {
                 // Global motion estimation
                 // TODO: create an other kernel ?
+#if FEATURE_GM_OPT
+                if (ppcs_ptr->gm_ctrls.enabled &&
+#else
                 if (context_ptr->me_context_ptr->compute_global_motion &&
+#endif
                         ppcs_ptr->slice_type != I_SLICE &&
                         // Compute only when ME of all 64x64 SBs is performed
                         ppcs_ptr->me_processed_sb_count == ppcs_ptr->sb_total_count) {
+#if FEATURE_GM_OPT
+                    global_motion_estimation_inl(
+                        ppcs_ptr, input_picture_ptr);
+#else
                     global_motion_estimation_inl(
                             ppcs_ptr, context_ptr->me_context_ptr, input_picture_ptr);
+#endif
                 }
 
                 //printf("[%ld]: iME, sending to RC kernel\n",

@@ -2220,10 +2220,14 @@ void set_rdoq_controls(ModeDecisionContext *mdctxt, uint8_t rdoq_level) {
         break;
     case 1:
         rdoq_ctrls->enabled = 1;
-        rdoq_ctrls->f_mode_l_inter = 0;
-        rdoq_ctrls->f_mode_l_intra = 0;
-        rdoq_ctrls->f_mode_c_inter = 1;
-        rdoq_ctrls->f_mode_c_intra = 0;
+        rdoq_ctrls->eob_fast_l_inter = 0;
+        rdoq_ctrls->eob_fast_l_intra = 0;
+#if TUNE_CHROMA_SSIM
+        rdoq_ctrls->eob_fast_c_inter = 0;
+#else
+        rdoq_ctrls->eob_fast_c_inter = 1;
+#endif
+        rdoq_ctrls->eob_fast_c_intra = 0;
         rdoq_ctrls->fp_q_l = 1;
         rdoq_ctrls->fp_q_c = 1;
         rdoq_ctrls->satd_factor = (uint8_t)~0;
@@ -2233,10 +2237,14 @@ void set_rdoq_controls(ModeDecisionContext *mdctxt, uint8_t rdoq_level) {
         break;
     case 2:
         rdoq_ctrls->enabled = 1;
-        rdoq_ctrls->f_mode_l_inter = 0;
-        rdoq_ctrls->f_mode_l_intra = 0;
-        rdoq_ctrls->f_mode_c_inter = 1;
-        rdoq_ctrls->f_mode_c_intra = 0;
+        rdoq_ctrls->eob_fast_l_inter = 0;
+        rdoq_ctrls->eob_fast_l_intra = 0;
+#if TUNE_CHROMA_SSIM
+        rdoq_ctrls->eob_fast_c_inter = 0;
+#else
+        rdoq_ctrls->eob_fast_c_inter = 1;
+#endif
+        rdoq_ctrls->eob_fast_c_intra = 0;
         rdoq_ctrls->fp_q_l = 1;
         rdoq_ctrls->fp_q_c = 0;
         rdoq_ctrls->satd_factor = 128;
@@ -2246,10 +2254,14 @@ void set_rdoq_controls(ModeDecisionContext *mdctxt, uint8_t rdoq_level) {
         break;
     case 3:
         rdoq_ctrls->enabled = 1;
-        rdoq_ctrls->f_mode_l_inter = 0;
-        rdoq_ctrls->f_mode_l_intra = 0;
-        rdoq_ctrls->f_mode_c_inter = 1;
-        rdoq_ctrls->f_mode_c_intra = 0;
+        rdoq_ctrls->eob_fast_l_inter = 0;
+        rdoq_ctrls->eob_fast_l_intra = 0;
+#if TUNE_CHROMA_SSIM
+        rdoq_ctrls->eob_fast_c_inter = 0;
+#else
+        rdoq_ctrls->eob_fast_c_inter = 1;
+#endif
+        rdoq_ctrls->eob_fast_c_intra = 0;
         rdoq_ctrls->fp_q_l = 1;
         rdoq_ctrls->fp_q_c = 0;
         rdoq_ctrls->satd_factor = 64;
@@ -2899,7 +2911,14 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
          // Update nsq settings based on the sb_class
          context_ptr->md_disallow_nsq = pcs_ptr->parent_pcs_ptr->disallow_nsq;
 
-
+#if FEATURE_GM_OPT // GM ctrls
+     if (pd_pass == PD_PASS_0)
+         context_ptr->global_mv_injection = 0;
+     else if (pd_pass == PD_PASS_1)
+         context_ptr->global_mv_injection = 0;
+     else
+         context_ptr->global_mv_injection = pcs_ptr->parent_pcs_ptr->gm_ctrls.enabled;
+#else
     // Set global MV injection
     // Level                Settings
     // 0                    Injection off
@@ -2928,7 +2947,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     }
     else
         context_ptr->global_mv_injection = 0;
-
+#endif
     if (pd_pass == PD_PASS_0)
         context_ptr->new_nearest_injection = 0;
     else if (pd_pass == PD_PASS_1)
@@ -5146,9 +5165,6 @@ void *mode_decision_kernel(void *input_ptr) {
                             pcs_ptr->slice_type == I_SLICE,
                             &pcs_ptr->ec_ctx_array[sb_index]);
                         // Initial Rate Estimation of the Motion vectors
-#if FIX_SKIP_MV_RATE_UPD_IF_NOT_I_NSC
-                        if (pcs_ptr->parent_pcs_ptr->sc_content_detected || pcs_ptr->slice_type == B_SLICE)
-#endif
 #if TUNE_CDF
                         if (pcs_ptr->cdf_ctrl.update_mv)
 #endif

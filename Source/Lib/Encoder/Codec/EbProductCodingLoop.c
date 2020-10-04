@@ -641,7 +641,7 @@ void md_update_all_neighbour_arrays(PictureControlSet *pcs_ptr, ModeDecisionCont
         mode_decision_update_neighbor_arrays(
             pcs_ptr, context_ptr, last_blk_index_mds);
 #if FEATURE_PD0_SHUT_SKIP_DC_SIGN_UPDATE
-        if (!context_ptr->shut_skip_ctx_dc_sign_update)
+        if (!context_ptr->shut_fast_rate || !context_ptr->shut_skip_ctx_dc_sign_update)
 #endif
         update_mi_map(context_ptr,
                       context_ptr->blk_ptr,

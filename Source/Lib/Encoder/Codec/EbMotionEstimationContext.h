@@ -363,7 +363,9 @@ typedef struct MeContext {
     EbBool enable_hme_level0_flag;
     EbBool enable_hme_level1_flag;
     EbBool enable_hme_level2_flag;
+#if !FEATURE_GM_OPT // GmControls
     EbBool compute_global_motion;
+#endif
     MeHmeRefPruneCtrls me_hme_prune_ctrls;
     MeSrCtrls me_sr_adjustment_ctrls;
     uint8_t max_hme_sr_area_multipler;
@@ -406,10 +408,12 @@ typedef struct MeContext {
     int16_t adjust_hme_l1_factor[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     int16_t adjust_hme_l2_factor[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     int16_t hme_factor;
+#if !FEATURE_GM_OPT // GmControls
     //exit gm search if first reference detection is identity
     uint8_t gm_identiy_exit;
 #if FEATURE_GM_OPT
     uint8_t gm_rotzoom_model_only;
+#endif
 #endif
     // ------- Context for Alt-Ref ME ------
     uint16_t adj_search_area_width;

@@ -1208,8 +1208,16 @@ void eb_av1_optimize_b(ModeDecisionContext *md_context, int16_t txb_skip_context
     (void)sc;
     (void)qparam;
     int                    sharpness       = 0; // No Sharpness
+#if FEATURE_OPT_RDOQ
+    int fast_mode =
+        (md_context->rdoq_ctrls.eob_fast_l_inter && !is_inter && !plane) ||
+        (md_context->rdoq_ctrls.eob_fast_l_intra && !is_inter && !plane) ||
+        (md_context->rdoq_ctrls.eob_fast_c_inter &&  is_inter &&  plane) ||
+        (md_context->rdoq_ctrls.eob_fast_c_intra &&  is_inter &&  plane) ? 1 : 0;
+#else
     // Perform a fast RDOQ stage for inter and chroma blocks
     int                    fast_mode       = (is_inter && plane);
+#endif
     const ScanOrder *const scan_order      = &av1_scan_orders[tx_size][tx_type];
     const int16_t *        scan            = scan_order->scan;
 #if RDOQ_OPT

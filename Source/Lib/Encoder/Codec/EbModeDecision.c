@@ -3812,8 +3812,8 @@ void inject_global_candidates(const SequenceControlSet *  scs_ptr,
         //single ref/list
         if (rf[1] == NONE_FRAME) {
 #if FEATURE_GM_OPT
-            // Level 2 skips unipred injection for GM cands
-            if (context_ptr->global_mv_injection >= 2)
+            // skips unipred injection for GM cands
+            if (pcs_ptr->parent_pcs_ptr->gm_ctrls.bipred_only)
                 continue;
 #endif
             MvReferenceFrame frame_type = rf[0];

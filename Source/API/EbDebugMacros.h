@@ -107,7 +107,6 @@ extern "C" {
 #define FIX_REMOVE_UNUSED_CODE                       1 // Remove unused code
 #define FIX_BYPASS_USELESS_OPERATIONS                1 // Bypass useless operations when fast rate is OFF
 #define FIX_USE_MDS_CNT_INIT                         1 // Use the actual number of candidates @ the init of cand_buff_indices
-#define FIX_SKIP_MV_RATE_UPD_IF_NOT_I_NSC            1 // Skip av1_estimate_mv_rate() if I_SLICE and not SC
 #define FIX_MOVE_PME_RES_INIT_UNDER_PME              1 // Bypass useless pme_res init
 #define FIX_REMOVE_MD_SKIP_COEFF_CIRCUITERY          1 // Remove MD skip_coeff_context circuitery
 #define FIX_REMOVE_MVP_MEMSET                        1 // Remove MVP generation useless memset()
@@ -141,7 +140,7 @@ extern "C" {
 
 //FOR DEBUGGING - Do not remove
 #define NO_ENCDEC         0 // bypass encDec to test cmpliance of MD. complained achieved when skip_flag is OFF. Port sample code from VCI-SW_AV1_Candidate1 branch
-
+#define TUNE_CHROMA_SSIM  0 // Enable better Chroma/SSIM
 #ifdef __cplusplus
 }
 #endif // __cplusplus

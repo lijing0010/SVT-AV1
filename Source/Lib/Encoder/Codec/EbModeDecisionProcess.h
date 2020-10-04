@@ -290,13 +290,13 @@ typedef struct CoeffBSwMdCtrls {
 typedef struct RdoqCtrls {
     uint8_t enabled;
 
-    uint8_t f_mode_l_inter; // 0: use default rdoq for luma inter; 1: fast mode on for luma inter
-    uint8_t f_mode_l_intra; // 0: use default rdoq for luma intra; 1: fast mode on for luma intra
-    uint8_t f_mode_c_inter; // 0: use default rdoq for chroma inter; 1: fast mode on for chroma inter
-    uint8_t f_mode_c_intra; // 0: use default rdoq for chroma intra; 1: fast mode on for chroma intra
-    uint8_t fp_q_l;         // 0: use default quant for luma; 1: use fp_quant for luma
-    uint8_t fp_q_c;         // 0: use default quant for chroma; 1: use fp_quant for chroma
-    uint8_t satd_factor;    // do not perform rdoq if the tx satd > satd_factor
+    uint8_t eob_fast_l_inter; // 0: do not use eob_fast  for luma inter; 1:  use eob_fast  for luma inter  
+    uint8_t eob_fast_l_intra; // 0: do not use eob_fast  for luma intra; 1:  use eob_fast  for luma intra  
+    uint8_t eob_fast_c_inter; // 0: do not use eob_fast  for chroma inter; 1:  use eob_fast  for chroma inter
+    uint8_t eob_fast_c_intra; // 0: do not use eob_fast  for chroma intra; 1:  use eob_fast  for chroma intra
+    uint8_t fp_q_l;           // 0: use default quant for luma; 1: use fp_quant for luma
+    uint8_t fp_q_c;           // 0: use default quant for chroma; 1: use fp_quant for chroma
+    uint8_t satd_factor;      // do not perform rdoq if the tx satd > satd_factor
 #if RDOQ_OPT2
     uint8_t early_exit;
 #endif
