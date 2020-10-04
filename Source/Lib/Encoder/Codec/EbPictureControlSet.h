@@ -920,7 +920,14 @@ typedef struct PictureParentControlSet {
     uint8_t pd_window_count;
 #endif
 #if ENABLE_TPL_TRAILING
+    // For TPL, in addition to frames in the minigop size, we might process extra frames from the next minigop. These frames are
+    // called trailing frames. Trailing frames are available because of TF and their minigop is not determined yet. As a result,
+    // when used in RC there is a risk of race condition to access the PCS data. To prevent the problem, TplData should be used instead of PCS.
     uint8_t tpl_trailing_frame_count;
+#endif
+#if TUNE_TPL_TOWARD_CHROMA
+    // Tune TPL for better chroma.Only for 240P
+    uint8_t tune_tpl_for_chroma;
 #endif
 #if FIX_LAD_DEADLOCK
     uint8_t is_next_frame_intra;

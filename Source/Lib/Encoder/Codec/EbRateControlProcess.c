@@ -5908,7 +5908,11 @@ static int cqp_qindex_calc_tpl_la(PictureControlSet *pcs_ptr, RATE_CONTROL *rc, 
         // Allow somewhat lower kf minq with small image formats.
         if (pcs_ptr->parent_pcs_ptr->input_resolution == INPUT_SIZE_240p_RANGE)
 #if TUNE_QPS_QPM
+#if TUNE_TPL_TOWARD_CHROMA
+            q_adj_factor -= (pcs_ptr->parent_pcs_ptr->tune_tpl_for_chroma) ? 0.2 : 0.15;
+#else
             q_adj_factor -= 0.2;
+#endif
 #else
             q_adj_factor -= 0.15;
 #endif
@@ -6482,7 +6486,11 @@ static void get_intra_q_and_bounds(PictureControlSet *pcs_ptr,
         // Allow somewhat lower kf minq with small image formats.
         if (pcs_ptr->parent_pcs_ptr->input_resolution <= INPUT_SIZE_240p_RANGE)
 #if TUNE_QPS_QPM
+#if TUNE_TPL_TOWARD_CHROMA
+            q_adj_factor -= (pcs_ptr->parent_pcs_ptr->tune_tpl_for_chroma) ? 0.2 : 0.15;
+#else
             q_adj_factor -= 0.2;
+#endif
 #else
             q_adj_factor -= 0.15;
 #endif

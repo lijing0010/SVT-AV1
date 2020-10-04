@@ -552,7 +552,8 @@ EbErrorType load_default_buffer_configuration_settings(
         else if (scs_ptr->static_config.enable_tpl_la)
 #if TUNE_INL_TPL_ENHANCEMENT
 #if ENABLE_TPL_TRAILING
-        min_me = mg_size + 1 + SCD_LAD;
+            // For TPL, in addition to frames in the minigop size, we might have upto SCD_LAD trailing frames. min_me is increaseed accordingly
+            min_me = mg_size + 1 + SCD_LAD;
 #else
             //Now we only use minigop size for TPL, if enabled trailing frames, need to increase min_me accordingly
         min_me = mg_size + 1;

@@ -136,6 +136,7 @@ extern "C" {
 
 #define FIX_NIC_1_CLEAN_UP                           1 // Code clean-up/unification; Use scale to signal all PD NIC(s) and 1 NIC @ mds3
 #define FEATURE_MDS0_ELIMINATE_CAND                  1 // Eliminate candidates based on the estimated cost of the distortion in mds0.
+#define TUNE_TPL_TOWARD_CHROMA                       1 //Tune TPL for better chroma. Only for 240P
 // END  svt-03 /////////////////////////////////////////////////////////
 
 //FOR DEBUGGING - Do not remove
