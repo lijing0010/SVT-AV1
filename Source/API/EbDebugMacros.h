@@ -95,7 +95,7 @@ extern "C" {
 #define INIT_BLOCK_OPT                           1 // optimize block initialization
 #define BYPASS_SIGNAL_SET                        1 // bypass block based signal derivation for fastest preset when superfluous
 #define ME_IDX_LUPT                              1 // get index using lookuptable
-#define REFACTOR_MD_BLOCK_LOOP                   1 // Refactor the loop that iterates over all blocks at MD
+#define REFACTOR_MD_BLOCK_LOOP                   0 // Refactor the loop that iterates over all blocks at MD
 #define FEATURE_INTER_INTRA_LEVELS               1 // Cleanup and modify inter-intra levels
 #define TUNE_QPS_QPM       1 // Improve the QPS settings for Keyframe. Improve QPM for nonI base frames
 #define TUNE_CDEF_FILTER                         1 // Added new fast search for CDEF
@@ -136,6 +136,7 @@ extern "C" {
 #define FIX_NIC_1_CLEAN_UP                           1 // Code clean-up/unification; Use scale to signal all PD NIC(s) and 1 NIC @ mds3
 #define FEATURE_MDS0_ELIMINATE_CAND                  1 // Eliminate candidates based on the estimated cost of the distortion in mds0.
 #define TUNE_TPL_TOWARD_CHROMA                       1 //Tune TPL for better chroma. Only for 240P
+#define TUNE_NEW_PRESETS                             1 // Preset tuning for M0-M7
 // END  svt-03 /////////////////////////////////////////////////////////
 
 //FOR DEBUGGING - Do not remove
