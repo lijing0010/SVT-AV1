@@ -1173,6 +1173,7 @@ EbErrorType signal_derivation_multi_processes_oq(
 
     pcs_ptr->tpl_trailing_frame_count = MIN(pcs_ptr->tpl_trailing_frame_count, SCD_LAD);
 #endif
+
 #if TUNE_TPL_TOWARD_CHROMA
     // Tune TPL for better chroma.Only for 240P. 0 is OFF
 #if TUNE_CHROMA_SSIM
@@ -1180,11 +1181,6 @@ EbErrorType signal_derivation_multi_processes_oq(
 #else
     pcs_ptr->tune_tpl_for_chroma = 0;
 #endif
-#endif
-#if BYPASS_SIGNAL_SET
-    // This flag to idenfy the fastest preset so the switch md preset
-    // can be disabled for this preset because it is useless.
-       pcs_ptr->fastest_preset = ENC_M8;
 #endif
     return return_error;
 }

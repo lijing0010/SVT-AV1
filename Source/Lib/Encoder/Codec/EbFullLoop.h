@@ -16,7 +16,7 @@
 #include "EbCommonUtils.h"
 #include "EbInvTransforms.h"
 #include "EbTransforms.h"
-#if RDOQ_OPT
+#if FEATURE_RDOQ_OPT
 #include "EbDefinitions.h"
 #endif
 #ifdef __cplusplus
@@ -72,7 +72,7 @@ extern void compute_depth_costs_md_skip(ModeDecisionContext *context_ptr,
                                         uint64_t *curr_depth_cost);
 uint64_t    d1_non_square_block_decision(ModeDecisionContext *context_ptr, uint32_t d1_block_itr);
 
-#if RDOQ_OPT
+#if FEATURE_RDOQ_OPT
 static const int av1_get_tx_scale_tab[TX_SIZES_ALL] = {
     0, 0, 0, 1, 2, 0, 0, 0, 0, 1, 1, 2, 2, 0, 0, 0, 0, 1, 1};
 

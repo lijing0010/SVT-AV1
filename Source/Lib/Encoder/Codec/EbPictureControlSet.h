@@ -941,9 +941,6 @@ typedef struct PictureParentControlSet {
     uint8_t is_next_frame_intra;
 #endif
 #endif
-#if BYPASS_SIGNAL_SET
-    uint8_t fastest_preset;
-#endif
 #if FEATURE_OPT_TF
     TfControls tf_ctrls;
 #endif

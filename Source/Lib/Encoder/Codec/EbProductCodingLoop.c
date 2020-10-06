@@ -2331,6 +2331,7 @@ void derive_me_offsets(const SequenceControlSet *scs_ptr, PictureControlSet *pcs
             me_idx_128x128[((context_ptr->geom_offset_y / me_sb_size) * 2) +
                            (context_ptr->geom_offset_x / me_sb_size)]
                           [context_ptr->blk_geom->blkidx_mds];
+        assert(context_ptr->me_block_offset != (uint32_t)(-1));
     } else {
         context_ptr->me_sb_addr      = context_ptr->sb_ptr->index;
         context_ptr->me_block_offset = me_idx[context_ptr->blk_geom->blkidx_mds];
@@ -5238,7 +5239,7 @@ void tx_type_search(PictureControlSet *pcs_ptr, ModeDecisionContext *context_ptr
             txb_full_distortion_txt[tx_type][DIST_CALC_RESIDUAL] += context_ptr->three_quad_energy;
             txb_full_distortion_txt[tx_type][DIST_CALC_PREDICTION] += context_ptr->three_quad_energy;
             //assert(context_ptr->three_quad_energy == 0 && context_ptr->cu_stats->size < 64);
-#if RDOQ_OPT
+#if FEATURE_RDOQ_OPT
             const int32_t shift =
                 (MAX_TX_SCALE -
                  av1_get_tx_scale_tab[context_ptr->blk_geom
@@ -7066,18 +7067,31 @@ static void md_stage_3(PictureControlSet *pcs_ptr, SuperBlock *sb_ptr, BlkStruct
     scs_ptr = (SequenceControlSet *)pcs_ptr->scs_wrapper_ptr->object_ptr;
 #endif
 
+
+
     for (uint32_t full_loop_candidate_index = 0;
          full_loop_candidate_index < fullCandidateTotalCount;
          ++full_loop_candidate_index) {
         uint32_t cand_index = context_ptr->best_candidate_index_array[full_loop_candidate_index];
         ModeDecisionCandidateBuffer *candidate_buffer = candidate_buffer_ptr_array[cand_index];
         ModeDecisionCandidate *      candidate_ptr    = candidate_buffer->candidate_ptr;
+#if FEATURE_RDOQ_OPT
+        uint32_t  reduce_prec =   context_ptr->use_prev_mds_res &&
+            (!context_ptr->bypass_md_stage_1[candidate_ptr->cand_class] ||
+             !context_ptr->bypass_md_stage_2[candidate_ptr->cand_class]) &&
+                        (!candidate_buffer->candidate_ptr->block_has_coeff);
+#endif
 
         // Set MD Staging full_loop_core settings
         context_ptr->md_staging_perform_inter_pred = context_ptr->md_staging_mode !=
             MD_STAGING_MODE_0;
+#if FEATURE_RDOQ_OPT
+        context_ptr->md_staging_skip_interpolation_search = reduce_prec
+            ? 0 : ((context_ptr->interpolation_search_level == IFS_MDS3) ? EB_FALSE : EB_TRUE);
+#else
         context_ptr->md_staging_skip_interpolation_search =
             (context_ptr->interpolation_search_level == IFS_MDS3) ? EB_FALSE : EB_TRUE;
+#endif
         context_ptr->md_staging_skip_chroma_pred = EB_FALSE;
 #if FEATURE_MDS2 //-----
         if (context_ptr->md_staging_tx_size_level)
@@ -7089,12 +7103,20 @@ static void md_stage_3(PictureControlSet *pcs_ptr, SuperBlock *sb_ptr, BlkStruct
             context_ptr->md_staging_tx_size_mode = candidate_ptr->cand_class == CAND_CLASS_0 ||
                 candidate_ptr->cand_class == CAND_CLASS_3;
 #if TUNE_TX_TYPE_LEVELS
+#if FEATURE_RDOQ_OPT
+        context_ptr->md_staging_txt_level = reduce_prec ? 0 : context_ptr->txt_ctrls.enabled;
+#else
         context_ptr->md_staging_txt_level = context_ptr->txt_ctrls.enabled;
+#endif
 #else
         context_ptr->md_staging_tx_search = 1;
 #endif
-        context_ptr->md_staging_skip_full_chroma          = EB_FALSE;
-        context_ptr->md_staging_skip_rdoq                 = EB_FALSE;
+        context_ptr->md_staging_skip_full_chroma = EB_FALSE;
+#if FEATURE_RDOQ_OPT
+        context_ptr->md_staging_skip_rdoq = reduce_prec ? EB_TRUE : EB_FALSE;
+#else
+        context_ptr->md_staging_skip_rdoq = EB_FALSE;
+#endif
 
 #if !TUNE_TX_TYPE_LEVELS
         if (scs_ptr->static_config.spatial_sse_full_loop_level != DEFAULT && context_ptr->pd_pass == PD_PASS_2)
@@ -7106,16 +7128,7 @@ static void md_stage_3(PictureControlSet *pcs_ptr, SuperBlock *sb_ptr, BlkStruct
         context_ptr->md_staging_perform_intra_chroma_pred = EB_TRUE;
         if (context_ptr->chroma_at_last_md_stage)
             update_intra_chroma_mode(context_ptr, candidate_ptr, pcs_ptr);
-#if RDOQ_OPT5
-        if (context_ptr->skip_search_tools_at_last_stage) {
-            if (!candidate_buffer->candidate_ptr->block_has_coeff &&
-                !pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag) {
-                context_ptr->md_staging_skip_rdoq                 = EB_TRUE;
-                context_ptr->md_staging_txt_level                 = 0;
-                context_ptr->md_staging_skip_interpolation_search = 0;
-            }
-        }
-#endif
+
         full_loop_core(pcs_ptr,
                        sb_ptr,
                        blk_ptr,
@@ -7391,11 +7404,7 @@ EbErrorType signal_derivation_block(PictureControlSet *pcs,
 
     EbEncMode enc_mode;
     if (mode_offset)
-#if BYPASS_SIGNAL_SET
-        enc_mode = MIN(pcs->parent_pcs_ptr->fastest_preset, pcs->parent_pcs_ptr->enc_mode + mode_offset);
-#else
         enc_mode = MIN(ENC_M8, pcs->parent_pcs_ptr->enc_mode + mode_offset);
-#endif
     else
         enc_mode = pcs->parent_pcs_ptr->enc_mode;
 #endif
@@ -9174,15 +9183,7 @@ uint8_t update_md_settings_based_on_sq_coeff(SequenceControlSet *scs_ptr, Pictur
             if (coeffb_sw_md_ctrls->skip_block) {
                 zero_sq_coeff_skip_action = 1;
             }
-#if FEATURE_REMOVE_CIRCULAR
             else {
-#else
-#if BYPASS_SIGNAL_SET
-            else if (pcs_ptr->parent_pcs_ptr->enc_mode < pcs_ptr->parent_pcs_ptr->fastest_preset) {
-#else
-            else {
-#endif
-#endif
 #if FEATURE_REMOVE_CIRCULAR
                 udpate_md_settings(context_ptr, coeffb_sw_md_ctrls->non_skip_level);
                 // Turn off TXT search because if have zero coeffs tx_type must be DCT_DCT, and if SQ has zero coeffs,
@@ -9997,9 +9998,6 @@ EB_EXTERN EbErrorType mode_decision_sb(SequenceControlSet *scs_ptr, PictureContr
             signal_derivation_enc_dec_kernel_oq(scs_ptr, pcs_ptr, context_ptr);
             signal_derivation_block(pcs_ptr, context_ptr);
 #else
-#if BYPASS_SIGNAL_SET
-        if (pcs_ptr->parent_pcs_ptr->enc_mode < pcs_ptr->parent_pcs_ptr->fastest_preset)
-#endif
         signal_derivation_enc_dec_kernel_oq(scs_ptr, pcs_ptr, context_ptr,0);
         signal_derivation_block(pcs_ptr, context_ptr,0);
 #endif
@@ -10012,9 +10010,6 @@ EB_EXTERN EbErrorType mode_decision_sb(SequenceControlSet *scs_ptr, PictureContr
         uint8_t zero_sq_coeff_skip_action = update_md_settings_based_on_sq_coeff(context_ptr);
 #else
         // Use more aggressive (faster, but less accurate) settigns for unlikely paritions (incl. SQ)
-#if BYPASS_SIGNAL_SET
-            if (pcs_ptr->parent_pcs_ptr->enc_mode < pcs_ptr->parent_pcs_ptr->fastest_preset)
-#endif
         update_md_settings_based_on_stats(scs_ptr, pcs_ptr, context_ptr,
             context_ptr->md_local_blk_unit[blk_idx_mds].pred_depth_refinement);
         // If SQ block has zero coeffs, use more aggressive settings (or skip) for NSQ blocks

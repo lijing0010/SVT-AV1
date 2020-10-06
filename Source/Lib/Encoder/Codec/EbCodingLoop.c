@@ -26,7 +26,7 @@
 #include "EbEncIntraPrediction.h"
 #include "aom_dsp_rtcd.h"
 #include "EbMdRateEstimation.h"
-#if RDOQ_OPT
+#if FEATURE_RDOQ_OPT
 #include "EbFullLoop.h"
 #endif
 void av1_set_ref_frame(MvReferenceFrame *rf, int8_t ref_frame_type);
@@ -3147,7 +3147,7 @@ EB_EXTERN void av1_encode_decode(SequenceControlSet *scs_ptr, PictureControlSet 
                                     COMPONENT_LUMA);
                                 TxSize tx_size =
                                     blk_geom->txsize[blk_ptr->tx_depth][context_ptr->txb_itr];
-#if RDOQ_OPT
+#if FEATURE_RDOQ_OPT
                                 int32_t shift = (MAX_TX_SCALE - av1_get_tx_scale_tab[tx_size]) * 2;
 #else
                                 int32_t shift = (MAX_TX_SCALE - av1_get_tx_scale(tx_size)) * 2;

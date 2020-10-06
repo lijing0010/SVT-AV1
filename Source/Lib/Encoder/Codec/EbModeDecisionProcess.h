@@ -297,8 +297,8 @@ typedef struct RdoqCtrls {
     uint8_t fp_q_l;           // 0: use default quant for luma; 1: use fp_quant for luma
     uint8_t fp_q_c;           // 0: use default quant for chroma; 1: use fp_quant for chroma
     uint8_t satd_factor;      // do not perform rdoq if the tx satd > satd_factor
-#if RDOQ_OPT2
-    uint8_t early_exit;
+#if FEATURE_RDOQ_OPT
+    uint8_t early_exit_th;     // do not perform rdoq based on an early skip/non-skip cost, threshold for early exit is 5
 #endif
 }RdoqCtrls;
 #endif
@@ -687,8 +687,8 @@ typedef struct ModeDecisionContext {
 #if FEATURE_OPT_IFS
     uint8_t ifs_is_regular_last; // If regular is last performed interp_filters @ IFS
 #endif
-#if RDOQ_OPT5
-    uint8_t skip_search_tools_at_last_stage;
+#if FEATURE_RDOQ_OPT
+    uint8_t use_prev_mds_res;
 #endif
 #if FEATURE_PD0_CUT_DEPTH
     uint16_t sb_index;

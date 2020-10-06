@@ -12,7 +12,7 @@
 #include "EncodeTxbRef_C.h"
 #include "EbCommonUtils.h"
 #include "EbCoefficients.h"
-#if RDOQ_OPT
+#if FEATURE_RDOQ_OPT
 #include "EbFullLoop.h"
 #endif
 /*
@@ -423,7 +423,7 @@ static INLINE int get_nz_map_ctx(const uint8_t* const levels, const int coeff_id
 void eb_av1_get_nz_map_contexts_c(const uint8_t* const levels, const int16_t* const scan,
                                   const uint16_t eob, const TxSize tx_size, const TxClass tx_class,
                                   int8_t* const coeff_contexts) {
-#if RDOQ_OPT
+#if FEATURE_RDOQ_OPT
     const int bwl    = get_txb_bwl_tab[tx_size];
     const int height = get_txb_high_tab[tx_size];
 #else

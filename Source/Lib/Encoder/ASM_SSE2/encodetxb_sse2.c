@@ -15,7 +15,7 @@
 #include "EbDefinitions.h"
 #include "EbCabacContextModel.h"
 #include "EbCommonUtils.h"
-#if RDOQ_OPT
+#if FEATURE_RDOQ_OPT
 #include "EbFullLoop.h"
 #endif
 
@@ -530,7 +530,7 @@ void eb_av1_get_nz_map_contexts_sse2(const uint8_t *const levels, const int16_t 
         }
     }
 
-#if RDOQ_OPT
+#if FEATURE_RDOQ_OPT
     const int32_t bwl = get_txb_bwl_tab[tx_size];
 #else
     const int32_t bwl = get_txb_bwl(tx_size);

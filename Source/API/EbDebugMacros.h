@@ -93,7 +93,6 @@ extern "C" {
 #define TUNE_INIT_FAST_LOOP_OPT                  0 // Fast loop optimizations
 #define TUNE_REMOVE_UNUSED_NEIG_ARRAY            1 // Removes unused neighbor array
 #define INIT_BLOCK_OPT                           1 // optimize block initialization
-#define BYPASS_SIGNAL_SET                        1 // bypass block based signal derivation for fastest preset when superfluous
 #define ME_IDX_LUPT                              1 // get index using lookuptable
 #define REFACTOR_MD_BLOCK_LOOP                   0 // Refactor the loop that iterates over all blocks at MD
 #define FEATURE_INTER_INTRA_LEVELS               1 // Cleanup and modify inter-intra levels
@@ -124,9 +123,7 @@ extern "C" {
 #define FEATURE_GM_OPT                               1 // GM @ REF, bipred only, rotzoom model omly
 #define TUNE_HME_ME_TUNING                           1 // HME/ME:HME_L1=8x3 instead of 16x16, HME_L2=8x3 instead of 16x16, MAX_ME=64x32 instead 64x64
 
-#define RDOQ_OPT                                 1 // lossless
-#define RDOQ_OPT2                                1 // early exit rdo
-#define RDOQ_OPT5                                1 // disable last md search tools (rdoq, txtype seach, interpolation search)
+#define FEATURE_RDOQ_OPT                             1 // lossless, early exit rdo, disables last md search tools (rdoq, txtype search, interpolation search)
 #define DC_ONLY_AT_NON_REF                       1 // use only intra dc at no reference frame
 #define TUNE_PALETTE_LEVEL                       1 // palette level will only be 6 for temporal layer == 0, not encode preset <=M3
 #define FIX_TPL_TRAILING_FRAME_BUG               1 // fix bug related to ENABLE_TPL_TRAILING

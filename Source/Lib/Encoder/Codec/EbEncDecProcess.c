@@ -2231,8 +2231,8 @@ void set_rdoq_controls(ModeDecisionContext *mdctxt, uint8_t rdoq_level) {
         rdoq_ctrls->fp_q_l = 1;
         rdoq_ctrls->fp_q_c = 1;
         rdoq_ctrls->satd_factor = (uint8_t)~0;
-#if RDOQ_OPT2
-        rdoq_ctrls->early_exit = 0;
+#if FEATURE_RDOQ_OPT
+        rdoq_ctrls->early_exit_th = 0;
 #endif
         break;
     case 2:
@@ -2248,8 +2248,8 @@ void set_rdoq_controls(ModeDecisionContext *mdctxt, uint8_t rdoq_level) {
         rdoq_ctrls->fp_q_l = 1;
         rdoq_ctrls->fp_q_c = 0;
         rdoq_ctrls->satd_factor = 128;
-#if RDOQ_OPT2
-        rdoq_ctrls->early_exit = 1;
+#if FEATURE_RDOQ_OPT
+        rdoq_ctrls->early_exit_th = 5;
 #endif
         break;
     case 3:
@@ -2265,8 +2265,8 @@ void set_rdoq_controls(ModeDecisionContext *mdctxt, uint8_t rdoq_level) {
         rdoq_ctrls->fp_q_l = 1;
         rdoq_ctrls->fp_q_c = 0;
         rdoq_ctrls->satd_factor = 64;
-#if RDOQ_OPT2
-        rdoq_ctrls->early_exit = 1;
+#if FEATURE_RDOQ_OPT
+        rdoq_ctrls->early_exit_th = 5;
 #endif
         break;
     default: assert(0); break;
@@ -2751,11 +2751,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     EbErrorType return_error = EB_ErrorNone;
     EbEncMode enc_mode;
     if (mode_offset)
-#if BYPASS_SIGNAL_SET
-        enc_mode = MIN(pcs_ptr->parent_pcs_ptr->fastest_preset, pcs_ptr->enc_mode + mode_offset);
-#else
         enc_mode = MIN(ENC_M8, pcs_ptr->enc_mode + mode_offset);
-#endif
     else
         enc_mode = pcs_ptr->enc_mode;
 #endif
@@ -3931,16 +3927,21 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     else
         context_ptr->mds3_intra_prune_th = 30;
 
-#if RDOQ_OPT5
+#if FEATURE_RDOQ_OPT
     if (pd_pass == PD_PASS_0)
-        context_ptr->skip_search_tools_at_last_stage = EB_FALSE;
+        context_ptr->use_prev_mds_res = EB_FALSE;
     else if (pd_pass == PD_PASS_1)
-        context_ptr->skip_search_tools_at_last_stage = EB_FALSE;
+        context_ptr->use_prev_mds_res = EB_FALSE;
     else
+
 #if TUNE_NEW_PRESETS
-        context_ptr->skip_search_tools_at_last_stage = (enc_mode <= ENC_M5) ? EB_FALSE : EB_TRUE;
+    context_ptr->use_prev_mds_res =
+            (enc_mode <= ENC_M5 || pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag) ? EB_FALSE
+                                                                                       : EB_TRUE;
 #else
-        context_ptr->skip_search_tools_at_last_stage = (enc_mode <= ENC_M7) ? EB_FALSE : EB_TRUE;
+        context_ptr->use_prev_mds_res =
+            (enc_mode <= ENC_M7 || pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag) ? EB_FALSE
+                                                                                       : EB_TRUE;
 #endif
 #endif
 #if FEATURE_MDS0_ELIMINATE_CAND
