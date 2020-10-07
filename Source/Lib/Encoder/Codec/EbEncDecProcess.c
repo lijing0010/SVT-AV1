@@ -4091,6 +4091,48 @@ static void set_child_to_be_considered(PictureControlSet *pcs_ptr, ModeDecisionC
             set_child_to_be_considered(pcs_ptr, context_ptr, results_ptr, child_block_idx_4, sb_index, sb_size, pred_depth, pred_sq_idx , depth_step > 1 ? depth_step - 1 : 1);
     }
 }
+
+#if INIT_BLOCK_OPT
+INLINE void init_allowed_blocks(MdcSbData *results_ptr, ModeDecisionContext *context_ptr,
+                                uint32_t blk_index, uint32_t tot_d1_blocks) {
+    for (uint32_t d1_block_idx = 0; d1_block_idx < tot_d1_blocks; d1_block_idx++) {
+        uint32_t d1_blk_idx                                        = blk_index + d1_block_idx;
+        context_ptr->md_local_blk_unit[d1_blk_idx].avail_blk_flag  = EB_FALSE;
+        context_ptr->md_blk_arr_nsq[d1_blk_idx].split_flag         = EB_TRUE;
+        context_ptr->md_local_blk_unit[d1_blk_idx].tested_blk_flag = EB_FALSE;
+        context_ptr->md_blk_arr_nsq[d1_blk_idx].part               = PARTITION_SPLIT;
+        if (results_ptr->leaf_data_array[d1_blk_idx].consider_block) {
+            context_ptr->md_local_blk_unit[d1_blk_idx].left_neighbor_partition =
+                INVALID_NEIGHBOR_DATA;
+            context_ptr->md_local_blk_unit[d1_blk_idx].above_neighbor_partition =
+                INVALID_NEIGHBOR_DATA;
+            if (!context_ptr->md_disallow_nsq)
+                for (uint8_t shape_idx = 0; shape_idx < NUMBER_OF_SHAPES; shape_idx++)
+                    context_ptr->md_local_blk_unit[d1_blk_idx].sse_gradian_band[shape_idx] = +1;
+            context_ptr->md_blk_arr_nsq[d1_blk_idx].do_not_process_block = 0;
+
+            AMdCycleRControls *adaptive_md_cycles_red_ctrls =
+                &context_ptr->admd_cycles_red_ctrls;
+            if (adaptive_md_cycles_red_ctrls->enabled) {
+                if (adaptive_md_cycles_red_ctrls->skip_nsq_th) {
+                    const BlockGeom *nsq_blk_geom = get_blk_geom_mds(d1_blk_idx);
+                    if (nsq_blk_geom->shape != PART_N) {
+                        int8_t pred_depth_refinement =
+                            results_ptr->leaf_data_array[d1_blk_idx].pred_depth_refinement;
+                        pred_depth_refinement = MIN(pred_depth_refinement, 2);
+                        pred_depth_refinement = MAX(pred_depth_refinement, -2);
+                        pred_depth_refinement += 2;
+                        if (context_ptr->ad_md_prob[pred_depth_refinement][nsq_blk_geom->shape] <
+                             adaptive_md_cycles_red_ctrls->skip_nsq_th)
+                            results_ptr->leaf_data_array[d1_blk_idx].consider_block = 0;
+                    }
+                }
+            }
+        }
+    }
+}
+#endif
+
 static void build_cand_block_array(SequenceControlSet *scs_ptr, PictureControlSet *pcs_ptr, ModeDecisionContext *context_ptr,
     uint32_t sb_index) {
 
@@ -4134,44 +4176,10 @@ static void build_cand_block_array(SequenceControlSet *scs_ptr, PictureControlSe
                 tot_d1_blocks = MIN(17, tot_d1_blocks);
 
             d1_blocks_accumlated = 0;
-            for (d1_block_idx = 0; d1_block_idx < tot_d1_blocks; d1_block_idx++) {
 #if INIT_BLOCK_OPT
-                uint32_t d1_blk_idx = blk_index + d1_block_idx;
-                context_ptr->md_local_blk_unit[d1_blk_idx].avail_blk_flag  = EB_FALSE;
-                context_ptr->md_blk_arr_nsq[d1_blk_idx].split_flag         = EB_TRUE;
-                context_ptr->md_local_blk_unit[d1_blk_idx].tested_blk_flag = EB_FALSE;
-                context_ptr->md_blk_arr_nsq[d1_blk_idx].part = PARTITION_SPLIT;
-                if (results_ptr->leaf_data_array[d1_blk_idx].consider_block) {
-                    context_ptr->md_local_blk_unit[d1_blk_idx].left_neighbor_partition =
-                        INVALID_NEIGHBOR_DATA;
-                    context_ptr->md_local_blk_unit[d1_blk_idx].above_neighbor_partition =
-                        INVALID_NEIGHBOR_DATA;
-                    if (!context_ptr->md_disallow_nsq)
-                        for (uint8_t shape_idx = 0; shape_idx < NUMBER_OF_SHAPES; shape_idx++)
-                            context_ptr->md_local_blk_unit[d1_blk_idx].sse_gradian_band[shape_idx] =
-                                1;
-                    context_ptr->md_blk_arr_nsq[d1_blk_idx].do_not_process_block = 0;
-
-                    AMdCycleRControls *adaptive_md_cycles_red_ctrls =
-                        &context_ptr->admd_cycles_red_ctrls;
-                    if (adaptive_md_cycles_red_ctrls->enabled) {
-                        if (adaptive_md_cycles_red_ctrls->skip_nsq_th) {
-                            const BlockGeom *nsq_blk_geom = get_blk_geom_mds(d1_blk_idx);
-                            if (nsq_blk_geom->shape != PART_N) {
-                                int8_t pred_depth_refinement =
-                                    results_ptr->leaf_data_array[d1_blk_idx].pred_depth_refinement;
-                                pred_depth_refinement = MIN(pred_depth_refinement, 2);
-                                pred_depth_refinement = MAX(pred_depth_refinement, -2);
-                                pred_depth_refinement += 2;
-                                if (context_ptr
-                                        ->ad_md_prob[pred_depth_refinement][nsq_blk_geom->shape] <
-                                    adaptive_md_cycles_red_ctrls->skip_nsq_th)
-                                    results_ptr->leaf_data_array[d1_blk_idx].consider_block = 0;
-                            }
-                        }
-                    }
-                }
+            init_allowed_blocks(results_ptr, context_ptr, blk_index, tot_d1_blocks);
 #else
+            for (d1_block_idx = 0; d1_block_idx < tot_d1_blocks; d1_block_idx++) {
                 if (results_ptr->leaf_data_array[blk_index + d1_block_idx].consider_block) {
                     AMdCycleRControls *adaptive_md_cycles_red_ctrls =
                         &context_ptr->admd_cycles_red_ctrls;
@@ -4195,8 +4203,8 @@ static void build_cand_block_array(SequenceControlSet *scs_ptr, PictureControlSe
                         }
                     }
                 }
-#endif
             }
+#endif
             d1_blocks_accumlated = 0;
 
             for (d1_block_idx = 0; d1_block_idx < tot_d1_blocks; d1_block_idx++)
@@ -4956,6 +4964,25 @@ static void perform_pred_depth_refinement(SequenceControlSet *scs_ptr, PictureCo
                 : ns_depth_offset[scs_ptr->seq_header.sb_size == BLOCK_128X128][blk_geom->depth];
     }
 }
+
+#if INIT_BLOCK_OPT
+void init_block(ModeDecisionContext *context_ptr, uint32_t blk_index,
+                const BlockGeom *blk_geom) {
+    context_ptr->md_local_blk_unit[blk_index].avail_blk_flag           = EB_FALSE;
+    context_ptr->md_local_blk_unit[blk_index].left_neighbor_partition  = +INVALID_NEIGHBOR_DATA;
+    context_ptr->md_local_blk_unit[blk_index].above_neighbor_partition = +INVALID_NEIGHBOR_DATA;
+    if (!context_ptr->md_disallow_nsq)
+        for (uint8_t shape_idx = 0; shape_idx < NUMBER_OF_SHAPES; shape_idx++)
+        context_ptr->md_local_blk_unit[blk_index].sse_gradian_band[shape_idx] = +1;
+    if (blk_geom->shape == PART_N) {
+        context_ptr->md_blk_arr_nsq[blk_index].split_flag         = EB_TRUE;
+        context_ptr->md_blk_arr_nsq[blk_index].part               = PARTITION_SPLIT;
+        context_ptr->md_local_blk_unit[blk_index].tested_blk_flag = EB_FALSE;
+    }
+    context_ptr->md_blk_arr_nsq[blk_index].do_not_process_block = 0;
+}
+#endif
+
 static void build_starting_cand_block_array(SequenceControlSet *scs_ptr, PictureControlSet *pcs_ptr, ModeDecisionContext *context_ptr, uint32_t sb_index) {
 
     MdcSbData *results_ptr = context_ptr->mdc_sb_array;
@@ -5032,23 +5059,8 @@ static void build_starting_cand_block_array(SequenceControlSet *scs_ptr, Picture
                 if (pcs_ptr->parent_pcs_ptr->sb_geom[sb_index].block_is_inside_md_scan[blk_index]) {
 
 #if INIT_BLOCK_OPT
-                    context_ptr->md_local_blk_unit[blk_index].avail_blk_flag = EB_FALSE;
-                    context_ptr->md_local_blk_unit[blk_index].left_neighbor_partition =
-                        INVALID_NEIGHBOR_DATA;
-                    context_ptr->md_local_blk_unit[blk_index].above_neighbor_partition =
-                        INVALID_NEIGHBOR_DATA;
-                    if (!context_ptr->md_disallow_nsq)
-                        for (uint8_t shape_idx = 0; shape_idx < NUMBER_OF_SHAPES; shape_idx++)
-                            context_ptr->md_local_blk_unit[blk_index].sse_gradian_band[shape_idx] =
-                                1;
-                    if (blk_geom->shape == PART_N) {
-                        context_ptr->md_blk_arr_nsq[blk_index].split_flag         = EB_TRUE;
-                        context_ptr->md_blk_arr_nsq[blk_index].part               = PARTITION_SPLIT;
-                        context_ptr->md_local_blk_unit[blk_index].tested_blk_flag = EB_FALSE;
-                    }
-                    context_ptr->md_blk_arr_nsq[blk_index].do_not_process_block = 0;
+                    init_block(context_ptr, blk_index, blk_geom);
 #endif
-
                     results_ptr->leaf_data_array[results_ptr->leaf_count].mds_idx = blk_index;
                     results_ptr->leaf_data_array[results_ptr->leaf_count].tot_d1_blocks = tot_d1_blocks;
 
