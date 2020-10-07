@@ -6756,7 +6756,11 @@ EbErrorType inter_pu_prediction_av1(uint8_t hbd_mode_decision, ModeDecisionConte
 #if FEATURE_OPT_IFS
     // IFS predicted samples could not be used if IFS not performed or performed but regular is not the last
 #if FIX_IFS
+#if FIX_10BIT_CRASH
+    if (scs_ptr->static_config.encoder_bit_depth > EB_8BIT || !md_context_ptr->ifs_is_regular_last)
+#else
     if (!md_context_ptr->ifs_is_regular_last)
+#endif
 #else
     // motion mode is always SIMPLE_TRANSLATION when IFS is performed, and is_interintra_used is always false when IFS is performed
     if (!md_context_ptr->ifs_is_regular_last || candidate_buffer_ptr->candidate_ptr->motion_mode != SIMPLE_TRANSLATION || candidate_ptr->is_interintra_used)

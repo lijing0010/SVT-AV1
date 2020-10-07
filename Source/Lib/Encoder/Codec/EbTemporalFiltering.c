@@ -3291,8 +3291,10 @@ EbErrorType svt_av1_init_temporal_filtering(
                                encoder_bit_depth);
 
         // Pad chroma reference samples - once only per picture
+#if !FIX_10BIT_CRASH
 #if FEATURE_OPT_TF
         if (picture_control_set_ptr_central->tf_ctrls.chroma)
+#endif
 #endif
         for (int i = 0; i < (picture_control_set_ptr_central->past_altref_nframes +
                              picture_control_set_ptr_central->future_altref_nframes + 1);

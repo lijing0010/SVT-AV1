@@ -134,6 +134,7 @@ extern "C" {
 #define FEATURE_MDS0_ELIMINATE_CAND                  1 // Eliminate candidates based on the estimated cost of the distortion in mds0.
 #define TUNE_TPL_TOWARD_CHROMA                       1 //Tune TPL for better chroma. Only for 240P
 #define TUNE_NEW_PRESETS                             1 // Preset tuning for M0-M7
+#define FIX_10BIT_CRASH                              1 // Fixed bug that caused encoder to crash with 10-bit clips
 // END  svt-03 /////////////////////////////////////////////////////////
 
 //FOR DEBUGGING - Do not remove
