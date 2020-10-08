@@ -156,7 +156,7 @@ void *set_me_hme_params_oq(MeContext *me_context_ptr, PictureParentControlSet *p
     }
 #if TUNE_HME_ME_TUNING
 #if TUNE_NEW_PRESETS
-    else if (pcs_ptr->enc_mode <= ENC_M6) {
+    else if (pcs_ptr->enc_mode <= ENC_M5) {
 #else
     else if (pcs_ptr->enc_mode <= ENC_M7) {
 #endif
@@ -217,7 +217,7 @@ void *set_me_hme_params_oq(MeContext *me_context_ptr, PictureParentControlSet *p
         me_context_ptr->hme_level0_total_search_area_height / me_context_ptr->number_hme_search_region_in_height;
 #if TUNE_HME_ME_TUNING
 #if TUNE_NEW_PRESETS
-    if (pcs_ptr->enc_mode <= ENC_M5) {
+    if (pcs_ptr->enc_mode <= ENC_M4) {
 #else
     if (pcs_ptr->enc_mode <= ENC_M7) {
 #endif
@@ -240,7 +240,7 @@ void *set_me_hme_params_oq(MeContext *me_context_ptr, PictureParentControlSet *p
 #endif
 #if TUNE_HME_ME_TUNING
 #if TUNE_NEW_PRESETS
-    if (pcs_ptr->enc_mode <= ENC_M5) {
+    if (pcs_ptr->enc_mode <= ENC_M4) {
 #else
     if (pcs_ptr->enc_mode <= ENC_M7) {
 #endif

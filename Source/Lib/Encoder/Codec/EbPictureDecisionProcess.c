@@ -1052,7 +1052,11 @@ EbErrorType signal_derivation_multi_processes_oq(
     else {
     if (pcs_ptr->enc_mode <= ENC_M2)
             pcs_ptr->intra_pred_mode = 0;
+#if TUNE_NEW_PRESETS
+    else if (pcs_ptr->enc_mode <= ENC_M7)
+#else
         else if (pcs_ptr->enc_mode <= ENC_M6)
+#endif
             if (pcs_ptr->temporal_layer_index == 0)
                 pcs_ptr->intra_pred_mode = 1;
             else
@@ -1093,11 +1097,7 @@ EbErrorType signal_derivation_multi_processes_oq(
         // GM_TRAN_ONLY                               Translation only using ME MV.
     if (pcs_ptr->enc_mode <= ENC_M2)
         pcs_ptr->gm_level = GM_FULL;
-#if TUNE_NEW_PRESETS
-    else if (pcs_ptr->enc_mode <= ENC_M5)
-#else
     else if (pcs_ptr->enc_mode <= ENC_M4)
-#endif
         pcs_ptr->gm_level = GM_DOWN;
     else
         pcs_ptr->gm_level = GM_DOWN16;

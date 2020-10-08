@@ -3202,11 +3202,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     else if (pd_pass == PD_PASS_1)
         context_ptr->rdoq_level = 0;
     else
-#if TUNE_NEW_PRESETS
-        if (enc_mode <= ENC_M6)
-#else
         if (enc_mode <= ENC_M7)
-#endif
             context_ptr->rdoq_level = 1;
         else
             context_ptr->rdoq_level = (pcs_ptr->parent_pcs_ptr->slice_type == I_SLICE) ? 2 : 3;
@@ -3400,6 +3396,9 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
         else
             context_ptr->coeff_area_based_bypass_nsq_th = context_ptr->enable_area_based_cycles_allocation ? nsq_cycles_reduction_th[context_ptr->sb_class] : 0;
 
+#if TUNE_NEW_PRESETS
+        adaptive_md_cycles_redcution_controls(context_ptr, 0);
+#else
         uint8_t adaptive_md_cycles_level = 0;
         if (pd_pass == PD_PASS_2) {
 #if FEATURE_REMOVE_CIRCULAR
@@ -3438,6 +3437,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 #endif
         }
         adaptive_md_cycles_redcution_controls(context_ptr, adaptive_md_cycles_level);
+#endif
 
         // Weighting (expressed as a percentage) applied to
         // square shape costs for determining if a and b
@@ -3832,7 +3832,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     else if (pd_pass == PD_PASS_1)
         context_ptr->md_subpel_pme_level = 3;
     else
+#if TUNE_NEW_PRESETS
+        if (enc_mode <= ENC_M6)
+#else
         if (enc_mode <= ENC_M4)
+#endif
             context_ptr->md_subpel_pme_level = 1;
         else
             context_ptr->md_subpel_pme_level = 2;

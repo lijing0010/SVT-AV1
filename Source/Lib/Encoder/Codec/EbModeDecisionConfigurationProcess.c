@@ -787,11 +787,7 @@ EbErrorType signal_derivation_mode_decision_config_kernel_oq(
     if (pcs_ptr->enc_mode <= ENC_M4)
 #endif
         update_cdf_level = 1;
-#if TUNE_NEW_PRESETS
-    else if (pcs_ptr->enc_mode <= ENC_M6)
-#else
     else if (pcs_ptr->enc_mode <= ENC_M5)
-#endif
         update_cdf_level = 2;
 #if !TUNE_NEW_PRESETS
     else if (pcs_ptr->enc_mode <= ENC_M7)
