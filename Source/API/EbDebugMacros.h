@@ -135,6 +135,7 @@ extern "C" {
 #define TUNE_TPL_TOWARD_CHROMA                       1 //Tune TPL for better chroma. Only for 240P
 #define TUNE_NEW_PRESETS                             1 // Preset tuning for M0-M7
 #define FIX_10BIT_CRASH                              1 // Fixed bug that caused encoder to crash with 10-bit clips
+#define FIX_GM_BUG                                   1 // FIX GM r2r difference
 // END  svt-03 /////////////////////////////////////////////////////////
 
 //FOR DEBUGGING - Do not remove
