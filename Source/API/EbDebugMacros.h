@@ -136,6 +136,8 @@ extern "C" {
 #define TUNE_NEW_PRESETS                             1 // Preset tuning for M0-M7
 #define FIX_10BIT_CRASH                              1 // Fixed bug that caused encoder to crash with 10-bit clips
 #define FIX_GM_BUG                                   1 // FIX GM r2r difference
+#define FIX_ME_IDX_LUPT_ASSERT                       1 // change location of assert statement, code cleanup
+#define FIX_IFS_10BIT                                1 // fix bug relating to IFS 10 bit error
 // END  svt-03 /////////////////////////////////////////////////////////
 
 //FOR DEBUGGING - Do not remove
