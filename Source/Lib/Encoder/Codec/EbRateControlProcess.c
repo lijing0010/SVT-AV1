@@ -7732,9 +7732,6 @@ void *rate_control_kernel(void *input_ptr) {
                             int32_t update_type = scs_ptr->encode_context_ptr->gf_group.update_type[pcs_ptr->parent_pcs_ptr->gf_group_index];
                             frm_hdr->quantization_params.base_q_idx = quantizer_to_qindex[pcs_ptr->picture_qp];
                             if (scs_ptr->static_config.enable_tpl_la && pcs_ptr->parent_pcs_ptr->r0 != 0 &&
-#if RE_ENCODE_SUPPORT_RC
-                                pcs_ptr->parent_pcs_ptr->loop_count == 0 &&
-#endif
                                 (update_type == KF_UPDATE || update_type == GF_UPDATE || update_type == ARF_UPDATE)) {
                                 process_tpl_stats_frame_kf_gfu_boost(pcs_ptr);
                             }
@@ -7782,9 +7779,6 @@ void *rate_control_kernel(void *input_ptr) {
                         int32_t update_type = scs_ptr->encode_context_ptr->gf_group.update_type[pcs_ptr->parent_pcs_ptr->gf_group_index];
                         frm_hdr->quantization_params.base_q_idx = quantizer_to_qindex[pcs_ptr->picture_qp];
                         if (scs_ptr->static_config.enable_tpl_la && pcs_ptr->parent_pcs_ptr->r0 != 0 &&
-#if RE_ENCODE_SUPPORT_RC
-                            pcs_ptr->parent_pcs_ptr->loop_count == 0 &&
-#endif
                             (update_type == KF_UPDATE || update_type == GF_UPDATE || update_type == ARF_UPDATE)) {
                             process_tpl_stats_frame_kf_gfu_boost(pcs_ptr);
                         }
@@ -8277,11 +8271,12 @@ void *rate_control_kernel(void *input_ptr) {
                         (uint8_t)CLIP3((int32_t)scs_ptr->static_config.min_qp_allowed,
                             (int32_t)scs_ptr->static_config.max_qp_allowed,
                             (frm_hdr->quantization_params.base_q_idx + 2) >> 2);
-                    printf("do_recode POC%ld Changing QP from %d(%d) to %d(%d)\n",
+                    printf("do_recode POC%ld Changing QP from %d(%d) to %d(%d), projected_frame_size=%d\n",
                         parentpicture_control_set_ptr->picture_number,
                         prev_pic_qp, prev_qindex,
                         parentpicture_control_set_ptr->picture_qp,
-                        frm_hdr->quantization_params.base_q_idx);
+                        frm_hdr->quantization_params.base_q_idx,
+                        rc->projected_frame_size);
                 } else {
                     if ((scs_ptr->static_config.rate_control_mode == 0 ||
                          scs_ptr->static_config.rate_control_mode == 1 ) &&
