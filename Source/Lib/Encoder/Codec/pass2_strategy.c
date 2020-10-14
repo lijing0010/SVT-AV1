@@ -747,6 +747,18 @@ static void allocate_gf_group_bits(GF_GROUP *gf_group, RATE_CONTROL *const rc,
     }
   }
 
+#if FIX_VBR_LAST_GOP_BITS
+  if (rc->baseline_gf_interval < 8) {
+    for (int idx = frame_index; idx < gf_group_size; ++idx) {
+      if (gf_group->update_type[idx] == ARF_UPDATE) {
+        layer_frames[gf_group->layer_depth[idx]] += 1;
+      }
+      if (gf_group->update_type[idx] == INTNL_ARF_UPDATE) {
+        layer_frames[gf_group->layer_depth[idx]] += 2;
+      }
+    }
+  }
+#endif
   // Allocate extra bits to each ARF layer
   int i;
   int layer_extra_bits[MAX_ARF_LAYERS + 1] = { 0 };
@@ -2306,8 +2318,13 @@ void svt_av1_init_second_pass(SequenceControlSet *scs_ptr) {
       encode_context_ptr->gf_cfg.lag_in_frames = 25;//hack scs_ptr->static_config.look_ahead_distance + 1;
       encode_context_ptr->gf_cfg.gf_min_pyr_height = scs_ptr->static_config.hierarchical_levels;
       encode_context_ptr->gf_cfg.gf_max_pyr_height = scs_ptr->static_config.hierarchical_levels;
+#if FIX_VBR_GF_INTERVAL
+      encode_context_ptr->gf_cfg.min_gf_interval   = 0;
+      encode_context_ptr->gf_cfg.max_gf_interval   = 0;
+#else
       encode_context_ptr->gf_cfg.min_gf_interval   = 1 << scs_ptr->static_config.hierarchical_levels;
       encode_context_ptr->gf_cfg.max_gf_interval   = 1 << scs_ptr->static_config.hierarchical_levels;
+#endif
       encode_context_ptr->gf_cfg.enable_auto_arf   = 1;
       encode_context_ptr->kf_cfg.sframe_dist   = 0; // not supported yet
       encode_context_ptr->kf_cfg.sframe_mode   = 0; // not supported yet

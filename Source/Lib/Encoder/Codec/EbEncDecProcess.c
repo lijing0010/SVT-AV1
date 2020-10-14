@@ -4105,7 +4105,7 @@ static void set_child_to_be_considered(PictureControlSet *pcs_ptr, ModeDecisionC
 }
 
 #if INIT_BLOCK_OPT
-INLINE void init_allowed_blocks(MdcSbData *results_ptr, ModeDecisionContext *context_ptr,
+static INLINE void init_allowed_blocks(MdcSbData *results_ptr, ModeDecisionContext *context_ptr,
                                 uint32_t blk_index, uint32_t tot_d1_blocks) {
     for (uint32_t d1_block_idx = 0; d1_block_idx < tot_d1_blocks; d1_block_idx++) {
         uint32_t d1_blk_idx                                        = blk_index + d1_block_idx;
