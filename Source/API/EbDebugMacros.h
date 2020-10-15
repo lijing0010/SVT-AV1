@@ -80,7 +80,7 @@ extern "C" {
 #endif
 #define FIX_VBR_GF_INTERVAL 0 // fix 2nd pass min/max_gf_interval error
 #define FIX_VBR_LAST_GOP_BITS 0 // fix 2nd pass last small group too big frame size error
-#define ZERO_MIN_QP_ALLOWED 1 // set default zero min_qp_allowed as AOM
+#define ONE_MIN_QP_ALLOWED 1 // set default min_qp_allowed=1
 #define NO_BACK_BASE_Q_IDX  0 // no writing back to base_q_idx for VBR
 #endif
 //***************************************************************//
