@@ -1183,6 +1183,12 @@ void *motion_estimation_kernel(void *input_ptr) {
                     pcs_ptr, context_ptr->me_context_ptr, input_picture_ptr);
 #endif
             }
+#if FIX_GM_PARAMS_UPDATE
+            else if (!pcs_ptr->gm_ctrls.enabled) {
+                // Initilize global motion to be OFF for all references frames.
+                memset(pcs_ptr->is_global_motion, EB_FALSE, MAX_NUM_OF_REF_PIC_LIST * REF_LIST_MAX_DEPTH);
+            }
+#endif
             if (
 #if TUNE_TPL_OIS
                 scs_ptr->in_loop_ois == 0 &&
@@ -1820,7 +1826,12 @@ void *inloop_me_kernel(void *input_ptr) {
                             ppcs_ptr, context_ptr->me_context_ptr, input_picture_ptr);
 #endif
                 }
-
+#if FIX_GM_PARAMS_UPDATE
+                else if (!ppcs_ptr->gm_ctrls.enabled){
+                    // Initilize global motion to be OFF for all references frames.
+                    memset(ppcs_ptr->is_global_motion, EB_FALSE, MAX_NUM_OF_REF_PIC_LIST * REF_LIST_MAX_DEPTH);
+                }
+#endif
                 //printf("[%ld]: iME, sending to RC kernel\n",
                 //        ppcs_ptr->picture_number);
                 eb_get_empty_object(context_ptr->output_fifo_ptr,

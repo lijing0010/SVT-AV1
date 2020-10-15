@@ -138,6 +138,7 @@ extern "C" {
 #define FIX_GM_BUG                                   1 // FIX GM r2r difference
 #define FIX_ME_IDX_LUPT_ASSERT                       1 // change location of assert statement, code cleanup
 #define FIX_IFS_10BIT                                1 // fix bug relating to IFS 10 bit error
+#define FIX_GM_PARAMS_UPDATE                         1 // Fix GM r2r related to improper setting of GM params for NREF frames when GM is used for REF only
 // END  svt-03 /////////////////////////////////////////////////////////
 
 //FOR DEBUGGING - Do not remove
