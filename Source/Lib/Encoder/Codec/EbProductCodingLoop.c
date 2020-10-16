@@ -9597,12 +9597,12 @@ void process_block(SequenceControlSet *scs_ptr, PictureControlSet *pcs_ptr,
             // If the block is out of the boundaries, MD is not performed.
             // - For square blocks, since the blocks can be split further, they are considered in d2_inter_depth_block_decision() with cost of zero.
             // - For non-square blocks, since they can not be further split, the cost is set to the MAX value (MAX_MODE_COST) to ensure they are not selected.
-            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].cost         = (blk_geom->shape != PART_N) ? MAX_MODE_COST : 0;
-            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].default_cost = (blk_geom->shape != PART_N) ? MAX_MODE_COST : 0;
+            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].cost         = (blk_geom->shape != PART_N) ? MAX_MODE_COST >> 4 : 0;
+            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].default_cost = (blk_geom->shape != PART_N) ? MAX_MODE_COST >> 4 : 0;
         }
         else {
-            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].cost         = MAX_MODE_COST;
-            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].default_cost = MAX_MODE_COST;
+            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].cost         = MAX_MODE_COST >> 4;
+            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].default_cost = MAX_MODE_COST >> 4;
         }
     }
 }
