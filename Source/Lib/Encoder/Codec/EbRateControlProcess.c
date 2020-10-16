@@ -7375,6 +7375,16 @@ static void recode_loop_update_q(
   }
 #endif
   *loop = 0;
+#if RE_ENCODE_MAX_LOOP3
+  if (ppcs_ptr->loop_count >= 3) {
+    return;
+  }
+#endif
+#if RE_ENCODE_ONLY_KEY_FRAME
+  if (ppcs_ptr->frm_hdr.frame_type != KEY_FRAME) {
+    return;
+  }
+#endif
 
   const int min_cr = rc_cfg->min_cr;
   if (min_cr > 0) {
