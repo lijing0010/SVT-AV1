@@ -7290,7 +7290,12 @@ static AOM_INLINE int recode_loop_test(PictureParentControlSet *ppcs_ptr, int hi
   if ((rc->projected_frame_size >= rc->max_frame_bandwidth) ||
       (encode_context_ptr->recode_loop == ALLOW_RECODE) ||
       (frame_is_kfgfarf &&
-       (encode_context_ptr->recode_loop == ALLOW_RECODE_KFARFGF))) {
+#if RE_ENCODE_ONLY_KEY_FRAME
+       (encode_context_ptr->recode_loop >= ALLOW_RECODE_KFMAXBW)
+#else
+       (encode_context_ptr->recode_loop == ALLOW_RECODE_KFARFGF)
+#endif
+       )) {
     // TODO(agrange) high_limit could be greater than the scale-down threshold.
     if ((rc->projected_frame_size > high_limit && q < maxq) ||
         (rc->projected_frame_size < low_limit && q > minq)) {
@@ -7364,14 +7369,18 @@ static void recode_loop_update_q(
   EncodeContext *const encode_context_ptr = scs_ptr->encode_context_ptr;
   RATE_CONTROL *const rc = &(encode_context_ptr->rc);
   const RateControlCfg *const rc_cfg = &encode_context_ptr->rc_cfg;
-  const int do_dummy_pack =
-        (scs_ptr->encode_context_ptr->recode_loop >= ALLOW_RECODE_KFARFGF &&
+  const int do_dummy_pack = (
+#if RE_ENCODE_ONLY_KEY_FRAME
+         scs_ptr->encode_context_ptr->recode_loop >= ALLOW_RECODE_KFMAXBW &&
+#else
+         scs_ptr->encode_context_ptr->recode_loop >= ALLOW_RECODE_KFARFGF &&
+#endif
          rc_cfg->mode != AOM_Q) ||
          rc_cfg->min_cr > 0;
   rc->projected_frame_size = do_dummy_pack ? ppcs_ptr->total_num_bits : 0;
 #if RE_ENCODE_FRAME_SIZE_SCALE
   if (ppcs_ptr->loop_count) {
-    rc->projected_frame_size = (rc->projected_frame_size * 800) / 1000;
+    rc->projected_frame_size = (rc->projected_frame_size * 400) / 1000;
   }
 #endif
   *loop = 0;
@@ -7381,7 +7390,9 @@ static void recode_loop_update_q(
   }
 #endif
 #if RE_ENCODE_ONLY_KEY_FRAME
-  if (ppcs_ptr->frm_hdr.frame_type != KEY_FRAME) {
+  if (scs_ptr->encode_context_ptr->recode_loop == ALLOW_RECODE_KFMAXBW &&
+      ppcs_ptr->frm_hdr.frame_type != KEY_FRAME) {
+    // skip re-encode for inter frame when setting -recode-loop 1
     return;
   }
 #endif
