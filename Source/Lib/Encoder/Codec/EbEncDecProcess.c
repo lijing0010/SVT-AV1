@@ -45,6 +45,7 @@ void eb_av1_loop_restoration_save_boundary_lines(const Yv12BufferConfig *frame, 
                                                  int32_t after_cdef);
 void eb_av1_loop_restoration_filter_frame(Yv12BufferConfig *frame, Av1Common *cm,
                                           int32_t optimized_lr);
+void mode_decision_configuration_init_qp_update(PictureControlSet *pcs_ptr);
 
 static void enc_dec_context_dctor(EbPtr p) {
     EbThreadContext *thread_context_ptr = (EbThreadContext *)p;
@@ -4582,10 +4583,16 @@ void *mode_decision_kernel(void *input_ptr) {
 #endif
             if (do_recode) {
                 pcs_ptr->enc_dec_coded_sb_count = 0;
-                // it seems no one use pcs_ptr->intra_coded_area, consider removing it later
-                pcs_ptr->intra_coded_area = 0;
                 last_sb_flag = EB_FALSE;
-                //init segment for re-encode frame
+                // Reset MD rate Estimation table to initial values by copying from md_rate_estimation_array
+                if (context_ptr->is_md_rate_estimation_ptr_owner) {
+                    EB_FREE_ARRAY(context_ptr->md_rate_estimation_ptr);
+                    context_ptr->is_md_rate_estimation_ptr_owner = EB_FALSE;
+                }
+                context_ptr->md_rate_estimation_ptr = pcs_ptr->md_rate_estimation_array;
+                // re-init mode decision configuration for qp update for re-encode frame
+                mode_decision_configuration_init_qp_update(pcs_ptr);
+                // init segment for re-encode frame
                 init_enc_dec_segement(pcs_ptr->parent_pcs_ptr);
                 EbObjectWrapper *enc_dec_re_encode_tasks_wrapper_ptr;
                 uint16_t tg_count =
