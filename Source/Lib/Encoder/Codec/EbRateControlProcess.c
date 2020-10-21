@@ -6772,11 +6772,6 @@ static int rc_pick_q_and_bounds(PictureControlSet *pcs_ptr) {
     int q;
     int is_intrl_arf_boost = gf_group->update_type[pcs_ptr->parent_pcs_ptr->gf_group_index] == INTNL_ARF_UPDATE;
 
-#if RE_ENCODE_SUPPORT_RC
-    if (pcs_ptr->parent_pcs_ptr->loop_count) {
-        return pcs_ptr->parent_pcs_ptr->frm_hdr.quantization_params.base_q_idx;
-    }
-#endif
     if (frame_is_intra_only(pcs_ptr->parent_pcs_ptr)) {
         const int is_fwd_kf = pcs_ptr->parent_pcs_ptr->frm_hdr.frame_type == KEY_FRAME && pcs_ptr->parent_pcs_ptr->frm_hdr.show_frame == 0;
         get_intra_q_and_bounds(pcs_ptr, &active_best_quality, &active_worst_quality, cq_level, is_fwd_kf);
@@ -8304,6 +8299,7 @@ void *rate_control_kernel(void *input_ptr) {
                         frm_hdr->quantization_params.base_q_idx,
                         rc->projected_frame_size);
                 } else {
+                    parentpicture_control_set_ptr->loop_count = 0;
                     if ((scs_ptr->static_config.rate_control_mode == 0 ||
                          scs_ptr->static_config.rate_control_mode == 1 ) &&
                          use_input_stat(scs_ptr)) {
