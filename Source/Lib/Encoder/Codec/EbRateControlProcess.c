@@ -7610,9 +7610,6 @@ void *rate_control_kernel(void *input_ptr) {
 #else
         case RC_INPUT:
             pcs_ptr = (PictureControlSet *)rate_control_tasks_ptr->pcs_wrapper_ptr->object_ptr;
-#if RE_ENCODE_SUPPORT_DBG_LOG
-	    printf("[%ld]: RC get INPUT\n", pcs_ptr->picture_number);
-#endif
 
             // Set the segment mask
             SEGMENT_COMPLETION_MASK_SET(pcs_ptr->parent_pcs_ptr->inloop_me_segments_completion_mask,
@@ -7839,8 +7836,7 @@ void *rate_control_kernel(void *input_ptr) {
                 pcs_ptr->picture_qp = (uint8_t)CLIP3(scs_ptr->static_config.min_qp_allowed,
                                                      scs_ptr->static_config.max_qp_allowed,
                                                      pcs_ptr->picture_qp);
-//#if !TUNE_TPL
-#if NO_BACK_BASE_Q_IDX
+#if !TUNE_TPL
                 if (scs_ptr->static_config.rate_control_mode == 1 &&
                     use_input_stat(scs_ptr) &&
                     scs_ptr->static_config.look_ahead_distance != 0) //anaghdin what is this?>
@@ -8307,30 +8303,6 @@ void *rate_control_kernel(void *input_ptr) {
                         svt_av1_twopass_postencode_update(parentpicture_control_set_ptr);
                     }
                 }
-            }
-#endif
-#if RE_ENCODE_SUPPORT_DBG
-            static int loop = 0;
-            if (parentpicture_control_set_ptr->picture_number == 8 && loop == 0) {
-                loop++;
-                FrameHeader *frm_hdr = &parentpicture_control_set_ptr->frm_hdr;
-                int32_t prev_pic_qp = parentpicture_control_set_ptr->picture_qp;
-                int32_t prev_qindex = frm_hdr->quantization_params.base_q_idx;
-
-                do_recode = EB_TRUE;
-                frm_hdr->quantization_params.base_q_idx = (uint8_t)CLIP3(
-                        (int32_t)quantizer_to_qindex[scs_ptr->static_config.min_qp_allowed],
-                        (int32_t)quantizer_to_qindex[scs_ptr->static_config.max_qp_allowed],
-                        (int32_t)(prev_qindex + 10));
-
-                parentpicture_control_set_ptr->picture_qp =
-                    (uint8_t)CLIP3((int32_t)scs_ptr->static_config.min_qp_allowed,
-                            (int32_t)scs_ptr->static_config.max_qp_allowed,
-                            (frm_hdr->quantization_params.base_q_idx + 2) >> 2);
-                printf("Changing QP from %d(%d) to %d(%d)\n",
-                        prev_pic_qp, prev_qindex,
-                        parentpicture_control_set_ptr->picture_qp,
-                        frm_hdr->quantization_params.base_q_idx);
             }
 #endif
             parentpicture_control_set_ptr->recode = do_recode;

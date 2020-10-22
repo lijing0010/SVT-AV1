@@ -74,16 +74,13 @@ extern "C" {
 #define RE_ENCODE_SUPPORT     1 // re-encode support
 #if RE_ENCODE_SUPPORT
 #define RE_ENCODE_SUPPORT_RC 1 // re-encode decision maker in RC kernel
-#define RE_ENCODE_FRAME_SIZE_SCALE 1 // scale rc->projected_frame_size with *0.4 before re-encode check
+#define RE_ENCODE_FRAME_SIZE_SCALE 1 // scale rc->projected_frame_size with *0.8 before re-encode check
 #define RE_ENCODE_MAX_LOOP3 0 // set max reencode loop to 3
 #define RE_ENCODE_ONLY_KEY_FRAME 1 // re-encode only key frame
-#define RE_ENCODE_SUPPORT_DBG_LOG 0 // debug log for recode
-#define RE_ENCODE_SUPPORT_DBG 0 // debug for recode
 #endif
 #define FIX_VBR_GF_INTERVAL 0 // fix 2nd pass min/max_gf_interval error
 #define FIX_VBR_LAST_GOP_BITS 0 // fix 2nd pass last small group too big frame size error
 #define ONE_MIN_QP_ALLOWED 1 // set default min_qp_allowed=1
-#define NO_BACK_BASE_Q_IDX  0 // no writing back to base_q_idx for VBR
 #endif
 //***************************************************************//
 

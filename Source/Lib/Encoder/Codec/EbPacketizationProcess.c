@@ -672,9 +672,6 @@ void *packetization_kernel(void *input_ptr) {
         FrameHeader *    frm_hdr    = &pcs_ptr->parent_pcs_ptr->frm_hdr;
         Av1Common *const cm = pcs_ptr->parent_pcs_ptr->av1_cm;
         uint16_t            tile_cnt = cm->tiles_info.tile_rows * cm->tiles_info.tile_cols;
-#if RE_ENCODE_SUPPORT_DBG_LOG
-	printf("[%ld]: PAK get pic\n", pcs_ptr->picture_number);
-#endif
         //****************************************************
         // Input Entropy Results into Reordering Queue
         //****************************************************
@@ -764,16 +761,10 @@ void *packetization_kernel(void *input_ptr) {
         // Send the number of bytes per frame to RC
         pcs_ptr->parent_pcs_ptr->total_num_bits = output_stream_ptr->n_filled_len << 3;
         pcs_ptr->parent_pcs_ptr->recode = EB_FALSE;
-#if RE_ENCODE_SUPPORT_DBG_LOG
-        printf("\t[%ld]: Check if need re-encode...\n", pcs_ptr->picture_number);
-#endif
         // Post Rate Control Taks
         eb_post_full_object(rate_control_tasks_wrapper_ptr);
         eb_block_on_semaphore(pcs_ptr->parent_pcs_ptr->recode_semaphore);
         if (pcs_ptr->parent_pcs_ptr->recode) {
-#if RE_ENCODE_SUPPORT_DBG_LOG
-            printf("\t[%ld]: Done, need recode...\n", pcs_ptr->picture_number);
-#endif
             // need to do recode, clean up
             EB_FREE(output_stream_ptr->p_buffer);
             eb_release_object(entropy_coding_results_wrapper_ptr);
@@ -781,9 +772,6 @@ void *packetization_kernel(void *input_ptr) {
         }
 
         // Don't need to re-encode
-#if RE_ENCODE_SUPPORT_DBG_LOG
-        printf("\t[%ld]: Don't need recode\n", pcs_ptr->picture_number);
-#endif
         eb_release_object(pcs_ptr->parent_pcs_ptr->me_data_wrapper_ptr);
         //pcs_ptr->parent_pcs_ptr->me_data_wrapper_ptr = (EbObjectWrapper *)EB_NULL;
         pcs_ptr->parent_pcs_ptr->me_data_wrapper_ptr = (EbObjectWrapper *)NULL;
@@ -806,9 +794,6 @@ void *packetization_kernel(void *input_ptr) {
         if (pcs_ptr->tile_tok[0][0])
             EB_FREE_ARRAY(pcs_ptr->tile_tok[0][0]);
         if (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag) {
-#if RE_ENCODE_SUPPORT_DBG_LOG
-            printf("\t[%ld]: Send REF_PIC to PM kernel\n", pcs_ptr->picture_number);
-#endif
             EbObjectWrapper *    picture_demux_results_wrapper_ptr;
             PictureDemuxResults *picture_demux_results_rtr;
             // Get Empty PicMgr Results
