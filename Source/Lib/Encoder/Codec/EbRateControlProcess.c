@@ -8294,6 +8294,31 @@ void *rate_control_kernel(void *input_ptr) {
                         parentpicture_control_set_ptr->picture_qp,
                         frm_hdr->quantization_params.base_q_idx,
                         rc->projected_frame_size);
+#if RE_ENCODE_PCS_SB
+                    PictureControlSet *pcs_ptr = parentpicture_control_set_ptr->child_pcs;
+                    pcs_ptr->picture_qp = parentpicture_control_set_ptr->picture_qp;
+
+                    // 2pass QPM with tpl_la
+                    if (scs_ptr->static_config.enable_adaptive_quantization == 2 &&
+                        !use_output_stat(scs_ptr) &&
+                        use_input_stat(scs_ptr) &&
+#if !ENABLE_TPL_ZERO_LAD
+                        scs_ptr->static_config.look_ahead_distance != 0 &&
+#endif
+                        scs_ptr->static_config.enable_tpl_la &&
+                        pcs_ptr->parent_pcs_ptr->r0 != 0)
+                        sb_qp_derivation_tpl_la(pcs_ptr);
+                    else
+                    {
+                        pcs_ptr->parent_pcs_ptr->frm_hdr.delta_q_params.delta_q_present = 0;
+                        pcs_ptr->parent_pcs_ptr->average_qp = 0;
+                        for (int sb_addr = 0; sb_addr < pcs_ptr->sb_total_count_pix; ++sb_addr) {
+                            SuperBlock * sb_ptr = pcs_ptr->sb_ptr_array[sb_addr];
+                            sb_ptr->qindex   = quantizer_to_qindex[pcs_ptr->picture_qp];
+                            pcs_ptr->parent_pcs_ptr->average_qp += pcs_ptr->picture_qp;
+                        }
+                    }
+#endif
                 } else {
                     parentpicture_control_set_ptr->loop_count = 0;
                     if ((scs_ptr->static_config.rate_control_mode == 0 ||
