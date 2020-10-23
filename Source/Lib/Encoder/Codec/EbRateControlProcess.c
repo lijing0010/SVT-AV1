@@ -7375,7 +7375,7 @@ static void recode_loop_update_q(
   rc->projected_frame_size = do_dummy_pack ? ppcs_ptr->total_num_bits : 0;
 #if RE_ENCODE_FRAME_SIZE_SCALE
   if (ppcs_ptr->loop_count) {
-    rc->projected_frame_size = (rc->projected_frame_size * 800) / 1000;
+    rc->projected_frame_size = (rc->projected_frame_size * 4) / 10;
   }
 #endif
   *loop = 0;

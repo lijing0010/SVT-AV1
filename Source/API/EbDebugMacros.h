@@ -74,7 +74,7 @@ extern "C" {
 #define RE_ENCODE_SUPPORT     1 // re-encode support
 #if RE_ENCODE_SUPPORT
 #define RE_ENCODE_SUPPORT_RC 1 // re-encode decision maker in RC kernel
-#define RE_ENCODE_FRAME_SIZE_SCALE 1 // scale rc->projected_frame_size with *0.8 before re-encode check
+#define RE_ENCODE_FRAME_SIZE_SCALE 1 // scale rc->projected_frame_size with *0.4 before re-encode check
 #define RE_ENCODE_MAX_LOOP3 0 // set max reencode loop to 3
 #define RE_ENCODE_ONLY_KEY_FRAME 1 // re-encode only key frame
 #endif
