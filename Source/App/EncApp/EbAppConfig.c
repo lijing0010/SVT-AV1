@@ -1978,7 +1978,12 @@ static EbErrorType verify_settings(EbConfig *config, uint32_t channel_number) {
         return EB_ErrorBadParameter;
     }
     if (pass != DEFAULT || config->input_stat_file || config->output_stat_file) {
-        if (config->hierarchical_levels != 4) {
+#if TWOPASS_VBR_4L_SUPPORT
+        if (config->hierarchical_levels != 3 && config->hierarchical_levels != 4)
+#else
+        if (config->hierarchical_levels != 4)
+#endif
+        {
             fprintf(config->error_log_file,
                 "Error instance %u: 2 pass encode for hierarchical_levels %u is not supported\n",
                 channel_number + 1, config->hierarchical_levels);
