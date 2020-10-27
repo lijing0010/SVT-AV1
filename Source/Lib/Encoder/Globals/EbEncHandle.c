@@ -551,8 +551,13 @@ EbErrorType load_default_buffer_configuration_settings(
             min_me = min_parent;
         else if (scs_ptr->static_config.enable_tpl_la)
 #if TUNE_INL_TPL_ENHANCEMENT
+#if ENABLE_TPL_TRAILING
+            // For TPL, in addition to frames in the minigop size, we might have upto SCD_LAD trailing frames. min_me is increaseed accordingly
+            min_me = mg_size + 1 + SCD_LAD;
+#else
             //Now we only use minigop size for TPL, if enabled trailing frames, need to increase min_me accordingly
-            min_me = mg_size + 1;
+        min_me = mg_size + 1;
+#endif
 #else
             min_me = mg_size + 1 + 3; //TODO add Constant for 3
 #endif
@@ -1242,6 +1247,9 @@ EB_API EbErrorType svt_av1_enc_init(EbComponentType *svt_enc_component)
         input_data.non_m8_pad_h = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_pad_bottom;
 
         input_data.enable_tpl_la = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->static_config.enable_tpl_la;
+#if TUNE_TPL_OIS
+        input_data.in_loop_ois = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->in_loop_ois;
+#endif
         EB_NEW(
             enc_handle_ptr->picture_parent_control_set_pool_ptr_array[instance_index],
             eb_system_resource_ctor,
@@ -2273,12 +2281,15 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
             scs_ptr->down_sampling_method_me_search = ME_DECIMATED_DOWNSAMPLED;
 
 #if FEATURE_INL_ME
-    if (scs_ptr->static_config.rate_control_mode != 0 && use_input_stat(scs_ptr))
+    if (scs_ptr->static_config.rate_control_mode != 0 && !use_input_stat(scs_ptr))
         scs_ptr->in_loop_me = 0;
     else
         scs_ptr->in_loop_me = 1;
 #endif
-
+#if TUNE_TPL_OIS
+        // Open loop intra done with TPL, data is not stored
+        scs_ptr->in_loop_ois = 1;
+#endif
     // Set over_boundary_block_mode     Settings
     // 0                            0: not allowed
     // 1                            1: allowed
@@ -2978,10 +2989,17 @@ static EbErrorType verify_settings(
     }
 
     // CDEF
+#if TUNE_CDEF_FILTER
+    if (config->cdef_level > 4 || config->cdef_level < -1) {
+        SVT_LOG("Error instance %u: Invalid CDEF level [0 - 4, -1 for auto], your input: %d\n", channel_number + 1, config->cdef_level);
+        return_error = EB_ErrorBadParameter;
+    }
+#else
     if (config->cdef_level > 5 || config->cdef_level < -1) {
         SVT_LOG("Error instance %u: Invalid CDEF level [0 - 5, -1 for auto], your input: %d\n", channel_number + 1, config->cdef_level);
         return_error = EB_ErrorBadParameter;
     }
+#endif
 
     // Restoration Filtering
     if (config->enable_restoration_filtering != 0 && config->enable_restoration_filtering != 1 && config->enable_restoration_filtering != -1) {
