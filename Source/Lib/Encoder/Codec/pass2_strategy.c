@@ -710,6 +710,9 @@ static double layer_fraction[MAX_ARF_LAYERS + 1] = { 1.0,  0.70, 0.55, 0.60,
                                               0.60, 1.0,  1.0 };
 static void allocate_gf_group_bits(GF_GROUP *gf_group, RATE_CONTROL *const rc,
                                    int64_t gf_group_bits, int gf_arf_bits,
+#if FIX_VBR_LAST_GOP_BITS
+                                   int gf_interval,
+#endif
                                    int key_frame, int use_arf) {
   int64_t total_group_bits = gf_group_bits;
   int base_frame_bits;
@@ -748,7 +751,7 @@ static void allocate_gf_group_bits(GF_GROUP *gf_group, RATE_CONTROL *const rc,
   }
 
 #if FIX_VBR_LAST_GOP_BITS
-  if (rc->baseline_gf_interval < 8) {
+  if (rc->baseline_gf_interval < (gf_interval >> 1)) {
     for (int idx = frame_index; idx < gf_group_size; ++idx) {
       if (gf_group->update_type[idx] == ARF_UPDATE) {
         layer_frames[gf_group->layer_depth[idx]] += 1;
@@ -1083,8 +1086,11 @@ static void av1_gop_setup_structure(PictureParentControlSet *pcs_ptr,
 }
 
 static void av1_gop_bit_allocation(RATE_CONTROL *const rc,
-                            GF_GROUP *gf_group, int is_key_frame, int use_arf,
-                            int64_t gf_group_bits);
+                            GF_GROUP *gf_group, int is_key_frame,
+#if FIX_VBR_LAST_GOP_BITS
+                            int gf_interval,
+#endif
+                            int use_arf, int64_t gf_group_bits);
 int frame_is_kf_gf_arf(PictureParentControlSet *ppcs_ptr);
 // Analyse and define a gf/arf group.
 #define MAX_GF_BOOST 5400
@@ -1353,7 +1359,11 @@ static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *t
   twopass->rolling_arf_group_actual_bits = 1;
 
   av1_gop_bit_allocation(
-      rc, gf_group, frame_params->frame_type == KEY_FRAME, use_alt_ref, gf_group_bits);
+      rc, gf_group, frame_params->frame_type == KEY_FRAME,
+#if FIX_VBR_LAST_GOP_BITS
+      (1 << scs_ptr->static_config.hierarchical_levels),
+#endif
+      use_alt_ref, gf_group_bits);
 }
 
 // #define FIXED_ARF_BITS
@@ -1361,6 +1371,9 @@ static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *t
 #define ARF_BITS_FRACTION 0.75
 #endif
 static void av1_gop_bit_allocation(RATE_CONTROL *const rc, GF_GROUP *gf_group, int is_key_frame,
+#if FIX_VBR_LAST_GOP_BITS
+                            int gf_interval,
+#endif
                             int use_arf, int64_t gf_group_bits) {
     // Calculate the extra bits to be used for boosted frame(s)
 #ifdef FIXED_ARF_BITS
@@ -1371,8 +1384,11 @@ static void av1_gop_bit_allocation(RATE_CONTROL *const rc, GF_GROUP *gf_group, i
 #endif
 
   // Allocate bits to each of the frames in the GF group.
-  allocate_gf_group_bits(gf_group, rc, gf_group_bits, gf_arf_bits, is_key_frame,
-                         use_arf);
+  allocate_gf_group_bits(gf_group, rc, gf_group_bits, gf_arf_bits,
+#if FIX_VBR_LAST_GOP_BITS
+                         gf_interval,
+#endif
+                         is_key_frame, use_arf);
 }
 
 // Minimum % intra coding observed in first pass (1.0 = 100%)
