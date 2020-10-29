@@ -2331,7 +2331,9 @@ void derive_me_offsets(const SequenceControlSet *scs_ptr, PictureControlSet *pcs
             me_idx_128x128[((context_ptr->geom_offset_y / me_sb_size) * 2) +
                            (context_ptr->geom_offset_x / me_sb_size)]
                           [context_ptr->blk_geom->blkidx_mds];
+#if 0
         assert(context_ptr->me_block_offset != (uint32_t)(-1));
+#endif
     } else {
         context_ptr->me_sb_addr      = context_ptr->sb_ptr->index;
         context_ptr->me_block_offset = me_idx[context_ptr->blk_geom->blkidx_mds];
