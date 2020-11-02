@@ -7374,6 +7374,10 @@ void recode_loop_update_q(
          rc_cfg->mode != AOM_Q) ||
          rc_cfg->min_cr > 0;
   rc->projected_frame_size = do_dummy_pack ? ppcs_ptr->total_num_bits : 0;
+#if FEATURE_RE_ENCODE_ENCDEC
+  rc->projected_frame_size = (int)(do_dummy_pack ? (float)ppcs_ptr->pcs_total_rate * 0.0021 : 0);
+  //printf("kelvin ---> total_num_bits=%d, projected_frame_size=%d\n", ppcs_ptr->total_num_bits, rc->projected_frame_size);
+#endif
 #if RE_ENCODE_FRAME_SIZE_SCALE
   if (ppcs_ptr->loop_count) {
     rc->projected_frame_size = (rc->projected_frame_size * 8) / 10;
@@ -7935,7 +7939,25 @@ void *rate_control_kernel(void *input_ptr) {
                 (PictureParentControlSet *)rate_control_tasks_ptr->pcs_wrapper_ptr->object_ptr;
             scs_ptr =
                 (SequenceControlSet *)parentpicture_control_set_ptr->scs_wrapper_ptr->object_ptr;
-
+#if FEATURE_RE_ENCODE_ENCDEC
+            if (0 && use_input_stat(scs_ptr))
+            {
+                if(parentpicture_control_set_ptr->picture_number == 0) {
+                    scs_ptr->scs_total_num_bits = 0;
+                    scs_ptr->scs_total_rate = 0;
+                }
+                printf("kelvin RC POC%2d total_num_bits=%6d pcs_total_rate=%9d ratio=%f projected_frame_size=%d\n", parentpicture_control_set_ptr->picture_number,
+                        parentpicture_control_set_ptr->total_num_bits, parentpicture_control_set_ptr->pcs_total_rate,
+                        (float)parentpicture_control_set_ptr->total_num_bits/(float)parentpicture_control_set_ptr->pcs_total_rate,
+                        scs_ptr->encode_context_ptr->rc.projected_frame_size);
+                scs_ptr->scs_total_num_bits += parentpicture_control_set_ptr->total_num_bits;
+                scs_ptr->scs_total_rate     += parentpicture_control_set_ptr->pcs_total_rate;
+                if(parentpicture_control_set_ptr->picture_number == 59) {
+                    printf("kelvin RC last frame total %d %d totalratio=%f\n", scs_ptr->scs_total_num_bits, scs_ptr->scs_total_rate,
+                            (float)scs_ptr->scs_total_num_bits/(float)scs_ptr->scs_total_rate);
+                }
+            }
+#endif
             // Frame level RC
             if (scs_ptr->intra_period_length == -1 ||
                 scs_ptr->static_config.rate_control_mode == 0) {

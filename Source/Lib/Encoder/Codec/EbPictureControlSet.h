@@ -960,6 +960,9 @@ typedef struct PictureParentControlSet {
     int low_cr_seen;
     //int last_loop_allow_hp;
 #endif
+#if FEATURE_RE_ENCODE_ENCDEC
+    uint64_t pcs_total_rate;
+#endif
 } PictureParentControlSet;
 
 typedef struct PictureControlSetInitData {
