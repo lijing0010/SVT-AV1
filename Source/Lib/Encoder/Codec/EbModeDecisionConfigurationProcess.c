@@ -374,7 +374,6 @@ void set_reference_cdef_strength(PictureControlSet *pcs_ptr) {
 
 void mode_decision_configuration_init_qp_update(PictureControlSet *pcs_ptr) {
     FrameHeader *frm_hdr = &pcs_ptr->parent_pcs_ptr->frm_hdr;
-    SequenceControlSet *scs_ptr = (SequenceControlSet *)pcs_ptr->scs_wrapper_ptr->object_ptr;
     pcs_ptr->parent_pcs_ptr->average_qp = 0;
     pcs_ptr->intra_coded_area           = 0;
     // Init block selection
@@ -394,6 +393,7 @@ void mode_decision_configuration_init_qp_update(PictureControlSet *pcs_ptr) {
 
     eb_av1_qm_init(pcs_ptr->parent_pcs_ptr);
 #if !FIX_OPTIMIZE_BUILD_QUANTIZER
+    SequenceControlSet *scs_ptr = (SequenceControlSet *)pcs_ptr->scs_wrapper_ptr->object_ptr;
     Quants *const quants_bd = &pcs_ptr->parent_pcs_ptr->quants_bd;
     Dequants *const deq_bd = &pcs_ptr->parent_pcs_ptr->deq_bd;
     eb_av1_set_quantizer(

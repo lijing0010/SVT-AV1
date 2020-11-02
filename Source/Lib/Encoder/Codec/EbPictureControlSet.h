@@ -949,6 +949,17 @@ typedef struct PictureParentControlSet {
 #if FEATURE_GM_OPT
     GmControls gm_ctrls;
 #endif
+#if RE_ENCODE_IN_MDK
+    // Loop variables
+    int q_low;
+    int q_high;
+    int loop_count;
+    //int loop_at_this_size;
+    int overshoot_seen;
+    int undershoot_seen;
+    int low_cr_seen;
+    //int last_loop_allow_hp;
+#endif
 } PictureParentControlSet;
 
 typedef struct PictureControlSetInitData {

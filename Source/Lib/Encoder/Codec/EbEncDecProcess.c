@@ -48,6 +48,12 @@ void eb_av1_loop_restoration_save_boundary_lines(const Yv12BufferConfig *frame, 
                                                  int32_t after_cdef);
 void eb_av1_loop_restoration_filter_frame(Yv12BufferConfig *frame, Av1Common *cm,
                                           int32_t optimized_lr);
+void recode_loop_update_q(
+    PictureParentControlSet *ppcs_ptr,
+    int *const loop, int *const q, int *const q_low,
+    int *const q_high, const int top_index, const int bottom_index,
+    int *const undershoot_seen, int *const overshoot_seen,
+    int *const low_cr_seen, const int loop_count);
 void mode_decision_configuration_init_qp_update(PictureControlSet *pcs_ptr);
 
 static void enc_dec_context_dctor(EbPtr p) {
@@ -5570,32 +5576,61 @@ void *mode_decision_kernel(void *input_ptr) {
 #if FEATURE_RE_ENCODE
             EbBool do_recode = EB_FALSE;
             // TODO: Add the algorithm whether do the recode
-#if FEATURE_RE_ENCODE_DBG
-            printf("\t[%ld]: Check if need re-encode...\n", pcs_ptr->parent_pcs_ptr->picture_number);
-            static int loop = 0;
-            if (pcs_ptr->parent_pcs_ptr->picture_number == 8 && loop == 0) {
-                loop++;
+#if RE_ENCODE_IN_MDK
+            scs_ptr->encode_context_ptr->recode_loop = scs_ptr->static_config.recode_loop;
+            if (use_input_stat(scs_ptr) &&
+                scs_ptr->encode_context_ptr->recode_loop != DISALLOW_RECODE) {
+                EncodeContext *const encode_context_ptr = pcs_ptr->parent_pcs_ptr->scs_ptr->encode_context_ptr;
+                RATE_CONTROL *const rc = &(encode_context_ptr->rc);
+                int32_t loop = 0;
                 FrameHeader *frm_hdr = &pcs_ptr->parent_pcs_ptr->frm_hdr;
-                int32_t prev_pic_qp = pcs_ptr->parent_pcs_ptr->picture_qp;
-                int32_t prev_qindex = frm_hdr->quantization_params.base_q_idx;
+                int32_t q = frm_hdr->quantization_params.base_q_idx;
+                if (pcs_ptr->parent_pcs_ptr->loop_count == 0) {
+                    pcs_ptr->parent_pcs_ptr->q_low  = rc->bottom_index;
+                    pcs_ptr->parent_pcs_ptr->q_high = rc->top_index;
+                }
+                //TODO:Update projected_frame_size
 
-                do_recode = EB_TRUE;
-                frm_hdr->quantization_params.base_q_idx = (uint8_t)CLIP3(
-                        (int32_t)quantizer_to_qindex[scs_ptr->static_config.min_qp_allowed],
-                        (int32_t)quantizer_to_qindex[scs_ptr->static_config.max_qp_allowed],
-                        (int32_t)(prev_qindex + 10));
+                // Update q and decide whether to do a recode loop
+                recode_loop_update_q(pcs_ptr->parent_pcs_ptr, &loop, &q,
+                        &pcs_ptr->parent_pcs_ptr->q_low, &pcs_ptr->parent_pcs_ptr->q_high,
+                        rc->top_index, rc->bottom_index,
+                        &pcs_ptr->parent_pcs_ptr->undershoot_seen, &pcs_ptr->parent_pcs_ptr->overshoot_seen,
+                        &pcs_ptr->parent_pcs_ptr->low_cr_seen, pcs_ptr->parent_pcs_ptr->loop_count);
 
-                pcs_ptr->parent_pcs_ptr->picture_qp =
-                    (uint8_t)CLIP3((int32_t)scs_ptr->static_config.min_qp_allowed,
-                            (int32_t)scs_ptr->static_config.max_qp_allowed,
-                            (frm_hdr->quantization_params.base_q_idx + 2) >> 2);
-                printf("Recode, changing QP from %d(%d) to %d(%d)\n",
-                        prev_pic_qp, prev_qindex,
-                        pcs_ptr->parent_pcs_ptr->picture_qp,
-                        frm_hdr->quantization_params.base_q_idx);
+                // Special case for overlay frame.
+                if (loop && rc->is_src_frame_alt_ref &&
+                    rc->projected_frame_size < rc->max_frame_bandwidth) {
+                    loop = 0;
+                }
+                 do_recode = loop == 1;
+
+                 if (do_recode) {
+                     int32_t prev_pic_qp = pcs_ptr->parent_pcs_ptr->picture_qp;
+                     int32_t prev_qindex = frm_hdr->quantization_params.base_q_idx;
+                     pcs_ptr->parent_pcs_ptr->loop_count++;
+
+                     frm_hdr->quantization_params.base_q_idx = (uint8_t)CLIP3(
+                             (int32_t)quantizer_to_qindex[scs_ptr->static_config.min_qp_allowed],
+                             (int32_t)quantizer_to_qindex[scs_ptr->static_config.max_qp_allowed],
+                             q);
+
+                     pcs_ptr->parent_pcs_ptr->picture_qp =
+                         (uint8_t)CLIP3((int32_t)scs_ptr->static_config.min_qp_allowed,
+                                 (int32_t)scs_ptr->static_config.max_qp_allowed,
+                                 (frm_hdr->quantization_params.base_q_idx + 2) >> 2);
+                     printf("do_recode POC%ld Changing QP from %d(%d) to %d(%d), projected_frame_size=%d\n",
+                             pcs_ptr->parent_pcs_ptr->picture_number,
+                             prev_pic_qp, prev_qindex,
+                             pcs_ptr->parent_pcs_ptr->picture_qp,
+                             frm_hdr->quantization_params.base_q_idx,
+                             rc->projected_frame_size);
+                 }
             }
+
 #endif
             if (do_recode) {
+
                 pcs_ptr->enc_dec_coded_sb_count = 0;
                 last_sb_flag = EB_FALSE;
                 // Reset MD rate Estimation table to initial values by copying from md_rate_estimation_array

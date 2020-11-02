@@ -110,6 +110,9 @@ EbErrorType copy_configuration_parameters(EbConfig *config, EbAppContext *callba
     callback_data->eb_enc_parameters.vbr_max_section_pct    = config->vbr_max_section_pct;
     callback_data->eb_enc_parameters.under_shoot_pct        = config->under_shoot_pct;
     callback_data->eb_enc_parameters.over_shoot_pct         = config->over_shoot_pct;
+#if RE_ENCODE_IN_MDK
+    callback_data->eb_enc_parameters.recode_loop            = config->recode_loop;
+#endif
     callback_data->eb_enc_parameters.enable_adaptive_quantization =
         (EbBool)config->enable_adaptive_quantization;
     callback_data->eb_enc_parameters.qp                   = config->qp;

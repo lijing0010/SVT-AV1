@@ -6807,6 +6807,13 @@ static int rc_pick_q_and_bounds(PictureControlSet *pcs_ptr) {
         active_worst_quality = q;
     }
 
+#if RE_ENCODE_IN_MDK
+    rc->top_index = active_worst_quality;
+    rc->bottom_index = active_best_quality;
+
+    assert(rc->top_index <= rc->worst_quality && rc->top_index >= rc->best_quality);
+    assert(rc->bottom_index <= rc->worst_quality && rc->bottom_index >= rc->best_quality);
+#endif
     assert(q <= rc->worst_quality && q >= rc->best_quality);
 
     if (gf_group->update_type[pcs_ptr->parent_pcs_ptr->gf_group_index] == ARF_UPDATE) rc->arf_q = q;
@@ -7227,6 +7234,336 @@ static void av1_set_target_rate(PictureControlSet *pcs_ptr, int width, int heigh
         vbr_rate_correction(pcs_ptr, &target_rate);
     av1_rc_set_frame_target(pcs_ptr, target_rate, width, height);
 }
+
+#if RE_ENCODE_IN_MDK
+static double av1_get_compression_ratio(PictureParentControlSet *ppcs_ptr,
+                                 size_t encoded_frame_size) {
+  const int upscaled_width = ppcs_ptr->av1_cm->frm_size.superres_upscaled_width;
+  const int height = ppcs_ptr->av1_cm->frm_size.frame_height;//cm->height;
+  const int luma_pic_size = upscaled_width * height;
+  const BITSTREAM_PROFILE profile = ppcs_ptr->scs_ptr->seq_header.seq_profile;
+  const int pic_size_profile_factor =
+      profile == PROFILE_0 ? 15 : (profile == PROFILE_1 ? 30 : 36);
+  encoded_frame_size =
+      (encoded_frame_size > 129 ? encoded_frame_size - 128 : 1);
+  const size_t uncompressed_frame_size =
+      (luma_pic_size * pic_size_profile_factor) >> 3;
+  return uncompressed_frame_size / (double)encoded_frame_size;
+}
+
+static void av1_rc_compute_frame_size_bounds(PictureParentControlSet *ppcs_ptr, int frame_target,
+                                      int *frame_under_shoot_limit,
+                                      int *frame_over_shoot_limit) {
+  EncodeContext *const encode_context_ptr = ppcs_ptr->scs_ptr->encode_context_ptr;
+  RATE_CONTROL *const rc = &(encode_context_ptr->rc);
+  const RateControlCfg *const rc_cfg = &encode_context_ptr->rc_cfg;
+  if (rc_cfg->mode == AOM_Q) {
+    *frame_under_shoot_limit = 0;
+    *frame_over_shoot_limit = INT_MAX;
+  } else {
+    // For very small rate targets where the fractional adjustment
+    // may be tiny make sure there is at least a minimum range.
+    assert(encode_context_ptr->recode_tolerance <= 100);
+    const int tolerance = (int)AOMMAX(
+        100, ((int64_t)encode_context_ptr->recode_tolerance * frame_target) / 100);
+    *frame_under_shoot_limit = AOMMAX(frame_target - tolerance, 0);
+    *frame_over_shoot_limit =
+        AOMMIN(frame_target + tolerance, rc->max_frame_bandwidth);
+  }
+}
+
+// Function to test for conditions that indicate we should loop
+// back and recode a frame.
+static AOM_INLINE int recode_loop_test(PictureParentControlSet *ppcs_ptr, int high_limit,
+                                       int low_limit, int q, int maxq,
+                                       int minq) {
+  EncodeContext *const encode_context_ptr = ppcs_ptr->scs_ptr->encode_context_ptr;
+  RATE_CONTROL *const rc = &(encode_context_ptr->rc);
+  const RateControlCfg *const rc_cfg = &encode_context_ptr->rc_cfg;
+  const int frame_is_kfgfarf = frame_is_kf_gf_arf(ppcs_ptr);
+  int force_recode = 0;
+
+  if ((rc->projected_frame_size >= rc->max_frame_bandwidth) ||
+      (encode_context_ptr->recode_loop == ALLOW_RECODE) ||
+      (frame_is_kfgfarf &&
+#if RE_ENCODE_ONLY_KEY_FRAME
+       (encode_context_ptr->recode_loop >= ALLOW_RECODE_KFMAXBW)
+#else
+       (encode_context_ptr->recode_loop == ALLOW_RECODE_KFARFGF)
+#endif
+       )) {
+    // TODO(agrange) high_limit could be greater than the scale-down threshold.
+    if ((rc->projected_frame_size > high_limit && q < maxq) ||
+        (rc->projected_frame_size < low_limit && q > minq)) {
+      force_recode = 1;
+    } else if (rc_cfg->mode == AOM_CQ) {
+      // Deal with frame undershoot and whether or not we are
+      // below the automatically set cq level.
+      if (q > rc_cfg->cq_level &&
+          rc->projected_frame_size < ((rc->this_frame_target * 7) >> 3)) {
+        force_recode = 1;
+      }
+    }
+  }
+  return force_recode;
+}
+
+static int get_regulated_q_overshoot(PictureParentControlSet *ppcs_ptr, int q_low,
+                                     int q_high, int top_index,
+                                     int bottom_index) {
+  EncodeContext *const encode_context_ptr = ppcs_ptr->scs_ptr->encode_context_ptr;
+  RATE_CONTROL *const rc = &(encode_context_ptr->rc);
+  const int width  = ppcs_ptr->av1_cm->frm_size.frame_width;
+  const int height = ppcs_ptr->av1_cm->frm_size.frame_height;
+
+  av1_rc_update_rate_correction_factors(ppcs_ptr, width, height);
+
+  int q_regulated =
+      av1_rc_regulate_q(ppcs_ptr, rc->this_frame_target, bottom_index,
+                        AOMMAX(q_high, top_index), width, height);
+
+  int retries = 0;
+  while (q_regulated < q_low && retries < 10) {
+    av1_rc_update_rate_correction_factors(ppcs_ptr, width, height);
+    q_regulated =
+        av1_rc_regulate_q(ppcs_ptr, rc->this_frame_target, bottom_index,
+                          AOMMAX(q_high, top_index), width, height);
+    retries++;
+  }
+  return q_regulated;
+}
+
+static AOM_INLINE int get_regulated_q_undershoot(PictureParentControlSet *ppcs_ptr,
+                                                 int q_high, int top_index,
+                                                 int bottom_index) {
+  EncodeContext *const encode_context_ptr = ppcs_ptr->scs_ptr->encode_context_ptr;
+  RATE_CONTROL *const rc = &(encode_context_ptr->rc);
+  const int width  = ppcs_ptr->av1_cm->frm_size.frame_width;
+  const int height = ppcs_ptr->av1_cm->frm_size.frame_height;
+
+  av1_rc_update_rate_correction_factors(ppcs_ptr, width, height);
+  int q_regulated = av1_rc_regulate_q(ppcs_ptr, rc->this_frame_target, bottom_index,
+                                      top_index, width, height);
+
+  int retries = 0;
+  while (q_regulated > q_high && retries < 10) {
+    av1_rc_update_rate_correction_factors(ppcs_ptr, width, height);
+    q_regulated = av1_rc_regulate_q(ppcs_ptr, rc->this_frame_target, bottom_index,
+                                    top_index, width, height);
+    retries++;
+  }
+  return q_regulated;
+}
+
+void recode_loop_update_q(
+    PictureParentControlSet *ppcs_ptr,
+    int *const loop, int *const q, int *const q_low,
+    int *const q_high, const int top_index, const int bottom_index,
+    int *const undershoot_seen, int *const overshoot_seen,
+    int *const low_cr_seen, const int loop_count) {
+  SequenceControlSet *const scs_ptr = ppcs_ptr->scs_ptr;
+  EncodeContext *const encode_context_ptr = scs_ptr->encode_context_ptr;
+  RATE_CONTROL *const rc = &(encode_context_ptr->rc);
+  const RateControlCfg *const rc_cfg = &encode_context_ptr->rc_cfg;
+  const int do_dummy_pack = (
+#if RE_ENCODE_ONLY_KEY_FRAME
+         scs_ptr->encode_context_ptr->recode_loop >= ALLOW_RECODE_KFMAXBW &&
+#else
+         scs_ptr->encode_context_ptr->recode_loop >= ALLOW_RECODE_KFARFGF &&
+#endif
+         rc_cfg->mode != AOM_Q) ||
+         rc_cfg->min_cr > 0;
+  rc->projected_frame_size = do_dummy_pack ? ppcs_ptr->total_num_bits : 0;
+#if RE_ENCODE_FRAME_SIZE_SCALE
+  if (ppcs_ptr->loop_count) {
+    rc->projected_frame_size = (rc->projected_frame_size * 8) / 10;
+  }
+#endif
+  *loop = 0;
+#if RE_ENCODE_MAX_LOOP3
+  if (ppcs_ptr->loop_count >= 3) {
+    return;
+  }
+#endif
+#if RE_ENCODE_ONLY_KEY_FRAME
+  if (scs_ptr->encode_context_ptr->recode_loop == ALLOW_RECODE_KFMAXBW &&
+      ppcs_ptr->frm_hdr.frame_type != KEY_FRAME) {
+    // skip re-encode for inter frame when setting -recode-loop 1
+    return;
+  }
+#endif
+
+  const int min_cr = rc_cfg->min_cr;
+  if (min_cr > 0) {
+    //aom_clear_system_state();
+    const double compression_ratio =
+        av1_get_compression_ratio(ppcs_ptr, rc->projected_frame_size >> 3);
+    const double target_cr = min_cr / 100.0;
+    if (compression_ratio < target_cr) {
+      *low_cr_seen = 1;
+      if (*q < rc->worst_quality) {
+        const double cr_ratio = target_cr / compression_ratio;
+        const int projected_q = AOMMAX(*q + 1, (int)(*q * cr_ratio * cr_ratio));
+        *q = AOMMIN(AOMMIN(projected_q, *q + 32), rc->worst_quality);
+        *q_low = AOMMAX(*q, *q_low);
+        *q_high = AOMMAX(*q, *q_high);
+        *loop = 1;
+      }
+    }
+    if (*low_cr_seen) return;
+  }
+
+  if (rc_cfg->mode == AOM_Q) return;
+
+  const int last_q = *q;
+  int frame_over_shoot_limit = 0, frame_under_shoot_limit = 0;
+  av1_rc_compute_frame_size_bounds(ppcs_ptr, rc->this_frame_target,
+                                   &frame_under_shoot_limit,
+                                   &frame_over_shoot_limit);
+  if (frame_over_shoot_limit == 0) frame_over_shoot_limit = 1;
+
+#if 0
+  if (ppcs_ptr->frm_hdr.frame_type == KEY_FRAME && rc->this_key_frame_forced &&
+      rc->projected_frame_size < rc->max_frame_bandwidth) {
+    AV1_COMMON *const cm = &ppcs_ptr->av1_cm;
+    int64_t kf_err;
+    const int64_t high_err_target = cpi->ambient_err;
+    const int64_t low_err_target = cpi->ambient_err >> 1;
+
+#if CONFIG_AV1_HIGHBITDEPTH
+    if (cm->seq_params.use_highbitdepth) {
+      kf_err = aom_highbd_get_y_sse(cpi->source, &cm->cur_frame->buf);
+    } else {
+      kf_err = aom_get_y_sse(cpi->source, &cm->cur_frame->buf);
+    }
+#else
+    kf_err = aom_get_y_sse(cpi->source, &cm->cur_frame->buf);
+#endif
+    // Prevent possible divide by zero error below for perfect KF
+    kf_err += !kf_err;
+
+    // The key frame is not good enough or we can afford
+    // to make it better without undue risk of popping.
+    if ((kf_err > high_err_target &&
+         rc->projected_frame_size <= frame_over_shoot_limit) ||
+        (kf_err > low_err_target &&
+         rc->projected_frame_size <= frame_under_shoot_limit)) {
+      // Lower q_high
+      *q_high = AOMMAX(*q - 1, *q_low);
+
+      // Adjust Q
+      *q = (int)((*q * high_err_target) / kf_err);
+      *q = AOMMIN(*q, (*q_high + *q_low) >> 1);
+    } else if (kf_err < low_err_target &&
+               rc->projected_frame_size >= frame_under_shoot_limit) {
+      // The key frame is much better than the previous frame
+      // Raise q_low
+      *q_low = AOMMIN(*q + 1, *q_high);
+
+      // Adjust Q
+      *q = (int)((*q * low_err_target) / kf_err);
+      *q = AOMMIN(*q, (*q_high + *q_low + 1) >> 1);
+    }
+
+    // Clamp Q to upper and lower limits:
+    *q = clamp(*q, *q_low, *q_high);
+    *loop = (*q != last_q);
+    return;
+  }
+#endif
+
+  if (recode_loop_test(ppcs_ptr, frame_over_shoot_limit, frame_under_shoot_limit, *q,
+                       AOMMAX(*q_high, top_index), bottom_index)) {
+      const int width  = ppcs_ptr->av1_cm->frm_size.frame_width;
+      const int height = ppcs_ptr->av1_cm->frm_size.frame_height;
+    // Is the projected frame size out of range and are we allowed
+    // to attempt to recode.
+
+    // Frame size out of permitted range:
+    // Update correction factor & compute new Q to try...
+    // Frame is too large
+    if (rc->projected_frame_size > rc->this_frame_target) {
+      // Special case if the projected size is > the max allowed.
+      if (*q == *q_high &&
+          rc->projected_frame_size >= rc->max_frame_bandwidth) {
+        const double q_val_high_current =
+            eb_av1_convert_qindex_to_q(*q_high, scs_ptr->static_config.encoder_bit_depth);
+        const double q_val_high_new =
+            q_val_high_current *
+            ((double)rc->projected_frame_size / rc->max_frame_bandwidth);
+        *q_high = av1_find_qindex(q_val_high_new, scs_ptr->static_config.encoder_bit_depth,
+                                  rc->best_quality, rc->worst_quality);
+      }
+
+      // Raise Qlow as to at least the current value
+      *q_low = AOMMIN(*q + 1, *q_high);
+
+      if (*undershoot_seen || loop_count > 2 ||
+          (loop_count == 2 && !frame_is_intra_only(ppcs_ptr))) {
+        av1_rc_update_rate_correction_factors(ppcs_ptr, width, height);
+
+        *q = (*q_high + *q_low + 1) / 2;
+      } else if (loop_count == 2 && frame_is_intra_only(ppcs_ptr)) {
+        const int q_mid = (*q_high + *q_low + 1) / 2;
+        const int q_regulated = get_regulated_q_overshoot(
+            ppcs_ptr, *q_low, *q_high, top_index, bottom_index);
+        // Get 'q' in-between 'q_mid' and 'q_regulated' for a smooth
+        // transition between loop_count < 2 and loop_count > 2.
+        *q = (q_mid + q_regulated + 1) / 2;
+      } else {
+        *q = get_regulated_q_overshoot(ppcs_ptr, *q_low, *q_high, top_index,
+                                       bottom_index);
+      }
+
+      *overshoot_seen = 1;
+    } else {
+      // Frame is too small
+      *q_high = AOMMAX(*q - 1, *q_low);
+
+      if (*overshoot_seen || loop_count > 2 ||
+          (loop_count == 2 && !frame_is_intra_only(ppcs_ptr))) {
+        av1_rc_update_rate_correction_factors(ppcs_ptr, width, height);
+        *q = (*q_high + *q_low) / 2;
+      } else if (loop_count == 2 && frame_is_intra_only(ppcs_ptr)) {
+        const int q_mid = (*q_high + *q_low) / 2;
+        const int q_regulated =
+            get_regulated_q_undershoot(ppcs_ptr, *q_high, top_index, bottom_index);
+        // Get 'q' in-between 'q_mid' and 'q_regulated' for a smooth
+        // transition between loop_count < 2 and loop_count > 2.
+        *q = (q_mid + q_regulated) / 2;
+
+        // Special case reset for qlow for constrained quality.
+        // This should only trigger where there is very substantial
+        // undershoot on a frame and the auto cq level is above
+        // the user passsed in value.
+        if (rc_cfg->mode == AOM_CQ && q_regulated < *q_low) {
+          *q_low = *q;
+        }
+      } else {
+        *q = get_regulated_q_undershoot(ppcs_ptr, *q_high, top_index, bottom_index);
+
+        // Special case reset for qlow for constrained quality.
+        // This should only trigger where there is very substantial
+        // undershoot on a frame and the auto cq level is above
+        // the user passsed in value.
+        if (rc_cfg->mode == AOM_CQ && *q < *q_low) {
+          *q_low = *q;
+        }
+      }
+
+      *undershoot_seen = 1;
+    }
+
+    // Clamp Q to upper and lower limits:
+    *q = clamp(*q, *q_low, *q_high);
+  }
+
+  *q = (uint8_t)CLIP3((int32_t)quantizer_to_qindex[scs_ptr->static_config.min_qp_allowed],
+                      (int32_t)quantizer_to_qindex[scs_ptr->static_config.max_qp_allowed],
+                      *q);
+  *loop = (*q != last_q);
+}
+#endif
 
 void *rate_control_kernel(void *input_ptr) {
     // Context
