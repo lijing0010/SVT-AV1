@@ -2254,7 +2254,13 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
         scs_ptr->static_config.super_block_size = 64;
     else
         scs_ptr->static_config.super_block_size = (scs_ptr->static_config.enc_mode <= ENC_M4) ? 128 : 64;
+#if ALLOW_SB128_2PASS_VBR
+    scs_ptr->static_config.super_block_size = (scs_ptr->static_config.rate_control_mode > 0 && !use_input_stat(scs_ptr))
+                                              ? 64
+                                              : scs_ptr->static_config.super_block_size;
+#else
     scs_ptr->static_config.super_block_size = (scs_ptr->static_config.rate_control_mode > 0) ? 64 : scs_ptr->static_config.super_block_size;
+#endif
    // scs_ptr->static_config.hierarchical_levels = (scs_ptr->static_config.rate_control_mode > 1) ? 3 : scs_ptr->static_config.hierarchical_levels;
     if (use_output_stat(scs_ptr))
         scs_ptr->static_config.hierarchical_levels = 0;

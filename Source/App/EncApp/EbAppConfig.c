@@ -1434,7 +1434,11 @@ void eb_config_ctor(EbConfig *config_ptr) {
     config_ptr->enable_tpl_la       = 1;
     config_ptr->target_bit_rate     = 7000000;
     config_ptr->max_qp_allowed      = 63;
+#if ONE_MIN_QP_ALLOWED
+    config_ptr->min_qp_allowed      = 1;
+#else
     config_ptr->min_qp_allowed      = 10;
+#endif
 
     config_ptr->enable_adaptive_quantization              = 2;
     config_ptr->enc_mode                                  = MAX_ENC_PRESET;
@@ -1974,7 +1978,12 @@ static EbErrorType verify_settings(EbConfig *config, uint32_t channel_number) {
         return EB_ErrorBadParameter;
     }
     if (pass != DEFAULT || config->input_stat_file || config->output_stat_file) {
-        if (config->hierarchical_levels != 4) {
+#if TWOPASS_VBR_4L_SUPPORT
+        if (config->hierarchical_levels != 3 && config->hierarchical_levels != 4)
+#else
+        if (config->hierarchical_levels != 4)
+#endif
+        {
             fprintf(config->error_log_file,
                 "Error instance %u: 2 pass encode for hierarchical_levels %u is not supported\n",
                 channel_number + 1, config->hierarchical_levels);
