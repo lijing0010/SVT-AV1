@@ -468,6 +468,10 @@ EbErrorType signal_derivation_me_kernel_oq(SequenceControlSet *       scs_ptr,
             gm_level = pcs_ptr->is_used_as_reference_flag ? 4 : 0;
 #endif
     }
+#if FIRST_PASS_GM_FIX
+    if (use_output_stat(scs_ptr))
+        gm_level = 0;
+#endif
     set_gm_controls(pcs_ptr, gm_level);
 #else
     if (scs_ptr->static_config.enable_global_motion == EB_TRUE &&

@@ -84,6 +84,7 @@ extern "C" {
 #define ONE_MIN_QP_ALLOWED 1 // set default min_qp_allowed=1
 #define ALLOW_SB128_2PASS_VBR 1 // allow SB128x128 for 2pass VBR
 #define TWOPASS_VBR_4L_SUPPORT 1 // 2pass VBR 4L support in impose_gf_length and construct_multi_layer_gf_structure
+#define FIRST_PASS_GM_FIX      1 // Fix the GM setting for the first pass
 #endif
 //***************************************************************//
 
