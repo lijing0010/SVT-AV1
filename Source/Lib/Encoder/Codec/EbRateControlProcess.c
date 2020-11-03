@@ -6164,7 +6164,7 @@ static void sb_setup_lambda(PictureControlSet *pcs_ptr,
  * Calculates the QP per SB based on the tpl statistics
  * used in one pass and second pass of two pass encoding
  ******************************************************/
-static void sb_qp_derivation_tpl_la(
+void sb_qp_derivation_tpl_la(
     PictureControlSet         *pcs_ptr) {
 
     PictureParentControlSet   *ppcs_ptr = pcs_ptr->parent_pcs_ptr;
@@ -7376,7 +7376,7 @@ void recode_loop_update_q(
   rc->projected_frame_size = do_dummy_pack ? ppcs_ptr->total_num_bits : 0;
 #if FEATURE_RE_ENCODE_ENCDEC
   rc->projected_frame_size = (int)(do_dummy_pack ? (float)ppcs_ptr->pcs_total_rate * 0.0021 : 0);
-  //printf("kelvin ---> total_num_bits=%d, projected_frame_size=%d\n", ppcs_ptr->total_num_bits, rc->projected_frame_size);
+  //printf("POC%d before scaling projected_frame_size=%d\n", ppcs_ptr->picture_number, rc->projected_frame_size);
 #endif
 #if RE_ENCODE_FRAME_SIZE_SCALE
   if (ppcs_ptr->loop_count) {
