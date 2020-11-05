@@ -7375,7 +7375,7 @@ void recode_loop_update_q(
          rc_cfg->min_cr > 0;
   rc->projected_frame_size = do_dummy_pack ? ppcs_ptr->total_num_bits : 0;
 #if FEATURE_RE_ENCODE_ENCDEC
-  rc->projected_frame_size = (int)(do_dummy_pack ? (float)ppcs_ptr->pcs_total_rate * 0.0021 : 0);
+  rc->projected_frame_size = (int)(do_dummy_pack ? (float)ppcs_ptr->pcs_total_rate * 0.0019 : 0);
   //printf("POC%d before scaling projected_frame_size=%d\n", ppcs_ptr->picture_number, rc->projected_frame_size);
 #endif
 #if RE_ENCODE_FRAME_SIZE_SCALE
