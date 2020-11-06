@@ -2331,7 +2331,7 @@ void derive_me_offsets(const SequenceControlSet *scs_ptr, PictureControlSet *pcs
             me_idx_128x128[((context_ptr->geom_offset_y / me_sb_size) * 2) +
                            (context_ptr->geom_offset_x / me_sb_size)]
                           [context_ptr->blk_geom->blkidx_mds];
-#if 0
+#if !FIX_ME_IDX_LUPT_ASSERT
         assert(context_ptr->me_block_offset != (uint32_t)(-1));
 #endif
     } else {
@@ -2339,6 +2339,7 @@ void derive_me_offsets(const SequenceControlSet *scs_ptr, PictureControlSet *pcs
         context_ptr->me_block_offset = me_idx[context_ptr->blk_geom->blkidx_mds];
     }
 #else
+    }
     else
         context_ptr->me_sb_addr = context_ptr->sb_ptr->index;
 #endif
@@ -2353,6 +2354,9 @@ void derive_me_offsets(const SequenceControlSet *scs_ptr, PictureControlSet *pcs
             context_ptr->geom_offset_x,
             context_ptr->geom_offset_y);
     }
+#endif
+#if FIX_ME_IDX_LUPT_ASSERT
+    assert(context_ptr->me_block_offset != (uint32_t)(-1));
 #endif
     context_ptr->me_cand_offset = context_ptr->me_block_offset * MAX_PA_ME_CAND;
 }
@@ -9593,12 +9597,12 @@ void process_block(SequenceControlSet *scs_ptr, PictureControlSet *pcs_ptr,
             // If the block is out of the boundaries, MD is not performed.
             // - For square blocks, since the blocks can be split further, they are considered in d2_inter_depth_block_decision() with cost of zero.
             // - For non-square blocks, since they can not be further split, the cost is set to the MAX value (MAX_MODE_COST) to ensure they are not selected.
-            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].cost         = (blk_geom->shape != PART_N) ? MAX_MODE_COST : 0;
-            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].default_cost = (blk_geom->shape != PART_N) ? MAX_MODE_COST : 0;
+            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].cost         = (blk_geom->shape != PART_N) ? MAX_MODE_COST >> 4 : 0;
+            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].default_cost = (blk_geom->shape != PART_N) ? MAX_MODE_COST >> 4 : 0;
         }
         else {
-            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].cost         = MAX_MODE_COST;
-            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].default_cost = MAX_MODE_COST;
+            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].cost         = MAX_MODE_COST >> 4;
+            context_ptr->md_local_blk_unit[blk_ptr->mds_idx].default_cost = MAX_MODE_COST >> 4;
         }
     }
 }

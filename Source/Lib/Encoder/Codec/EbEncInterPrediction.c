@@ -3339,7 +3339,15 @@ void interpolation_filter_search(PictureControlSet *          picture_control_se
                         luma_recon_neighbor_array,
                         cb_recon_neighbor_array,
                         cr_recon_neighbor_array,
+#if FIX_IFS_10BIT
+                        (picture_control_set_ptr->parent_pcs_ptr->scs_ptr->static_config
+                             .encoder_bit_depth > EB_8BIT)
+                            ? 0
+                            : candidate_buffer_ptr->candidate_ptr
+                                  ->is_interintra_used,
+#else
                         candidate_buffer_ptr->candidate_ptr->is_interintra_used,
+#endif
                         candidate_buffer_ptr->candidate_ptr->interintra_mode,
                         candidate_buffer_ptr->candidate_ptr->use_wedge_interintra,
                         candidate_buffer_ptr->candidate_ptr->interintra_wedge_index,
@@ -3441,7 +3449,14 @@ void interpolation_filter_search(PictureControlSet *          picture_control_se
                         luma_recon_neighbor_array,
                         cb_recon_neighbor_array,
                         cr_recon_neighbor_array,
+#if FIX_IFS_10BIT
+                        (picture_control_set_ptr->parent_pcs_ptr->scs_ptr->static_config
+                             .encoder_bit_depth > EB_8BIT)
+                            ? 0
+                            : candidate_buffer_ptr->candidate_ptr->is_interintra_used,
+#else
                         candidate_buffer_ptr->candidate_ptr->is_interintra_used,
+#endif
                         candidate_buffer_ptr->candidate_ptr->interintra_mode,
                         candidate_buffer_ptr->candidate_ptr->use_wedge_interintra,
                         candidate_buffer_ptr->candidate_ptr->interintra_wedge_index,
@@ -3550,7 +3565,14 @@ void interpolation_filter_search(PictureControlSet *          picture_control_se
                         luma_recon_neighbor_array,
                         cb_recon_neighbor_array,
                         cr_recon_neighbor_array,
+#if FIX_IFS_10BIT
+                        (picture_control_set_ptr->parent_pcs_ptr->scs_ptr->static_config
+                             .encoder_bit_depth > EB_8BIT)
+                            ? 0
+                            : candidate_buffer_ptr->candidate_ptr->is_interintra_used,
+#else
                         candidate_buffer_ptr->candidate_ptr->is_interintra_used,
+#endif
                         candidate_buffer_ptr->candidate_ptr->interintra_mode,
                         candidate_buffer_ptr->candidate_ptr->use_wedge_interintra,
                         candidate_buffer_ptr->candidate_ptr->interintra_wedge_index,

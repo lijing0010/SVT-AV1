@@ -108,7 +108,7 @@ extern "C" {
 #define TUNE_REMOVE_UNUSED_NEIG_ARRAY            1 // Removes unused neighbor array
 #define INIT_BLOCK_OPT                           1 // optimize block initialization
 #define ME_IDX_LUPT                              1 // get index using lookuptable
-#define REFACTOR_MD_BLOCK_LOOP                   0 // Refactor the loop that iterates over all blocks at MD
+#define REFACTOR_MD_BLOCK_LOOP                   1 // Refactor the loop that iterates over all blocks at MD
 #define FEATURE_INTER_INTRA_LEVELS               1 // Cleanup and modify inter-intra levels
 #define TUNE_QPS_QPM       1 // Improve the QPS settings for Keyframe. Improve QPM for nonI base frames
 #define TUNE_CDEF_FILTER                         1 // Added new fast search for CDEF
@@ -149,6 +149,10 @@ extern "C" {
 #define TUNE_TPL_TOWARD_CHROMA                       1 //Tune TPL for better chroma. Only for 240P
 #define TUNE_NEW_PRESETS                             1 // Preset tuning for M0-M7
 #define FIX_10BIT_CRASH                              1 // Fixed bug that caused encoder to crash with 10-bit clips
+#define FIX_GM_BUG                                   1 // FIX GM r2r difference
+#define FIX_ME_IDX_LUPT_ASSERT                       1 // change location of assert statement, code cleanup
+#define FIX_IFS_10BIT                                1 // fix bug relating to IFS 10 bit error
+#define FIX_GM_PARAMS_UPDATE                         1 // Fix GM r2r related to improper setting of GM params for NREF frames when GM is used for REF only
 // END  svt-03 /////////////////////////////////////////////////////////
 
 //FOR DEBUGGING - Do not remove

@@ -5677,8 +5677,9 @@ void* picture_decision_kernel(void *input_ptr)
                             pcs_ptr->inloop_me_segments_total_count =
                                 (uint16_t)(pcs_ptr->inloop_me_segments_column_count * pcs_ptr->inloop_me_segments_row_count);
 #endif
-
+#if !FIX_GM_BUG
                             pcs_ptr->me_processed_sb_count = 0;
+#endif
                             //****************************************************
                             // Picture resizing for super-res tool
                             //****************************************************
