@@ -5113,6 +5113,84 @@ static void build_starting_cand_block_array(SequenceControlSet *scs_ptr, Picture
     }
 }
 
+#if FEATURE_RE_ENCODE
+static void recode_loop_decision_maker(PictureControlSet *pcs_ptr,
+            SequenceControlSet *scs_ptr, EbBool *do_recode) {
+    PictureParentControlSet *ppcs_ptr = pcs_ptr->parent_pcs_ptr;
+    EncodeContext *const encode_context_ptr = ppcs_ptr->scs_ptr->encode_context_ptr;
+    RATE_CONTROL *const rc = &(encode_context_ptr->rc);
+    int32_t loop = 0;
+    FrameHeader *frm_hdr = &ppcs_ptr->frm_hdr;
+    int32_t q = frm_hdr->quantization_params.base_q_idx;
+    if (ppcs_ptr->loop_count == 0) {
+        ppcs_ptr->q_low  = rc->bottom_index;
+        ppcs_ptr->q_high = rc->top_index;
+    }
+
+    // Update q and decide whether to do a recode loop
+    recode_loop_update_q(ppcs_ptr, &loop, &q,
+            &ppcs_ptr->q_low, &ppcs_ptr->q_high,
+            rc->top_index, rc->bottom_index,
+            &ppcs_ptr->undershoot_seen, &ppcs_ptr->overshoot_seen,
+            &ppcs_ptr->low_cr_seen, ppcs_ptr->loop_count);
+
+    // Special case for overlay frame.
+    if (loop && rc->is_src_frame_alt_ref &&
+        rc->projected_frame_size < rc->max_frame_bandwidth) {
+        loop = 0;
+    }
+    *do_recode = loop == 1;
+
+    if (*do_recode) {
+        int32_t prev_pic_qp = ppcs_ptr->picture_qp;
+        int32_t prev_qindex = frm_hdr->quantization_params.base_q_idx;
+        ppcs_ptr->loop_count++;
+
+        frm_hdr->quantization_params.base_q_idx = (uint8_t)CLIP3(
+                (int32_t)quantizer_to_qindex[scs_ptr->static_config.min_qp_allowed],
+                (int32_t)quantizer_to_qindex[scs_ptr->static_config.max_qp_allowed],
+                q);
+
+        ppcs_ptr->picture_qp =
+            (uint8_t)CLIP3((int32_t)scs_ptr->static_config.min_qp_allowed,
+                    (int32_t)scs_ptr->static_config.max_qp_allowed,
+                    (frm_hdr->quantization_params.base_q_idx + 2) >> 2);
+        printf("do_recode POC%ld Changing QP from %d(%d) to %d(%d), projected_frame_size=%d\n",
+                ppcs_ptr->picture_number,
+                prev_pic_qp, prev_qindex,
+                ppcs_ptr->picture_qp,
+                frm_hdr->quantization_params.base_q_idx,
+                rc->projected_frame_size);
+#if RE_ENCODE_PCS_SB
+        pcs_ptr->picture_qp = ppcs_ptr->picture_qp;
+
+        // 2pass QPM with tpl_la
+        if (scs_ptr->static_config.enable_adaptive_quantization == 2 &&
+            !use_output_stat(scs_ptr) &&
+            use_input_stat(scs_ptr) &&
+#if !ENABLE_TPL_ZERO_LAD
+            scs_ptr->static_config.look_ahead_distance != 0 &&
+#endif
+            scs_ptr->static_config.enable_tpl_la &&
+            ppcs_ptr->r0 != 0)
+            sb_qp_derivation_tpl_la(pcs_ptr);
+        else
+        {
+            ppcs_ptr->frm_hdr.delta_q_params.delta_q_present = 0;
+            ppcs_ptr->average_qp = 0;
+            for (int sb_addr = 0; sb_addr < pcs_ptr->sb_total_count_pix; ++sb_addr) {
+                SuperBlock * sb_ptr = pcs_ptr->sb_ptr_array[sb_addr];
+                sb_ptr->qindex   = quantizer_to_qindex[pcs_ptr->picture_qp];
+                ppcs_ptr->average_qp += pcs_ptr->picture_qp;
+            }
+        }
+#endif
+    } else {
+        ppcs_ptr->loop_count = 0;
+    }
+}
+#endif
+
 /* EncDec (Encode Decode) Kernel */
 /*********************************************************************************
 *
@@ -5581,78 +5659,7 @@ void *mode_decision_kernel(void *input_ptr) {
             scs_ptr->encode_context_ptr->recode_loop = scs_ptr->static_config.recode_loop;
             if (use_input_stat(scs_ptr) &&
                 scs_ptr->encode_context_ptr->recode_loop != DISALLOW_RECODE) {
-                EncodeContext *const encode_context_ptr = pcs_ptr->parent_pcs_ptr->scs_ptr->encode_context_ptr;
-                RATE_CONTROL *const rc = &(encode_context_ptr->rc);
-                int32_t loop = 0;
-                FrameHeader *frm_hdr = &pcs_ptr->parent_pcs_ptr->frm_hdr;
-                int32_t q = frm_hdr->quantization_params.base_q_idx;
-                if (pcs_ptr->parent_pcs_ptr->loop_count == 0) {
-                    pcs_ptr->parent_pcs_ptr->q_low  = rc->bottom_index;
-                    pcs_ptr->parent_pcs_ptr->q_high = rc->top_index;
-                }
-                //TODO:Update projected_frame_size
-
-                // Update q and decide whether to do a recode loop
-                recode_loop_update_q(pcs_ptr->parent_pcs_ptr, &loop, &q,
-                        &pcs_ptr->parent_pcs_ptr->q_low, &pcs_ptr->parent_pcs_ptr->q_high,
-                        rc->top_index, rc->bottom_index,
-                        &pcs_ptr->parent_pcs_ptr->undershoot_seen, &pcs_ptr->parent_pcs_ptr->overshoot_seen,
-                        &pcs_ptr->parent_pcs_ptr->low_cr_seen, pcs_ptr->parent_pcs_ptr->loop_count);
-
-                // Special case for overlay frame.
-                if (loop && rc->is_src_frame_alt_ref &&
-                    rc->projected_frame_size < rc->max_frame_bandwidth) {
-                    loop = 0;
-                }
-                 do_recode = loop == 1;
-
-                 if (do_recode) {
-                     int32_t prev_pic_qp = pcs_ptr->parent_pcs_ptr->picture_qp;
-                     int32_t prev_qindex = frm_hdr->quantization_params.base_q_idx;
-                     pcs_ptr->parent_pcs_ptr->loop_count++;
-
-                     frm_hdr->quantization_params.base_q_idx = (uint8_t)CLIP3(
-                             (int32_t)quantizer_to_qindex[scs_ptr->static_config.min_qp_allowed],
-                             (int32_t)quantizer_to_qindex[scs_ptr->static_config.max_qp_allowed],
-                             q);
-
-                     pcs_ptr->parent_pcs_ptr->picture_qp =
-                         (uint8_t)CLIP3((int32_t)scs_ptr->static_config.min_qp_allowed,
-                                 (int32_t)scs_ptr->static_config.max_qp_allowed,
-                                 (frm_hdr->quantization_params.base_q_idx + 2) >> 2);
-                     printf("do_recode POC%ld Changing QP from %d(%d) to %d(%d), projected_frame_size=%d\n",
-                             pcs_ptr->parent_pcs_ptr->picture_number,
-                             prev_pic_qp, prev_qindex,
-                             pcs_ptr->parent_pcs_ptr->picture_qp,
-                             frm_hdr->quantization_params.base_q_idx,
-                             rc->projected_frame_size);
-#if RE_ENCODE_PCS_SB
-                    pcs_ptr->picture_qp = pcs_ptr->parent_pcs_ptr->picture_qp;
-
-                    // 2pass QPM with tpl_la
-                    if (scs_ptr->static_config.enable_adaptive_quantization == 2 &&
-                        !use_output_stat(scs_ptr) &&
-                        use_input_stat(scs_ptr) &&
-#if !ENABLE_TPL_ZERO_LAD
-                        scs_ptr->static_config.look_ahead_distance != 0 &&
-#endif
-                        scs_ptr->static_config.enable_tpl_la &&
-                        pcs_ptr->parent_pcs_ptr->r0 != 0)
-                        sb_qp_derivation_tpl_la(pcs_ptr);
-                    else
-                    {
-                        pcs_ptr->parent_pcs_ptr->frm_hdr.delta_q_params.delta_q_present = 0;
-                        pcs_ptr->parent_pcs_ptr->average_qp = 0;
-                        for (int sb_addr = 0; sb_addr < pcs_ptr->sb_total_count_pix; ++sb_addr) {
-                            SuperBlock * sb_ptr = pcs_ptr->sb_ptr_array[sb_addr];
-                            sb_ptr->qindex   = quantizer_to_qindex[pcs_ptr->picture_qp];
-                            pcs_ptr->parent_pcs_ptr->average_qp += pcs_ptr->picture_qp;
-                        }
-                    }
-#endif
-                 } else {
-                     pcs_ptr->parent_pcs_ptr->loop_count = 0;
-                 }
+                recode_loop_decision_maker(pcs_ptr, scs_ptr, &do_recode);
             }
 
 #endif
