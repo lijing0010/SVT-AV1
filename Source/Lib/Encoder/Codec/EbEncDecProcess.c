@@ -5161,7 +5161,6 @@ static void recode_loop_decision_maker(PictureControlSet *pcs_ptr,
                 ppcs_ptr->picture_qp,
                 frm_hdr->quantization_params.base_q_idx,
                 rc->projected_frame_size);
-#if RE_ENCODE_PCS_SB
         pcs_ptr->picture_qp = ppcs_ptr->picture_qp;
 
         // 2pass QPM with tpl_la
@@ -5184,7 +5183,6 @@ static void recode_loop_decision_maker(PictureControlSet *pcs_ptr,
                 ppcs_ptr->average_qp += pcs_ptr->picture_qp;
             }
         }
-#endif
     } else {
         ppcs_ptr->loop_count = 0;
     }
@@ -5654,15 +5652,12 @@ void *mode_decision_kernel(void *input_ptr) {
         if (last_sb_flag) {
 #if FEATURE_RE_ENCODE
             EbBool do_recode = EB_FALSE;
-            // TODO: Add the algorithm whether do the recode
-#if RE_ENCODE_IN_MDK
             scs_ptr->encode_context_ptr->recode_loop = scs_ptr->static_config.recode_loop;
             if (use_input_stat(scs_ptr) &&
                 scs_ptr->encode_context_ptr->recode_loop != DISALLOW_RECODE) {
                 recode_loop_decision_maker(pcs_ptr, scs_ptr, &do_recode);
             }
 
-#endif
             if (do_recode) {
 
                 pcs_ptr->enc_dec_coded_sb_count = 0;

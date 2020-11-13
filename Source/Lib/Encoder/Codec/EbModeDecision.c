@@ -5613,13 +5613,8 @@ uint32_t product_full_mode_decision(
             lowest_cost = *(buffer_ptr_array[cand_index]->full_cost_ptr);
         }
     }
-#if FEATURE_RE_ENCODE_ENCDEC
-    //if (use_input_stat(scs_ptr))
-    if (context_ptr->pd_pass == PD_PASS_2)
-    {   //kelvin
-        //printf("kelvin ---> pfmd xy %d %d, wh(%d %d) lowest_cost_index=%d total_rate=%d\n", context_ptr->sb_ptr->origin_x + context_ptr->blk_geom->origin_x,
-        //        context_ptr->sb_ptr->origin_y + context_ptr->blk_geom->origin_y, context_ptr->blk_geom->bwidth, context_ptr->blk_geom->bheight,
-        //        lowest_cost_index, buffer_ptr_array[lowest_cost_index]->candidate_ptr->total_rate);
+#if FEATURE_RE_ENCODE
+    if (/*use_input_stat(scs_ptr) && */(context_ptr->pd_pass == PD_PASS_2)) {
         blk_ptr->total_rate = buffer_ptr_array[lowest_cost_index]->candidate_ptr->total_rate;
     }
 #endif

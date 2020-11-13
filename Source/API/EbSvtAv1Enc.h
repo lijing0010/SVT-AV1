@@ -527,7 +527,7 @@ typedef struct EbSvtAv1EncConfiguration {
      * value can range from 0-1000. */
     uint32_t over_shoot_pct;
 
-#if RE_ENCODE_IN_MDK
+#if FEATURE_RE_ENCODE
     /* recode_loop indicates the recode levels,
      * DISALLOW_RECODE = 0, No recode.
      * ALLOW_RECODE_KFMAXBW = 1, Allow recode for KF and exceeding maximum frame bandwidth.

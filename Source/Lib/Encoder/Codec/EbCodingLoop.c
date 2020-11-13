@@ -2317,11 +2317,10 @@ EB_EXTERN void av1_encode_decode(SequenceControlSet *scs_ptr, PictureControlSet 
                               (sb_origin_y + blk_geom->origin_y) >> MI_SIZE_LOG2,
                               (sb_origin_x + blk_geom->origin_x) >> MI_SIZE_LOG2);
         }
-#if FEATURE_RE_ENCODE_ENCDEC
-        if (//use_input_stat(scs_ptr) && //kelvin
+#if FEATURE_RE_ENCODE
+        if (use_input_stat(scs_ptr) &&
             blk_it == 0 && sb_origin_x == 0 && blk_geom->origin_x == 0 && sb_origin_y == 0 && blk_geom->origin_y == 0) {
             pcs_ptr->parent_pcs_ptr->pcs_total_rate = 0;
-            //printf("kelvin ---> POC%d reset pcs_ptr->parent_pcs_ptr->pcs_total_rate\n", pcs_ptr->parent_pcs_ptr->picture_number);
         }
 #endif
         if (part != PARTITION_SPLIT && pcs_ptr->parent_pcs_ptr->sb_geom[sb_addr].block_is_allowed[blk_it]) {
@@ -2367,12 +2366,8 @@ EB_EXTERN void av1_encode_decode(SequenceControlSet *scs_ptr, PictureControlSet 
                     blk_ptr->qindex = sb_ptr->qindex;
                 }
 
-#if FEATURE_RE_ENCODE_ENCDEC
+#if FEATURE_RE_ENCODE
                 pcs_ptr->parent_pcs_ptr->pcs_total_rate += blk_ptr->total_rate;
-                //printf("kelvin ---> av1_encode_decode xy %d %d, wh(%d %d) total_rate=%d pcs_total_rate=%d\n",
-                //        context_ptr->blk_origin_x, context_ptr->blk_origin_y,
-                //        blk_geom->bwidth, blk_geom->bheight, blk_ptr->total_rate,
-                //        pcs_ptr->parent_pcs_ptr->pcs_total_rate);
 #endif
                 if (blk_ptr->prediction_mode_flag == INTRA_MODE) {
                     context_ptr->is_inter = blk_ptr->use_intrabc;

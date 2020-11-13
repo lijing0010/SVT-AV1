@@ -6807,7 +6807,7 @@ static int rc_pick_q_and_bounds(PictureControlSet *pcs_ptr) {
         active_worst_quality = q;
     }
 
-#if RE_ENCODE_IN_MDK
+#if FEATURE_RE_ENCODE
     rc->top_index = active_worst_quality;
     rc->bottom_index = active_best_quality;
 
@@ -7235,7 +7235,7 @@ static void av1_set_target_rate(PictureControlSet *pcs_ptr, int width, int heigh
     av1_rc_set_frame_target(pcs_ptr, target_rate, width, height);
 }
 
-#if RE_ENCODE_IN_MDK
+#if FEATURE_RE_ENCODE
 static double av1_get_compression_ratio(PictureParentControlSet *ppcs_ptr,
                                  size_t encoded_frame_size) {
   const int upscaled_width = ppcs_ptr->av1_cm->frm_size.superres_upscaled_width;
@@ -7286,11 +7286,7 @@ static AOM_INLINE int recode_loop_test(PictureParentControlSet *ppcs_ptr, int hi
   if ((rc->projected_frame_size >= rc->max_frame_bandwidth) ||
       (encode_context_ptr->recode_loop == ALLOW_RECODE) ||
       (frame_is_kfgfarf &&
-#if RE_ENCODE_ONLY_KEY_FRAME
        (encode_context_ptr->recode_loop >= ALLOW_RECODE_KFMAXBW)
-#else
-       (encode_context_ptr->recode_loop == ALLOW_RECODE_KFARFGF)
-#endif
        )) {
     // TODO(agrange) high_limit could be greater than the scale-down threshold.
     if ((rc->projected_frame_size > high_limit && q < maxq) ||
@@ -7366,37 +7362,22 @@ void recode_loop_update_q(
   RATE_CONTROL *const rc = &(encode_context_ptr->rc);
   const RateControlCfg *const rc_cfg = &encode_context_ptr->rc_cfg;
   const int do_dummy_pack = (
-#if RE_ENCODE_ONLY_KEY_FRAME
          scs_ptr->encode_context_ptr->recode_loop >= ALLOW_RECODE_KFMAXBW &&
-#else
-         scs_ptr->encode_context_ptr->recode_loop >= ALLOW_RECODE_KFARFGF &&
-#endif
          rc_cfg->mode != AOM_Q) ||
          rc_cfg->min_cr > 0;
-  rc->projected_frame_size = do_dummy_pack ? ppcs_ptr->total_num_bits : 0;
-#if FEATURE_RE_ENCODE_ENCDEC
   rc->projected_frame_size = do_dummy_pack ? (((ppcs_ptr->pcs_total_rate + (1 << (AV1_PROB_COST_SHIFT - 1))) >> AV1_PROB_COST_SHIFT)
                                              + ((ppcs_ptr->frm_hdr.frame_type == KEY_FRAME) ? 13  : 0))
                                            : 0;
-#endif
-#if RE_ENCODE_FRAME_SIZE_SCALE
   if (ppcs_ptr->loop_count) {
+    // scale rc->projected_frame_size with *0.8 for loop_count>=1
     rc->projected_frame_size = (rc->projected_frame_size * 8) / 10;
   }
-#endif
   *loop = 0;
-#if RE_ENCODE_MAX_LOOP3
-  if (ppcs_ptr->loop_count >= 3) {
-    return;
-  }
-#endif
-#if RE_ENCODE_ONLY_KEY_FRAME
   if (scs_ptr->encode_context_ptr->recode_loop == ALLOW_RECODE_KFMAXBW &&
       ppcs_ptr->frm_hdr.frame_type != KEY_FRAME) {
     // skip re-encode for inter frame when setting -recode-loop 1
     return;
   }
-#endif
 
   const int min_cr = rc_cfg->min_cr;
   if (min_cr > 0) {
@@ -7940,25 +7921,6 @@ void *rate_control_kernel(void *input_ptr) {
                 (PictureParentControlSet *)rate_control_tasks_ptr->pcs_wrapper_ptr->object_ptr;
             scs_ptr =
                 (SequenceControlSet *)parentpicture_control_set_ptr->scs_wrapper_ptr->object_ptr;
-#if FEATURE_RE_ENCODE_ENCDEC
-            if (0 && use_input_stat(scs_ptr))
-            {
-                if(parentpicture_control_set_ptr->picture_number == 0) {
-                    scs_ptr->scs_total_num_bits = 0;
-                    scs_ptr->scs_total_rate = 0;
-                }
-                printf("kelvin RC POC%2d total_num_bits=%6d pcs_total_rate=%9d ratio=%f projected_frame_size=%d\n", parentpicture_control_set_ptr->picture_number,
-                        parentpicture_control_set_ptr->total_num_bits, parentpicture_control_set_ptr->pcs_total_rate,
-                        (float)parentpicture_control_set_ptr->total_num_bits/(float)parentpicture_control_set_ptr->pcs_total_rate,
-                        scs_ptr->encode_context_ptr->rc.projected_frame_size);
-                scs_ptr->scs_total_num_bits += parentpicture_control_set_ptr->total_num_bits;
-                scs_ptr->scs_total_rate     += parentpicture_control_set_ptr->pcs_total_rate;
-                if(parentpicture_control_set_ptr->picture_number == 59) {
-                    printf("kelvin RC last frame total %d %d totalratio=%f\n", scs_ptr->scs_total_num_bits, scs_ptr->scs_total_rate,
-                            (float)scs_ptr->scs_total_num_bits/(float)scs_ptr->scs_total_rate);
-                }
-            }
-#endif
             // Frame level RC
             if (scs_ptr->intra_period_length == -1 ||
                 scs_ptr->static_config.rate_control_mode == 0) {

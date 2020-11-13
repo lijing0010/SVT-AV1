@@ -71,22 +71,12 @@ extern "C" {
 #if !TUNE_IME_REUSE_TPL_RESULT
 #define TUNE_SIGNAL_TPL_ME_OQ         1 // A separate signal_xxx_oq for TPL ME
 #endif
-#define FEATURE_RE_ENCODE    1 // re-encode support
-#if FEATURE_RE_ENCODE
-#define RE_ENCODE_IN_MDK 1 // re-encode decision maker in Mode decision kernel
-#define FEATURE_RE_ENCODE_ENCDEC 1 // re-encode decision maker in encdec kernel
-#define RE_ENCODE_PCS_SB 1 // pcs sb_ptr_array update with re-encode new q
-#define RE_ENCODE_FRAME_SIZE_SCALE 1 // scale rc->projected_frame_size with *0.8 before re-encode check
-#define RE_ENCODE_MAX_LOOP3 0 // set max reencode loop to 3
-#define RE_ENCODE_ONLY_KEY_FRAME 1 // re-encode only key frame
-#define FEATURE_RE_ENCODE_DBG 0 // debug for recode
-#endif
-#define FIX_VBR_GF_INTERVAL 0 // fix 2nd pass min/max_gf_interval error
-#define FIX_VBR_LAST_GOP_BITS 1 // fix 2nd pass last small group too big frame size error
-#define ONE_MIN_QP_ALLOWED 1 // set default min_qp_allowed=1
-#define ALLOW_SB128_2PASS_VBR 1 // allow SB128x128 for 2pass VBR
-#define TWOPASS_VBR_4L_SUPPORT 1 // 2pass VBR 4L support in impose_gf_length and construct_multi_layer_gf_structure
-#define FIRST_PASS_GM_FIX      1 // Fix the GM setting for the first pass
+#define FEATURE_RE_ENCODE             1 // Add re-encode support
+#define FIX_VBR_LAST_GOP_BITS         1 // Fix 2nd pass last small group too big frame size error
+#define FIX_ONE_MIN_QP_ALLOWED        1 // Set default min_qp_allowed=1 for VBR good quality
+#define FIX_ALLOW_SB128_2PASS_VBR     1 // To allow SB128x128 for 2pass VBR
+#define FIX_2PASS_VBR_4L_SUPPORT      1 // Add 2pass VBR 4L support
+#define FIX_FIRST_PASS_GM             1 // Fix the GM setting for the first pass
 #endif
 //***************************************************************//
 

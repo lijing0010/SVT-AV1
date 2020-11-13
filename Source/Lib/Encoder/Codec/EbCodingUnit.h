@@ -417,7 +417,7 @@ typedef struct BlkStruct {
     uint8_t        filter_intra_mode;// ec
     uint8_t        do_not_process_block;
     uint8_t                  use_intrabc;
-#if FEATURE_RE_ENCODE_ENCDEC
+#if FEATURE_RE_ENCODE
     uint64_t       total_rate;
 #endif
 } BlkStruct;

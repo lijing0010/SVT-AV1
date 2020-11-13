@@ -468,7 +468,7 @@ EbErrorType signal_derivation_me_kernel_oq(SequenceControlSet *       scs_ptr,
             gm_level = pcs_ptr->is_used_as_reference_flag ? 4 : 0;
 #endif
     }
-#if FIRST_PASS_GM_FIX
+#if FIX_FIRST_PASS_GM
     if (use_output_stat(scs_ptr))
         gm_level = 0;
 #endif

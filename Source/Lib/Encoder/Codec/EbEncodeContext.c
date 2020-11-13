@@ -179,7 +179,7 @@ EbErrorType encode_context_ctor(EncodeContext* encode_context_ptr, EbPtr object_
     encode_context_ptr->enc_mode                      = SPEED_CONTROL_INIT_MOD;
     encode_context_ptr->previous_selected_ref_qp      = 32;
     encode_context_ptr->max_coded_poc_selected_ref_qp = 32;
-#if RE_ENCODE_IN_MDK
+#if FEATURE_RE_ENCODE
     encode_context_ptr->recode_tolerance              = 25;
     encode_context_ptr->rc_cfg.min_cr                 = 0;
 #endif

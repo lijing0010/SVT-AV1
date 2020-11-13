@@ -136,7 +136,7 @@
 #define VBR_MAX_SECTION_PCT_TOKEN "-maxsection-pct"
 #define UNDER_SHOOT_PCT_TOKEN "-undershoot-pct"
 #define OVER_SHOOT_PCT_TOKEN "-overshoot-pct"
-#if RE_ENCODE_IN_MDK
+#if FEATURE_RE_ENCODE
 #define RECODE_LOOP_TOKEN "-recode-loop"
 #endif
 #define ADAPTIVE_QP_ENABLE_TOKEN "-adaptive-quantization"
@@ -548,7 +548,7 @@ static void set_under_shoot_pct(const char *value, EbConfig *cfg) {
 static void set_over_shoot_pct(const char *value, EbConfig *cfg) {
     cfg->over_shoot_pct = strtoul(value, NULL, 0);
 };
-#if RE_ENCODE_IN_MDK
+#if FEATURE_RE_ENCODE
 static void set_recode_loop(const char *value, EbConfig *cfg) {
     cfg->recode_loop    = strtoul(value, NULL, 0);
 };
@@ -848,7 +848,7 @@ ConfigEntry config_entry_rc[] = {
     {SINGLE_INPUT, VBV_BUFSIZE_TOKEN, "VBV buffer size", set_vbv_buf_size},
     {SINGLE_INPUT, UNDER_SHOOT_PCT_TOKEN, "Datarate undershoot (min) target (%)", set_under_shoot_pct},
     {SINGLE_INPUT, OVER_SHOOT_PCT_TOKEN, "Datarate overshoot (max) target (%)", set_over_shoot_pct},
-#if RE_ENCODE_IN_MDK
+#if FEATURE_RE_ENCODE
     {SINGLE_INPUT, RECODE_LOOP_TOKEN, "Recode levels ", set_recode_loop},
 #endif
     // Termination
@@ -1206,7 +1206,7 @@ ConfigEntry config_entry[] = {
     {SINGLE_INPUT, VBR_MAX_SECTION_PCT_TOKEN, "GOP max bitrate (% of target)", set_vbr_max_section_pct},
     {SINGLE_INPUT, UNDER_SHOOT_PCT_TOKEN, "Datarate undershoot (min) target (%)", set_under_shoot_pct},
     {SINGLE_INPUT, OVER_SHOOT_PCT_TOKEN, "Datarate overshoot (max) target (%)", set_over_shoot_pct},
-#if RE_ENCODE_IN_MDK
+#if FEATURE_RE_ENCODE
     {SINGLE_INPUT, RECODE_LOOP_TOKEN, "Recode levels ", set_recode_loop},
 #endif
 
@@ -1434,7 +1434,7 @@ void eb_config_ctor(EbConfig *config_ptr) {
     config_ptr->enable_tpl_la       = 1;
     config_ptr->target_bit_rate     = 7000000;
     config_ptr->max_qp_allowed      = 63;
-#if ONE_MIN_QP_ALLOWED
+#if FIX_ONE_MIN_QP_ALLOWED
     config_ptr->min_qp_allowed      = 1;
 #else
     config_ptr->min_qp_allowed      = 10;
@@ -1447,7 +1447,7 @@ void eb_config_ctor(EbConfig *config_ptr) {
     config_ptr->vbr_max_section_pct = 2000;
     config_ptr->under_shoot_pct     = 25;
     config_ptr->over_shoot_pct      = 25;
-#if RE_ENCODE_IN_MDK
+#if FEATURE_RE_ENCODE
     //config_ptr->recode_loop         = 0;//DISALLOW_RECODE;
     config_ptr->recode_loop         = 2;//ALLOW_RECODE_KFARFGF;
 #endif
@@ -1978,7 +1978,7 @@ static EbErrorType verify_settings(EbConfig *config, uint32_t channel_number) {
         return EB_ErrorBadParameter;
     }
     if (pass != DEFAULT || config->input_stat_file || config->output_stat_file) {
-#if TWOPASS_VBR_4L_SUPPORT
+#if FIX_2PASS_VBR_4L_SUPPORT
         if (config->hierarchical_levels != 3 && config->hierarchical_levels != 4)
 #else
         if (config->hierarchical_levels != 4)

@@ -949,18 +949,14 @@ typedef struct PictureParentControlSet {
 #if FEATURE_GM_OPT
     GmControls gm_ctrls;
 #endif
-#if RE_ENCODE_IN_MDK
+#if FEATURE_RE_ENCODE
     // Loop variables
     int q_low;
     int q_high;
     int loop_count;
-    //int loop_at_this_size;
     int overshoot_seen;
     int undershoot_seen;
     int low_cr_seen;
-    //int last_loop_allow_hp;
-#endif
-#if FEATURE_RE_ENCODE_ENCDEC
     uint64_t pcs_total_rate;
 #endif
 } PictureParentControlSet;

@@ -829,7 +829,7 @@ static void impose_gf_length(PictureParentControlSet *pcs_ptr, int max_intervals
     int cut_pos[MAX_NUM_GF_INTERVALS + 1]  = {0};
     int count_cuts                         = 1;
     int cur_last;
-#if TWOPASS_VBR_4L_SUPPORT
+#if FIX_2PASS_VBR_4L_SUPPORT
     int gf_interval = 1 << scs_ptr->static_config.hierarchical_levels;
 #endif
     while (count_cuts < max_intervals + 1) {
@@ -844,7 +844,7 @@ static void impose_gf_length(PictureParentControlSet *pcs_ptr, int max_intervals
             break;
         }
         // To cut based on PD decisions, only supports 5L for now
-#if TWOPASS_VBR_4L_SUPPORT
+#if FIX_2PASS_VBR_4L_SUPPORT
         cut_here =
             ((i % gf_interval == 0) || ((rc->frames_to_key - cut_pos[count_cuts - 1]) < gf_interval && (i % (gf_interval>>1) == 0)))
                 ? 1 : 0;
@@ -990,7 +990,7 @@ static void set_multi_layer_params(const TWO_PASS *twopass,
 static int construct_multi_layer_gf_structure(
     TWO_PASS *twopass, GF_GROUP *const gf_group,
     RATE_CONTROL *rc, FrameInfo *const frame_info, int gf_interval,
-#if TWOPASS_VBR_4L_SUPPORT
+#if FIX_2PASS_VBR_4L_SUPPORT
     int max_gf_interval,
 #endif
     FRAME_UPDATE_TYPE first_frame_update_type) {
@@ -1015,7 +1015,7 @@ static int construct_multi_layer_gf_structure(
     // anaghdin: for now only 5L is supported. In 5L case, when there are not enough picture,
     // we switch to 4L and after that we use 4L P pictures. In the else, we handle the P-case manually
     // this logic has to move to picture decision
-#if TWOPASS_VBR_4L_SUPPORT
+#if FIX_2PASS_VBR_4L_SUPPORT
     if (gf_interval >= (max_gf_interval>>1))
 #else
     if (gf_interval >= 8)
@@ -1075,7 +1075,7 @@ static void av1_gop_setup_structure(PictureParentControlSet *pcs_ptr,
         : rc->source_alt_ref_active ? OVERLAY_UPDATE : GF_UPDATE;
     gf_group->size = construct_multi_layer_gf_structure(
         twopass, gf_group, rc, frame_info, rc->baseline_gf_interval,
-#if TWOPASS_VBR_4L_SUPPORT
+#if FIX_2PASS_VBR_4L_SUPPORT
         (1 << scs_ptr->static_config.hierarchical_levels),
 #endif
         first_frame_update_type);
@@ -2354,13 +2354,8 @@ void svt_av1_init_second_pass(SequenceControlSet *scs_ptr) {
       encode_context_ptr->gf_cfg.lag_in_frames = 25;//hack scs_ptr->static_config.look_ahead_distance + 1;
       encode_context_ptr->gf_cfg.gf_min_pyr_height = scs_ptr->static_config.hierarchical_levels;
       encode_context_ptr->gf_cfg.gf_max_pyr_height = scs_ptr->static_config.hierarchical_levels;
-#if FIX_VBR_GF_INTERVAL
-      encode_context_ptr->gf_cfg.min_gf_interval   = 0;
-      encode_context_ptr->gf_cfg.max_gf_interval   = 0;
-#else
       encode_context_ptr->gf_cfg.min_gf_interval   = 1 << scs_ptr->static_config.hierarchical_levels;
       encode_context_ptr->gf_cfg.max_gf_interval   = 1 << scs_ptr->static_config.hierarchical_levels;
-#endif
       encode_context_ptr->gf_cfg.enable_auto_arf   = 1;
       encode_context_ptr->kf_cfg.sframe_dist   = 0; // not supported yet
       encode_context_ptr->kf_cfg.sframe_mode   = 0; // not supported yet

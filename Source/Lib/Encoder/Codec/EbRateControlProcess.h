@@ -200,7 +200,7 @@ typedef struct {
     int enable_scenecut_detection;
     int use_arf_in_this_kf_group;
     int next_is_fwd_key;
-#if RE_ENCODE_IN_MDK
+#if FEATURE_RE_ENCODE
     int top_index;
     int bottom_index;
 #endif

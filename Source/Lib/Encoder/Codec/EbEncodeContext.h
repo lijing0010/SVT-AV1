@@ -209,7 +209,7 @@ typedef struct EncodeContext {
     STATS_BUFFER_CTX stats_buf_context;
     SvtAv1FixedBuf rc_twopass_stats_in; // replaced oxcf->two_pass_cfg.stats_in in aom
     FirstPassStatsOut stats_out;
-#if RE_ENCODE_IN_MDK
+#if FEATURE_RE_ENCODE
     RecodeLoopType recode_loop;
     // This feature controls the tolerence vs target used in deciding whether to
     // recode a frame. It has no meaning if recode is disabled.

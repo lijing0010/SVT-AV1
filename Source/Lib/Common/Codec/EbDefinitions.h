@@ -108,7 +108,7 @@ enum {
     FAST_DIAMOND = 6
 } UENUM1BYTE(SEARCH_METHODS);
 
-#if RE_ENCODE_IN_MDK
+#if FEATURE_RE_ENCODE
 enum {
     // No recode.
     DISALLOW_RECODE = 0,

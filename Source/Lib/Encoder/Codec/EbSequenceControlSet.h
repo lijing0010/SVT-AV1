@@ -214,8 +214,7 @@ typedef struct SequenceControlSet {
     Quants quants_8bit;  // 8bit
     Dequants deq_8bit; // 8bit
 #endif
-#if FEATURE_RE_ENCODE_ENCDEC
-    uint64_t scs_total_num_bits;
+#if FEATURE_RE_ENCODE
     uint64_t scs_total_rate;
 #endif
 } SequenceControlSet;
