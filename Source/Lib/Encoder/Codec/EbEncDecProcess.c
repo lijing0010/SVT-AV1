@@ -27,9 +27,6 @@
 #if FEATURE_INL_ME
 #include "EbPictureAnalysisProcess.h"
 #endif
-#if FEATURE_RE_ENCODE
-#include "EbSegmentation.h"
-#endif
 
 #define FC_SKIP_TX_SR_TH025 125 // Fast cost skip tx search threshold.
 #define FC_SKIP_TX_SR_TH010 110 // Fast cost skip tx search threshold.
@@ -48,15 +45,6 @@ void eb_av1_loop_restoration_save_boundary_lines(const Yv12BufferConfig *frame, 
                                                  int32_t after_cdef);
 void eb_av1_loop_restoration_filter_frame(Yv12BufferConfig *frame, Av1Common *cm,
                                           int32_t optimized_lr);
-void recode_loop_update_q(
-    PictureParentControlSet *ppcs_ptr,
-    int *const loop, int *const q, int *const q_low,
-    int *const q_high, const int top_index, const int bottom_index,
-    int *const undershoot_seen, int *const overshoot_seen,
-    int *const low_cr_seen, const int loop_count);
-void sb_qp_derivation_tpl_la(PictureControlSet *pcs_ptr);
-void mode_decision_configuration_init_qp_update(PictureControlSet *pcs_ptr);
-
 static void enc_dec_context_dctor(EbPtr p) {
     EbThreadContext *thread_context_ptr = (EbThreadContext *)p;
     EncDecContext *  obj                = (EncDecContext *)thread_context_ptr->priv;
@@ -5114,6 +5102,16 @@ static void build_starting_cand_block_array(SequenceControlSet *scs_ptr, Picture
 }
 
 #if FEATURE_RE_ENCODE
+void recode_loop_update_q(
+    PictureParentControlSet *ppcs_ptr,
+    int *const loop, int *const q, int *const q_low,
+    int *const q_high, const int top_index, const int bottom_index,
+    int *const undershoot_seen, int *const overshoot_seen,
+    int *const low_cr_seen, const int loop_count);
+void sb_qp_derivation_tpl_la(PictureControlSet *pcs_ptr);
+void mode_decision_configuration_init_qp_update(PictureControlSet *pcs_ptr);
+void init_enc_dec_segement(PictureParentControlSet *parentpicture_control_set_ptr);
+
 static void recode_loop_decision_maker(PictureControlSet *pcs_ptr,
             SequenceControlSet *scs_ptr, EbBool *do_recode) {
     PictureParentControlSet *ppcs_ptr = pcs_ptr->parent_pcs_ptr;
